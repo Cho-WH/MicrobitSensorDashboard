@@ -7,7 +7,7 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () 
     command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine))
     command = command.trim().toLowerCase()
 
-    if (command == "magnet" || command == "start") {
+    if (command == "start") {
         mode = "magnet"
         if (!(calibrated)) {
             if (input.buttonIsPressed(Button.A) || input.buttonIsPressed(Button.B)) {

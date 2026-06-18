@@ -104,7 +104,7 @@ CSV 키: temperature, light
 
 Magnetometer는 이 템플릿의 기본 예제다. 자기장 센서는 compass calibration이 필요할 수 있어 `firmware/examples/magnetometer.js`를 일반 템플릿과 별도로 유지한다.
 
-- 기본 명령: `magnet`
+- 기본 명령: `start`
 - 기존 원본 펌웨어 전송 순서: `x,y,z,strength`
 - 설정과 펌웨어 순서를 반드시 같이 확인한다.
 

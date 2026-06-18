@@ -25,12 +25,10 @@ const boot = async () => {
   store.init(config)
 
   const titleEl = document.querySelector('[data-bind="app-title"]')
-  const badgeEl = document.querySelector('[data-bind="app-badge"]')
   registerCleanup(
     store.subscribe((state) => {
       document.title = state.config.appTitle
       if (titleEl) titleEl.textContent = state.config.appTitle
-      if (badgeEl) badgeEl.textContent = state.config.appBadge
     })
   )
 

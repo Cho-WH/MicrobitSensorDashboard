@@ -79,17 +79,27 @@ const normalizeVisibleFields = (visibleFields, fields) => {
 export const normalizeConfig = (config = {}) => {
   const fallback = defaultSensorConfig
   const fields = normalizeFields(config.fields, fallback.fields)
+  const supportedConfig = Object.fromEntries(
+    Object.entries({
+      deviceLabel: config.deviceLabel,
+      sampleIntervalMs: config.sampleIntervalMs,
+      historyLimit: config.historyLimit,
+      emptyMessage: config.emptyMessage,
+      fieldSelectorTitle: config.fieldSelectorTitle,
+      fieldSelectorHelp: config.fieldSelectorHelp,
+      connectionText: config.connectionText,
+    }).filter(([, value]) => value !== undefined),
+  )
 
   return {
     ...clone(fallback),
-    ...config,
+    ...supportedConfig,
     appTitle: normalizeString(config.appTitle, fallback.appTitle),
-    appBadge: normalizeString(config.appBadge, fallback.appBadge),
     startCommand: normalizeString(config.startCommand, fallback.startCommand),
     csvFilename: normalizeString(config.csvFilename, fallback.csvFilename),
     chartTitle: normalizeString(config.chartTitle, fallback.chartTitle),
     fields,
-    defaultVisibleFields: normalizeVisibleFields(config.defaultVisibleFields, fields),
+    defaultVisibleFields: normalizeVisibleFields(config.defaultVisibleFields ?? fallback.defaultVisibleFields, fields),
   }
 }
 
@@ -121,7 +131,6 @@ export const toCompactConfig = (config) => {
   const compact = { v: CONFIG_VERSION }
 
   if (normalized.appTitle !== defaults.appTitle) compact.t = normalized.appTitle
-  if (normalized.appBadge !== defaults.appBadge) compact.b = normalized.appBadge
   if (normalized.startCommand !== defaults.startCommand) compact.cmd = normalized.startCommand
   if (normalized.csvFilename !== defaults.csvFilename) compact.csv = normalized.csvFilename
   if (normalized.chartTitle !== defaults.chartTitle) compact.ct = normalized.chartTitle
@@ -144,7 +153,6 @@ export const fromCompactConfig = (compact) => {
 
   return normalizeConfig({
     appTitle: compact.t,
-    appBadge: compact.b,
     startCommand: compact.cmd,
     csvFilename: compact.csv,
     chartTitle: compact.ct,

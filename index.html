@@ -32,7 +32,6 @@
             실험 설정
           </button>
         </div>
-        <span class="badge" data-bind="app-badge">Vanilla build</span>
       </header>
 
       <div id="banner-root" class="banner-host" role="status"></div>
@@ -145,20 +144,16 @@
               <input type="text" data-setting="appTitle" autocomplete="off" />
             </label>
             <label>
-              <span>배지</span>
-              <input type="text" data-setting="appBadge" autocomplete="off" />
-            </label>
-            <label>
               <span>시작 명령</span>
               <input type="text" data-setting="startCommand" autocomplete="off" />
             </label>
             <label>
-              <span>CSV 파일명</span>
-              <input type="text" data-setting="csvFilename" autocomplete="off" />
-            </label>
-            <label class="settings-grid__wide">
               <span>차트 제목</span>
               <input type="text" data-setting="chartTitle" autocomplete="off" />
+            </label>
+            <label>
+              <span>CSV 파일명</span>
+              <input type="text" data-setting="csvFilename" autocomplete="off" />
             </label>
           </div>
         </section>
@@ -175,7 +170,7 @@
           <h3>펌웨어 체크</h3>
           <div class="firmware-check__grid">
             <span>웹앱 시작 명령</span>
-            <code data-bind="firmware-command">magnet</code>
+            <code data-bind="firmware-command">start</code>
             <span>CSV 전송 순서</span>
             <code data-bind="firmware-order">x, y, z, strength</code>
             <span>예시 CSV</span>

@@ -13,9 +13,8 @@ export const colorPalette = [
 
 export const sensorConfig = {
   appTitle: 'Microbit Sensor Dashboard',
-  appBadge: 'Vanilla build',
   deviceLabel: 'micro:bit',
-  startCommand: 'magnet',
+  startCommand: 'start',
   sampleIntervalMs: 100,
   historyLimit: 300,
   csvFilename: 'magnetometer-log.csv',
