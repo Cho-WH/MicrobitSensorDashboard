@@ -45,6 +45,41 @@
 
 펌웨어와 웹앱 중 하나만 먼저 크게 바꾸기보다, 작은 데이터 한 줄이 끝까지 표시되는지 확인하면서 넓혀 가는 편이 안전하다.
 
+## MakeCode Bluetooth 설정 확인
+
+이 웹앱은 Web Bluetooth로 micro:bit의 **Bluetooth UART service**에 연결한다. MakeCode 공식 문서에서는 UART를 `bluetooth.startUartService()`로 시작하는 Bluetooth service로 설명하며, 다른 장치가 이 service를 사용하려면 micro:bit의 Bluetooth 연결 설정이 맞아야 한다.
+
+MakeCode 프로젝트를 새로 만들거나 공유 프로젝트를 갱신할 때는 다음 설정을 먼저 확인한다.
+
+1. MakeCode 편집창 오른쪽 위 톱니바퀴 메뉴에서 **Project Settings**를 연다.
+2. Bluetooth 항목에서 **No Pairing Required: Anyone can connect via Bluetooth.** 옵션을 선택한다.
+   - 한국어 UI에서는 `페어링이 필요하지 않습니다. 누구나 블루투스를 통해 연결할 수 있습니다.`로 보일 수 있다.
+3. 설정을 저장한 뒤 **Download**로 HEX를 다시 만들고 micro:bit에 플래시한다.
+
+이 설정만으로 Web Bluetooth GATT 연결이 안정되지 않으면 같은 설정창에서 **Edit Settings As text**를 열고 `yotta.config.microbit-dal.bluetooth` 값을 아래처럼 만든다.
+
+```json
+"yotta": {
+  "config": {
+    "microbit-dal": {
+      "bluetooth": {
+        "enabled": 1,
+        "open": 1,
+        "pairing_mode": 0,
+        "whitelist": 0,
+        "security_level": null
+      }
+    }
+  }
+}
+```
+
+여기서 특히 중요한 값은 `"pairing_mode": 0`이다. `pairing_mode`가 켜져 있으면 micro:bit가 페어링 절차를 기대하는 설정으로 빌드될 수 있고, Web Bluetooth로 바로 UART service에 붙는 흐름에서는 브라우저나 OS에 남아 있는 예전 페어링 정보와 충돌할 수 있다. 이 프로젝트처럼 브라우저가 micro:bit를 선택한 뒤 곧바로 Bluetooth UART service에 연결하는 UX에서는 `open: 1`, `pairing_mode: 0`, `whitelist: 0` 조합으로 “페어링 없이 연결 가능한 프로젝트”임을 분명히 맞춰 두어야 원활하게 연결될 수 있다.
+
+저장 후 다시 HEX를 다운로드해 micro:bit에 플래시한다. 이미 OS나 브라우저에 예전 Bluetooth 정보가 남아 있으면, OS Bluetooth 설정에서 기존 micro:bit 페어링을 삭제한 뒤 다시 연결한다.
+
+참고 문서: MakeCode [Bluetooth UART Service](https://makecode.microbit.org/reference/bluetooth/start-uart-service), MakeCode [Bluetooth Pairing](https://makecode.microbit.org/reference/bluetooth/bluetooth-pairing), Cardboard Robots [LOFI Control App](https://cardboard.lofirobot.com/lofi-control-app-info/?__im-cjwrbpjo=15768850763210836362)
+
 ## UI를 특화할 때 볼 파일
 
 - `index.html`: 화면에 보이는 기본 구조와 사용 안내 모달

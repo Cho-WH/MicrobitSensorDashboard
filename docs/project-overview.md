@@ -29,6 +29,7 @@ micro:bit는 한 줄 CSV 데이터를 보내고, 웹앱은 기본 설정 또는 
 - 주요 파일: `js/bluetooth.js`, `js/ui/connection-panel.js`
 - 역할: Web Bluetooth 연결, Nordic UART characteristic 선택, 알림 수신, 시작 명령 전송, 연결 상태 안내
 - 보통은 그대로 사용하고, 장치 선택 방식이나 연결 UX를 바꿀 때 수정한다.
+- MakeCode 펌웨어는 `bluetooth.startUartService()`와 **No Pairing Required: Anyone can connect via Bluetooth.** 설정이 맞아야 한다. 자세한 점검 절차는 `docs/forking-guide.md`의 MakeCode Bluetooth 설정 확인을 본다.
 
 다른 BLE 서비스나 여러 장치 연결을 지원하려면 이 계층을 중심으로 확장하게 된다.
 
