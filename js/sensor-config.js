@@ -1,3 +1,16 @@
+export const colorPalette = [
+  '#38bdf8',
+  '#f97316',
+  '#22c55e',
+  '#a855f7',
+  '#ef4444',
+  '#eab308',
+  '#14b8a6',
+  '#ec4899',
+  '#84cc16',
+  '#6366f1',
+]
+
 export const sensorConfig = {
   appTitle: 'Microbit Sensor Dashboard',
   appBadge: 'Vanilla build',
@@ -17,7 +30,7 @@ export const sensorConfig = {
       label: 'X 축',
       unit: 'uT',
       digits: 2,
-      color: '#f97316',
+      color: colorPalette[1],
       mock: { min: -20, max: 20 },
     },
     {
@@ -25,7 +38,7 @@ export const sensorConfig = {
       label: 'Y 축',
       unit: 'uT',
       digits: 2,
-      color: '#22c55e',
+      color: colorPalette[2],
       mock: { min: -20, max: 20 },
     },
     {
@@ -33,7 +46,7 @@ export const sensorConfig = {
       label: 'Z 축',
       unit: 'uT',
       digits: 2,
-      color: '#a855f7',
+      color: colorPalette[3],
       mock: { min: -20, max: 20 },
     },
     {
@@ -41,7 +54,7 @@ export const sensorConfig = {
       label: 'Strength',
       unit: 'uT',
       digits: 1,
-      color: '#38bdf8',
+      color: colorPalette[0],
       mock: { min: 35, max: 65 },
     },
   ],
@@ -54,7 +67,3 @@ export const sensorConfig = {
       'micro:bit LED의 나침반 보정을 완료하세요. 보정 화면이 아니거나 계속 멈춰 있으면 연결 해제 후 다시 연결하세요.',
   },
 }
-
-export const fieldKeys = sensorConfig.fields.map((field) => field.key)
-
-export const getFieldConfig = (key) => sensorConfig.fields.find((field) => field.key === key)

@@ -7,7 +7,7 @@ const createBanner = (type, message) => {
   return banner
 }
 
-export const initBanner = ({ mockEnabled = false } = {}) => {
+export const initBanner = ({ mockEnabled = false, configError } = {}) => {
   const host = document.getElementById('banner-root')
   if (!host) {
     return
@@ -19,5 +19,9 @@ export const initBanner = ({ mockEnabled = false } = {}) => {
 
   if (mockEnabled) {
     host.append(createBanner('info', 'Mock 텔레메트리를 통해 UI 상태를 확인하는 중입니다. 실제 디바이스 연결 시 ?mock=1을 제거하세요.'))
+  }
+
+  if (configError) {
+    host.append(createBanner('warning', configError))
   }
 }

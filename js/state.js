@@ -1,30 +1,33 @@
-import { sensorConfig } from './sensor-config.js'
+import { normalizeConfig } from './config.js'
+import { sensorConfig as defaultSensorConfig } from './sensor-config.js'
 
-const HISTORY_LIMIT = sensorConfig.historyLimit
-const INITIAL_SELECTED_FIELDS = [...sensorConfig.defaultVisibleFields]
+const makeInitialState = (config = defaultSensorConfig) => {
+  const normalizedConfig = normalizeConfig(config)
 
-const INITIAL_STATE = {
-  connectionStatus: 'disconnected',
-  device: undefined,
-  service: undefined,
-  characteristic: undefined,
-  latestSample: undefined,
-  history: [],
-  selectedFields: [...INITIAL_SELECTED_FIELDS],
-  samplingIntervalMs: sensorConfig.sampleIntervalMs,
-  lastUpdatedAt: undefined,
-  errorMessage: undefined,
-  noticeMessage: undefined,
-  noticeTone: 'info',
+  return {
+    config: normalizedConfig,
+    connectionStatus: 'disconnected',
+    device: undefined,
+    service: undefined,
+    characteristic: undefined,
+    latestSample: undefined,
+    history: [],
+    selectedFields: [...normalizedConfig.defaultVisibleFields],
+    samplingIntervalMs: normalizedConfig.sampleIntervalMs,
+    lastUpdatedAt: undefined,
+    errorMessage: undefined,
+    noticeMessage: undefined,
+    noticeTone: 'info',
+  }
 }
 
-let currentState = { ...INITIAL_STATE }
+let currentState = makeInitialState()
 const listeners = new Set()
 
-const appendSample = (history, sample) => {
+const appendSample = (history, sample, limit) => {
   const next = history.concat(sample)
-  if (next.length > HISTORY_LIMIT) {
-    return next.slice(next.length - HISTORY_LIMIT)
+  if (next.length > limit) {
+    return next.slice(next.length - limit)
   }
   return next
 }
@@ -40,7 +43,7 @@ const reducer = (state, action) => {
         ...state,
         connectionStatus: state.connectionStatus === 'waiting-data' ? 'connected' : state.connectionStatus,
         latestSample: action.sample,
-        history: appendSample(state.history, action.sample),
+        history: appendSample(state.history, action.sample, state.config.historyLimit),
         lastUpdatedAt: action.sample.timestamp,
         errorMessage: undefined,
         noticeMessage: undefined,
@@ -55,9 +58,16 @@ const reducer = (state, action) => {
       return { ...state, errorMessage: action.message }
     case 'setNotice':
       return { ...state, noticeMessage: action.message, noticeTone: action.tone || 'info' }
+    case 'applyConfig': {
+      const nextConfig = normalizeConfig(action.config)
+      return {
+        ...makeInitialState(nextConfig),
+        connectionStatus: state.connectionStatus,
+      }
+    }
     case 'reset':
       return {
-        ...INITIAL_STATE,
+        ...makeInitialState(state.config),
         samplingIntervalMs: state.samplingIntervalMs,
       }
     default:
@@ -74,6 +84,10 @@ const notify = () => {
 export const store = {
   getState() {
     return currentState
+  },
+  init(config) {
+    currentState = makeInitialState(config)
+    notify()
   },
   dispatch(action) {
     if (!action || typeof action.type !== 'string') {
@@ -98,8 +112,12 @@ export const store = {
 }
 
 export const constants = {
-  HISTORY_LIMIT,
-  INITIAL_SELECTED_FIELDS,
+  get HISTORY_LIMIT() {
+    return currentState.config.historyLimit
+  },
+  get INITIAL_SELECTED_FIELDS() {
+    return [...currentState.config.defaultVisibleFields]
+  },
 }
 
 export const actions = {
@@ -109,5 +127,6 @@ export const actions = {
   setFields: (fields) => ({ type: 'setFields', fields }),
   setError: (message) => ({ type: 'setError', message }),
   setNotice: (message, tone = 'info') => ({ type: 'setNotice', message, tone }),
+  applyConfig: (config) => ({ type: 'applyConfig', config }),
   reset: () => ({ type: 'reset' }),
 }

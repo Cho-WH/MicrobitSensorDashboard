@@ -7,7 +7,7 @@
 새 센서를 만들 때 먼저 맞출 곳은 두 군데다.
 
 1. micro:bit 펌웨어의 `sendSample()` 함수
-2. 웹앱의 `js/sensor-config.js`
+2. 웹앱 상단 **실험 설정**의 CSV 필드 순서
 
 두 곳의 값 순서가 반드시 같아야 한다.
 
@@ -68,13 +68,12 @@ function sendSample () {
 }
 ```
 
-웹앱 설정도 같은 순서로 맞춘다.
+웹앱 상단 **실험 설정**도 같은 순서로 맞춘다.
 
-```javascript
-fields: [
-  { key: 'temperature', label: '온도', unit: 'C', digits: 1 },
-  { key: 'light', label: '밝기', unit: '', digits: 0 }
-]
+```text
+CSV 키: temperature, light
+화면 이름: 온도, 밝기
+단위: C, 없음
 ```
 
 ## 4. 포크 프로젝트에서 정할 것
@@ -85,7 +84,7 @@ fields: [
 - 시작 명령: 기본값 `start`를 쓸지, 기존 예제 호환을 위해 다른 명령을 받을지
 - 보정 과정: Magnetometer처럼 사용자가 움직여야 하는 준비 단계가 있는지
 - 화면 안내: 첫 데이터 전 안내 문구가 센서 상황에 맞는지
-- 전송 값 순서: CSV 순서와 `sensor-config.js`의 `fields` 순서가 같은지
+- 전송 값 순서: CSV 순서와 웹앱 **실험 설정**의 필드 순서가 같은지
 
 처음에는 값 하나를 끝까지 표시해 본 뒤 여러 값으로 늘리는 흐름을 권장한다.
 
@@ -96,7 +95,7 @@ fields: [
 권장 흐름:
 
 1. `firmware/template.js` 또는 `firmware/examples/*.js` 중 하나를 MakeCode에 붙여 넣는다.
-2. 필요한 센서 값과 `sensor-config.js`의 `fields` 순서를 맞춘다.
+2. 웹앱 **실험 설정**에서 필요한 센서 값과 CSV 필드 순서를 맞춘다.
 3. MakeCode에서 HEX를 빌드한다.
 4. 빌드한 HEX를 micro:bit에 복사한다.
 5. 웹앱의 `?mock=1` 확인 후 실제 micro:bit 연결을 확인한다.
@@ -115,4 +114,4 @@ Magnetometer는 이 템플릿의 기본 예제다. 자기장 센서는 compass c
 fields: ['x', 'y', 'z', 'strength']
 ```
 
-펌웨어 전송 순서를 바꾸지 않는다면 `sensor-config.js`도 펌웨어와 같은 순서로 맞춰야 한다.
+펌웨어 전송 순서를 바꾸지 않는다면 웹앱 **실험 설정**도 펌웨어와 같은 순서로 맞춰야 한다.

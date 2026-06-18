@@ -1,11 +1,11 @@
 # Microbit Sensor Dashboard Protocol
 
-이 프로젝트의 기본 프로토콜은 교육용으로 단순하게 유지한다. micro:bit는 Nordic UART BLE로 CSV 한 줄을 보내고, 웹앱은 `js/sensor-config.js`의 `fields` 순서대로 값을 해석한다.
+이 프로젝트의 기본 프로토콜은 교육용으로 단순하게 유지한다. micro:bit는 Nordic UART BLE로 CSV 한 줄을 보내고, 웹앱은 기본 설정 또는 URL `cfg`에 deflate-raw로 압축된 **실험 설정**의 필드 순서대로 값을 해석한다.
 
 ## 1. 연결 방식
 
 - BLE 서비스: Nordic UART Service
-- 웹앱에서 micro:bit로 보내는 명령: `sensorConfig.startCommand + "\n"`
+- 웹앱에서 micro:bit로 보내는 명령: 실험 설정의 시작 명령 + `"\n"`
 - micro:bit에서 웹앱으로 보내는 데이터: 숫자 CSV 한 줄
 
 ## 2. 시작 명령
@@ -22,7 +22,7 @@ start
 magnet
 ```
 
-새 센서 예제에서는 `start`를 권장한다. 프로젝트에 따라 `measure`, `stream`, `run` 같은 명령을 써도 되지만, 웹앱의 `sensorConfig.startCommand`와 펌웨어가 같은 값을 바라보게 해야 한다.
+새 센서 예제에서는 `start`를 권장한다. 프로젝트에 따라 `measure`, `stream`, `run` 같은 명령을 써도 되지만, 웹앱의 **실험 설정 > 시작 명령**과 펌웨어가 같은 값을 바라보게 해야 한다.
 
 ## 3. 샘플 데이터
 
@@ -35,20 +35,19 @@ value1,value2,value3
 규칙:
 
 - 모든 값은 숫자여야 한다.
-- 값 개수는 `sensorConfig.fields.length`와 같아야 한다.
-- 값 순서는 `sensorConfig.fields` 배열 순서와 같아야 한다.
+- 값 개수는 실험 설정의 CSV 필드 개수와 같아야 한다.
+- 값 순서는 실험 설정의 CSV 필드 순서와 같아야 한다.
 - 줄 끝은 `bluetooth.uartWriteLine()`이 붙이는 newline을 사용한다.
 - timestamp는 micro:bit가 보내지 않고 웹앱이 수신 시점에 붙인다.
 
 ## 4. 예시
 
-`sensor-config.js`:
+웹앱 **실험 설정**:
 
-```javascript
-fields: [
-  { key: 'temperature', label: '온도', unit: 'C', digits: 1 },
-  { key: 'light', label: '밝기', unit: '', digits: 0 }
-]
+```text
+CSV 키: temperature, light
+화면 이름: 온도, 밝기
+단위: C, 없음
 ```
 
 micro:bit 전송:

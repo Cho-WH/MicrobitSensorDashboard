@@ -1,5 +1,4 @@
 import { store } from '../state.js'
-import { sensorConfig } from '../sensor-config.js'
 import { formatNumber } from '../utils/format.js'
 
 export const initLiveStats = () => {
@@ -10,30 +9,42 @@ export const initLiveStats = () => {
   if (!grid) return
 
   const cards = new Map()
-  sensorConfig.fields.forEach((field) => {
-    const card = document.createElement('div')
-    const labelEl = document.createElement('span')
-    const valueEl = document.createElement('span')
-    const unitEl = document.createElement('span')
+  let currentConfig = null
 
-    card.className = 'stat-card'
-    card.dataset.field = field.key
-    labelEl.className = 'label'
-    labelEl.textContent = field.label
-    valueEl.className = 'value'
-    valueEl.dataset.role = 'value'
-    valueEl.textContent = '—'
-    unitEl.className = 'unit'
-    unitEl.textContent = field.unit || ''
+  const buildCards = (config) => {
+    currentConfig = config
+    cards.clear()
+    grid.replaceChildren()
 
-    card.append(labelEl, valueEl, unitEl)
-    grid.append(card)
+    config.fields.forEach((field) => {
+      const card = document.createElement('div')
+      const labelEl = document.createElement('span')
+      const valueEl = document.createElement('span')
+      const unitEl = document.createElement('span')
 
-    cards.set(field.key, valueEl)
-  })
+      card.className = 'stat-card'
+      card.dataset.field = field.key
+      labelEl.className = 'label'
+      labelEl.textContent = field.label
+      valueEl.className = 'value'
+      valueEl.dataset.role = 'value'
+      valueEl.textContent = '—'
+      unitEl.className = 'unit'
+      unitEl.textContent = field.unit || ''
+
+      card.append(labelEl, valueEl, unitEl)
+      grid.append(card)
+
+      cards.set(field.key, valueEl)
+    })
+  }
 
   const render = (state) => {
-    sensorConfig.fields.forEach((field) => {
+    if (state.config !== currentConfig) {
+      buildCards(state.config)
+    }
+
+    state.config.fields.forEach((field) => {
       const valueEl = cards.get(field.key)
       if (!valueEl) return
       const value = state.latestSample ? state.latestSample[field.key] : undefined

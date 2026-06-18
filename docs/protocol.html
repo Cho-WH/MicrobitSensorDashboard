@@ -65,12 +65,12 @@
   <body>
     <main>
       <h1>Data Protocol</h1>
-      <p>기본 프로토콜은 교육용으로 단순하게 유지한다. micro:bit는 Nordic UART BLE로 CSV 한 줄을 보내고, 웹앱은 <code>js/sensor-config.js</code>의 <code>fields</code> 순서대로 값을 해석한다.</p>
+      <p>기본 프로토콜은 교육용으로 단순하게 유지한다. micro:bit는 Nordic UART BLE로 CSV 한 줄을 보내고, 웹앱은 기본 설정 또는 URL <code>cfg</code>에 deflate-raw로 압축된 실험 설정의 필드 순서대로 값을 해석한다.</p>
 
       <h2>1. 연결 방식</h2>
       <ul>
         <li>BLE 서비스: Nordic UART Service</li>
-        <li>웹앱에서 micro:bit로 보내는 명령: <code>sensorConfig.startCommand + "\n"</code></li>
+        <li>웹앱에서 micro:bit로 보내는 명령: 실험 설정의 시작 명령 + <code>"\n"</code></li>
         <li>micro:bit에서 웹앱으로 보내는 데이터: 숫자 CSV 한 줄</li>
       </ul>
 
@@ -85,16 +85,15 @@
       <pre><code>value1,value2,value3</code></pre>
       <ul>
         <li>모든 값은 숫자여야 한다.</li>
-        <li>값 개수는 <code>sensorConfig.fields.length</code>와 같아야 한다.</li>
-        <li>값 순서는 <code>sensorConfig.fields</code> 배열 순서와 같아야 한다.</li>
+        <li>값 개수는 실험 설정의 CSV 필드 개수와 같아야 한다.</li>
+        <li>값 순서는 실험 설정의 CSV 필드 순서와 같아야 한다.</li>
         <li>timestamp는 micro:bit가 보내지 않고 웹앱이 수신 시점에 붙인다.</li>
       </ul>
 
       <h2>4. 예시</h2>
-      <pre><code class="language-javascript">fields: [
-  { key: 'temperature', label: '온도', unit: 'C', digits: 1 },
-  { key: 'light', label: '밝기', unit: '', digits: 0 }
-]</code></pre>
+      <pre><code>CSV 키: temperature, light
+화면 이름: 온도, 밝기
+단위: C, 없음</code></pre>
       <pre><code>24.1,128</code></pre>
 
       <h2>5. CSV를 유지하면 좋은 경우</h2>

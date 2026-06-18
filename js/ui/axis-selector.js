@@ -1,8 +1,7 @@
 import { store, actions } from '../state.js'
-import { sensorConfig } from '../sensor-config.js'
 
-const sortFields = (fields) => {
-  return sensorConfig.fields.map((field) => field.key).filter((key) => fields.includes(key))
+const sortFields = (fields, config) => {
+  return config.fields.map((field) => field.key).filter((key) => fields.includes(key))
 }
 
 export const initAxisSelector = () => {
@@ -13,51 +12,63 @@ export const initAxisSelector = () => {
   const helpEl = root.querySelector('[data-bind="field-selector-help"]')
   const optionsEl = root.querySelector('[data-bind="field-options"]')
 
-  if (titleEl) titleEl.textContent = sensorConfig.fieldSelectorTitle
-  if (helpEl) helpEl.textContent = sensorConfig.fieldSelectorHelp
   if (!optionsEl) return
 
   const fieldMap = new Map()
+  let currentConfig = null
 
-  sensorConfig.fields.forEach((field) => {
-    const fieldKey = field.key
-    const label = document.createElement('label')
-    const input = document.createElement('input')
+  const buildOptions = (config) => {
+    currentConfig = config
+    fieldMap.clear()
+    optionsEl.replaceChildren()
 
-    label.className = 'option'
-    label.setAttribute('data-field', fieldKey)
-    label.setAttribute('data-active', 'false')
+    if (titleEl) titleEl.textContent = config.fieldSelectorTitle
+    if (helpEl) helpEl.textContent = config.fieldSelectorHelp
 
-    input.type = 'checkbox'
-    input.value = fieldKey
+    config.fields.forEach((field) => {
+      const fieldKey = field.key
+      const label = document.createElement('label')
+      const input = document.createElement('input')
 
-    label.append(input, ` ${field.label}`)
-    optionsEl.append(label)
+      label.className = 'option'
+      label.setAttribute('data-field', fieldKey)
+      label.setAttribute('data-active', 'false')
 
-    fieldMap.set(fieldKey, { label, input })
+      input.type = 'checkbox'
+      input.value = fieldKey
 
-    input.addEventListener('change', () => {
-      const state = store.getState()
-      const hasField = state.selectedFields.includes(fieldKey)
-      let nextFields
-      if (hasField) {
-        nextFields = state.selectedFields.filter((value) => value !== fieldKey)
-      } else {
-        nextFields = [...state.selectedFields, fieldKey]
-      }
+      label.append(input, ` ${field.label}`)
+      optionsEl.append(label)
 
-      nextFields = sortFields(nextFields)
+      fieldMap.set(fieldKey, { label, input })
 
-      if (nextFields.length === 0) {
-        input.checked = true
-        return
-      }
+      input.addEventListener('change', () => {
+        const state = store.getState()
+        const hasField = state.selectedFields.includes(fieldKey)
+        let nextFields
+        if (hasField) {
+          nextFields = state.selectedFields.filter((value) => value !== fieldKey)
+        } else {
+          nextFields = [...state.selectedFields, fieldKey]
+        }
 
-      store.dispatch(actions.setFields(nextFields))
+        nextFields = sortFields(nextFields, state.config)
+
+        if (nextFields.length === 0) {
+          input.checked = true
+          return
+        }
+
+        store.dispatch(actions.setFields(nextFields))
+      })
     })
-  })
+  }
 
   const render = (state) => {
+    if (state.config !== currentConfig) {
+      buildOptions(state.config)
+    }
+
     fieldMap.forEach(({ label, input }, fieldKey) => {
       const active = state.selectedFields.includes(fieldKey)
       if (input) input.checked = active

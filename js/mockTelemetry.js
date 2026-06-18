@@ -1,5 +1,4 @@
 import { store, actions } from './state.js'
-import { sensorConfig } from './sensor-config.js'
 
 const randomBetween = (min, max) => Math.random() * (max - min) + min
 
@@ -8,8 +7,9 @@ export const initMockTelemetry = () => {
 
   const pushSample = () => {
     const sample = { timestamp: Date.now() }
+    const { config } = store.getState()
 
-    sensorConfig.fields.forEach((field) => {
+    config.fields.forEach((field) => {
       sample[field.key] = randomBetween(field.mock?.min ?? 0, field.mock?.max ?? 100)
     })
 

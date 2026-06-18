@@ -6,7 +6,9 @@ import { initDataLog } from './ui/data-log.js'
 import { initBanner } from './ui/banner.js'
 import { initMockTelemetry } from './mockTelemetry.js'
 import { initUsageGuide } from './ui/usage-guide.js'
-import { sensorConfig } from './sensor-config.js'
+import { initExperimentSettings } from './ui/experiment-settings.js'
+import { loadConfigFromUrl } from './config.js'
+import { store } from './state.js'
 
 const cleanupTasks = []
 const registerCleanup = (fn) => {
@@ -15,19 +17,27 @@ const registerCleanup = (fn) => {
   }
 }
 
-const boot = () => {
+const boot = async () => {
   const params = new URLSearchParams(window.location.search)
   const mockEnabled = ['1', 'true', 'yes'].includes((params.get('mock') || '').toLowerCase())
+  const { config, error } = await loadConfigFromUrl()
 
-  document.title = sensorConfig.appTitle
+  store.init(config)
+
   const titleEl = document.querySelector('[data-bind="app-title"]')
   const badgeEl = document.querySelector('[data-bind="app-badge"]')
-  if (titleEl) titleEl.textContent = sensorConfig.appTitle
-  if (badgeEl) badgeEl.textContent = sensorConfig.appBadge
+  registerCleanup(
+    store.subscribe((state) => {
+      document.title = state.config.appTitle
+      if (titleEl) titleEl.textContent = state.config.appTitle
+      if (badgeEl) badgeEl.textContent = state.config.appBadge
+    })
+  )
 
-  initBanner({ mockEnabled })
+  initBanner({ mockEnabled, configError: error })
 
   registerCleanup(initUsageGuide())
+  registerCleanup(initExperimentSettings())
 
   registerCleanup(initConnectionPanel())
   registerCleanup(initAxisSelector())
@@ -52,4 +62,8 @@ const boot = () => {
   })
 }
 
-document.addEventListener('DOMContentLoaded', boot)
+document.addEventListener('DOMContentLoaded', () => {
+  boot().catch((error) => {
+    console.error('App boot failed', error)
+  })
+})

@@ -1,8 +1,6 @@
-import { sensorConfig } from '../sensor-config.js'
-
 const buildHeader = (fields) => ['timestamp', ...fields.map((field) => field.key)].join(',')
 
-export const buildCsv = (samples, fields = sensorConfig.fields) => {
+export const buildCsv = (samples, fields = []) => {
   const header = buildHeader(fields)
   if (!Array.isArray(samples)) return header
   const rows = samples.map((sample) =>
@@ -14,7 +12,7 @@ export const buildCsv = (samples, fields = sensorConfig.fields) => {
   return [header, ...rows].join('\n')
 }
 
-export const downloadCsv = (samples, fields = sensorConfig.fields, filename = sensorConfig.csvFilename) => {
+export const downloadCsv = (samples, fields = [], filename = 'sensor-log.csv') => {
   if (!Array.isArray(samples) || samples.length === 0) {
     return
   }

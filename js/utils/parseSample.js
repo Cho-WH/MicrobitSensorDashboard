@@ -1,5 +1,3 @@
-import { sensorConfig } from '../sensor-config.js'
-
 const CONTROL_PREFIXES = ['HELLO,', 'ACK,', 'STATUS,', 'ERR,']
 
 const toNumber = (value) => {
@@ -12,7 +10,7 @@ const toNumber = (value) => {
   return Number.isFinite(number) ? number : null
 }
 
-export const parseSample = (raw, fields = sensorConfig.fields) => {
+export const parseSample = (raw, fields = []) => {
   if (typeof raw !== 'string') {
     return null
   }

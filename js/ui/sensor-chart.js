@@ -1,5 +1,5 @@
 import { store } from '../state.js'
-import { getFieldConfig, sensorConfig } from '../sensor-config.js'
+import { getFieldConfig } from '../config.js'
 import { formatTimestamp } from '../utils/format.js'
 
 const HISTORY_WINDOW = 120
@@ -12,9 +12,6 @@ export const initSensorChart = () => {
   const emptyEl = root.querySelector('[data-bind="empty"]')
   const fieldsEl = root.querySelector('[data-bind="fields"]')
   const titleEl = root.querySelector('[data-bind="chart-title"]')
-
-  if (titleEl) titleEl.textContent = sensorConfig.chartTitle
-  if (emptyEl) emptyEl.textContent = sensorConfig.emptyMessage
 
   if (!canvas) return
 
@@ -31,6 +28,8 @@ export const initSensorChart = () => {
   if (!ctx) {
     return
   }
+
+  let currentConfig = null
 
   const chart = new Chart(ctx, {
     type: 'line',
@@ -72,10 +71,10 @@ export const initSensorChart = () => {
           callbacks: {
             label(context) {
               const value = context.parsed.y
-              if (typeof value !== 'number') {
-                return `${context.dataset.label}`
-              }
-              const field = getFieldConfig(context.dataset.fieldKey)
+            if (typeof value !== 'number') {
+              return `${context.dataset.label}`
+            }
+              const field = getFieldConfig(currentConfig, context.dataset.fieldKey)
               const unit = field?.unit ? ` ${field.unit}` : ''
               return `${context.dataset.label}: ${value.toFixed(field?.digits ?? 2)}${unit}`
             },
@@ -86,11 +85,15 @@ export const initSensorChart = () => {
   })
 
   const render = (state) => {
+    currentConfig = state.config
+    if (titleEl) titleEl.textContent = state.config.chartTitle
+    if (emptyEl) emptyEl.textContent = state.config.emptyMessage
+
     const samples = state.history.slice(-HISTORY_WINDOW)
     const hasData = samples.length > 0
 
     if (fieldsEl) {
-      const fieldsLabel = state.selectedFields.map((fieldKey) => getFieldConfig(fieldKey)?.label ?? fieldKey).join(', ')
+      const fieldsLabel = state.selectedFields.map((fieldKey) => getFieldConfig(state.config, fieldKey)?.label ?? fieldKey).join(', ')
       fieldsEl.textContent = `표시 항목: ${fieldsLabel || '—'}`
     }
 
@@ -106,7 +109,7 @@ export const initSensorChart = () => {
 
     const labels = samples.map((sample) => formatTimestamp(sample.timestamp))
     const datasets = state.selectedFields.map((fieldKey) => {
-      const config = getFieldConfig(fieldKey)
+      const config = getFieldConfig(state.config, fieldKey)
       return {
         label: config?.label ?? fieldKey,
         fieldKey,

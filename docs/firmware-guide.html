@@ -68,7 +68,7 @@
       <p>MakeCode JavaScript에서 센서 펌웨어를 만드는 기본 흐름과, 포크 프로젝트에서 자주 하게 되는 판단을 설명한다.</p>
 
       <h2>1. 새 센서 만들기</h2>
-      <p>먼저 micro:bit 펌웨어의 <code>sendSample()</code> 함수와 웹앱의 <code>js/sensor-config.js</code>를 같은 값 순서로 맞춘다.</p>
+      <p>먼저 micro:bit 펌웨어의 <code>sendSample()</code> 함수와 웹앱 상단 <strong>실험 설정</strong>의 CSV 필드 순서를 같은 값 순서로 맞춘다.</p>
 
       <h2>2. 기본 템플릿</h2>
       <p>기본 템플릿은 <code>firmware/template.js</code>에 있다. 새 센서를 만들 때는 이 파일을 복사하고 <code>sendSample()</code>부터 바꾸는 것을 권장한다.</p>
@@ -111,11 +111,10 @@ function sendSample () {
         convertToText(input.lightLevel())
     )
 }</code></pre>
-      <p>웹앱 설정도 같은 순서로 맞춘다.</p>
-      <pre><code class="language-javascript">fields: [
-  { key: 'temperature', label: '온도', unit: 'C', digits: 1 },
-  { key: 'light', label: '밝기', unit: '', digits: 0 }
-]</code></pre>
+      <p>웹앱 상단 <strong>실험 설정</strong>도 같은 순서로 맞춘다.</p>
+      <pre><code>CSV 키: temperature, light
+화면 이름: 온도, 밝기
+단위: C, 없음</code></pre>
 
       <h2>4. 포크 프로젝트에서 정할 것</h2>
       <ul>
@@ -123,13 +122,13 @@ function sendSample () {
         <li>시작 명령: 기본값 <code>start</code>를 쓸지, 기존 예제 호환 명령을 받을지</li>
         <li>보정 과정: 사용자가 움직이거나 기다려야 하는 준비 단계가 있는지</li>
         <li>화면 안내: 첫 데이터 전 안내 문구가 센서 상황에 맞는지</li>
-        <li>전송 값 순서: CSV 순서와 <code>fields</code> 순서가 같은지</li>
+        <li>전송 값 순서: CSV 순서와 웹앱 <strong>실험 설정</strong>의 필드 순서가 같은지</li>
       </ul>
 
       <h2>5. HEX 빌드</h2>
       <ol>
         <li><code>firmware/template.js</code> 또는 <code>firmware/examples/*.js</code> 중 하나를 MakeCode에 붙여 넣는다.</li>
-        <li>필요한 센서 값과 <code>sensor-config.js</code>의 <code>fields</code> 순서를 맞춘다.</li>
+        <li>웹앱 <strong>실험 설정</strong>에서 필요한 센서 값과 CSV 필드 순서를 맞춘다.</li>
         <li>MakeCode에서 HEX를 빌드한다.</li>
         <li>빌드한 HEX를 micro:bit에 복사한다.</li>
         <li>웹앱의 <code>?mock=1</code> 확인 후 실제 micro:bit 연결을 확인한다.</li>

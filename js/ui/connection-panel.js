@@ -1,5 +1,4 @@
 import { store, actions } from '../state.js'
-import { sensorConfig } from '../sensor-config.js'
 import { formatRelative, formatTimestamp } from '../utils/format.js'
 import { parseSample } from '../utils/parseSample.js'
 import {
@@ -24,15 +23,9 @@ const statusLabelMap = {
 const FIRST_SAMPLE_TIMEOUT_MS = 7000
 const RECONNECT_DELAY_MS = 3000
 
-const calibrationNotice = sensorConfig.connectionText?.waitingForFirstSample || '첫 데이터 수신을 기다리는 중입니다.'
-
 const reconnectNotice =
   '연결이 예기치 않게 끊어졌습니다.\n' +
   'micro:bit가 재부팅될 수 있어 잠시 기다린 뒤 자동으로 한 번 다시 연결합니다.'
-
-const firstSampleTimeoutNotice =
-  sensorConfig.connectionText?.firstSampleTimeout ||
-  '아직 측정 데이터가 도착하지 않았습니다.\n펌웨어가 실행 중인지 확인하고, 필요하면 연결 해제 후 다시 연결하세요.'
 
 const getBluetoothErrorMessage = (error) => {
   const name = error?.name
@@ -191,6 +184,12 @@ export const initConnectionPanel = () => {
 
   const runConnection = async ({ reuseLastDevice = false } = {}) => {
     try {
+      const config = store.getState().config
+      const calibrationNotice = config.connectionText?.waitingForFirstSample || '첫 데이터 수신을 기다리는 중입니다.'
+      const firstSampleTimeoutNotice =
+        config.connectionText?.firstSampleTimeout ||
+        '아직 측정 데이터가 도착하지 않았습니다.\n펌웨어가 실행 중인지 확인하고, 필요하면 연결 해제 후 다시 연결하세요.'
+
       setBusy(true)
       clearFirstSampleTimer()
       store.dispatch(actions.setError(undefined))
@@ -204,14 +203,14 @@ export const initConnectionPanel = () => {
       store.dispatch(actions.setDevice({ device, service, characteristic: txCharacteristic }))
 
       await startNotifications((value) => {
-        const sample = parseSample(value, sensorConfig.fields)
+        const sample = parseSample(value, store.getState().config.fields)
         if (sample) {
           clearFirstSampleTimer()
           store.dispatch(actions.setSample(sample))
         }
       })
 
-      await sendStartCommand(sensorConfig.startCommand)
+      await sendStartCommand(config.startCommand)
       store.dispatch(actions.setStatus('waiting-data'))
       store.dispatch(actions.setNotice(calibrationNotice, 'info'))
 

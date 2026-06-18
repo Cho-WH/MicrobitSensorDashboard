@@ -17,7 +17,7 @@
 
 1. `?mock=1`로 웹앱이 브라우저에서 정상 표시되는지 확인한다.
 2. 기본 Magnetometer 예제를 MakeCode에서 빌드해 실제 micro:bit 연결 흐름을 확인한다.
-3. `js/sensor-config.js`의 필드 설정과 `firmware/examples/magnetometer.js`의 전송 순서를 비교해 본다.
+3. 웹앱 **실험 설정**의 필드 순서와 `firmware/examples/magnetometer.js`의 전송 순서를 비교해 본다.
 4. README와 사용 안내 문구에서 프로젝트 이름, 대상 사용자, 실험 목적에 맞지 않는 표현을 표시해 둔다.
 
 이 과정을 거치면 무엇을 설정으로 해결할지, 무엇을 UI나 펌웨어 코드로 바꿔야 할지 감이 잡힌다.
@@ -32,14 +32,14 @@
 - 차트에 처음부터 보여 줄 값
 - CSV에 남기고 싶은 값
 
-이 결정은 `js/sensor-config.js`의 `fields`에 반영된다. 필드 순서는 펌웨어가 보내는 CSV 값 순서와 같아야 한다.
+이 결정은 웹앱 **실험 설정** 또는 포크 프로젝트의 기본 설정에 반영된다. 필드 순서는 펌웨어가 보내는 CSV 값 순서와 같아야 한다.
 
 ## 펌웨어와 웹앱을 함께 바꾸는 흐름
 
 1. `firmware/template.js` 또는 가까운 예제를 복사한다.
 2. `sendSample()`에서 보낼 값을 정하고 comma로 이어 보낸다.
 3. 시작 명령을 정한다. 새 프로젝트는 보통 `start`를 쓰면 충분하다.
-4. `js/sensor-config.js`의 `startCommand`, `sampleIntervalMs`, `fields`, `defaultVisibleFields`를 맞춘다.
+4. 웹앱 **실험 설정**의 시작 명령, CSV 필드, 기본 표시 항목을 맞춘다.
 5. 보정이나 준비 시간이 필요한 센서라면 `connectionText`를 프로젝트 상황에 맞게 바꾼다.
 6. `?mock=1`로 UI를 먼저 보고, 그 다음 실제 micro:bit로 확인한다.
 
@@ -54,7 +54,7 @@
 - `js/ui/data-log.js`: 로그 테이블과 CSV 다운로드
 - `js/ui/connection-panel.js`: 연결 상태, 안내 문구, 오류 메시지
 
-대부분의 프로젝트는 `sensor-config.js`, `index.html`, `styles.css`만 바꿔도 충분히 다른 앱처럼 보일 수 있다. 특정 데이터에 맞춘 계산, 경고, 시각화가 필요할 때 UI 모듈을 확장하면 된다.
+대부분의 프로젝트는 실험 설정의 압축 공유 링크, QR 코드, 안내 문구만으로도 충분히 다른 수업용 앱처럼 사용할 수 있다. 포크해서 기본값이나 화면 레이아웃까지 바꾸려면 `sensor-config.js`, `index.html`, `styles.css`를 조정하면 된다.
 
 ## 프로토콜을 유지할지 바꿀지
 
