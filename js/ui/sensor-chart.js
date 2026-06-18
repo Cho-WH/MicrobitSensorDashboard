@@ -113,7 +113,7 @@ export const initSensorChart = () => {
       return {
         label: config?.label ?? fieldKey,
         fieldKey,
-        data: samples.map((sample) => sample[fieldKey]),
+        data: samples.map((sample) => sample[fieldKey] ?? null),
         borderColor: config?.color ?? '#38bdf8',
         backgroundColor: `${config?.color ?? '#38bdf8'}33`,
         tension: 0.25,

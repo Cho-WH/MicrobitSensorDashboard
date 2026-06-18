@@ -209,10 +209,13 @@ export const initConnectionPanel = () => {
       store.dispatch(actions.setDevice({ device, service, characteristic: txCharacteristic }))
 
       await startNotifications((value) => {
-        const sample = parseSample(value, store.getState().config.fields)
-        if (sample) {
+        const result = parseSample(value, store.getState().config.fields)
+        if (result?.sample) {
           clearFirstSampleTimer()
-          store.dispatch(actions.setSample(sample))
+          store.dispatch(actions.setSample(result.sample, { preserveError: !!result.errorMessage }))
+          if (result.errorMessage) {
+            store.dispatch(actions.setError(result.errorMessage))
+          }
         }
       })
 

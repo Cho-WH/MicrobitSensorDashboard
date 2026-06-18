@@ -45,7 +45,7 @@ const reducer = (state, action) => {
         latestSample: action.sample,
         history: appendSample(state.history, action.sample, state.config.historyLimit),
         lastUpdatedAt: action.sample.timestamp,
-        errorMessage: undefined,
+        errorMessage: action.options?.preserveError ? state.errorMessage : undefined,
         noticeMessage: undefined,
       }
     case 'setFields': {
@@ -123,7 +123,7 @@ export const constants = {
 export const actions = {
   setStatus: (status) => ({ type: 'setStatus', status }),
   setDevice: (payload) => ({ type: 'setDevice', payload }),
-  setSample: (sample) => ({ type: 'setSample', sample }),
+  setSample: (sample, options = {}) => ({ type: 'setSample', sample, options }),
   setFields: (fields) => ({ type: 'setFields', fields }),
   setError: (message) => ({ type: 'setError', message }),
   setNotice: (message, tone = 'info') => ({ type: 'setNotice', message, tone }),
