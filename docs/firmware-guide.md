@@ -1,117 +1,72 @@
-# Firmware Guide
+# MakeCode 펌웨어 준비 가이드
 
-이 문서는 MakeCode JavaScript에서 센서 펌웨어를 만드는 기본 흐름과, 포크 프로젝트에서 자주 하게 되는 판단을 설명한다.
+이 문서는 웹앱의 **MakeCode에서 편집하기** 버튼을 눌렀을 때 사용자가 어떤 순서로 MakeCode 프로젝트를 열고, 필요한 만큼 수정하고, HEX 파일을 받아 micro:bit에 넣는지 안내한다.
 
-## 1. 새 센서 만들기
+## 전체 흐름
 
-새 센서를 만들 때 먼저 맞출 곳은 두 군데다.
+1. 웹앱 **사용 안내**에서 MakeCode 공유 프로젝트를 새 탭으로 연다.
+2. MakeCode 편집창에서 템플릿 코드를 확인하거나 고친다.
+3. MakeCode의 **Download** 버튼으로 `.hex` 파일을 받는다.
+4. micro:bit에 HEX를 넣고 대시보드에서 **디바이스 연결**을 누른다.
 
-1. micro:bit 펌웨어의 `sendSample()` 함수
-2. 웹앱 상단 **실험 설정**의 CSV 필드 순서
+## 1. 웹앱에서 MakeCode 열기
 
-두 곳의 값 순서가 반드시 같아야 한다.
+1. 대시보드 상단의 **사용 안내**를 연다.
+2. **MakeCode에서 편집하기** 버튼을 누른다.
+3. 새 탭에서 MakeCode 편집창이 열리고 템플릿 프로젝트가 로드될 때까지 기다린다.
+4. 필요한 부분을 확인하거나 수정한 뒤 **Download** 버튼으로 HEX 파일을 받는다.
 
-## 2. 기본 템플릿
+이 웹앱의 버튼은 MakeCode `#pub` 공유 링크를 열기 때문에 사용자가 따로 **Edit** 버튼을 찾을 필요가 없다. 새 탭에 편집 화면이 뜨면 코드를 그대로 쓰거나, 필요한 부분만 고친 뒤 바로 다운로드하면 된다.
 
-기본 템플릿은 `firmware/template.js`에 있다. 새 센서를 만들 때는 이 파일을 복사하고 `sendSample()`부터 바꾸는 것을 권장한다.
+진행 단계:
 
-```javascript
-let streaming = false
-let command = ""
+`사용 안내 열기` → `MakeCode에서 편집하기` → `편집창에서 확인/수정` → `Download`
 
-bluetooth.startUartService()
+## 2. MakeCode에서 확인할 것
 
-bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
-    command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine))
-    command = command.trim().toLowerCase()
+기본 magnet 예제는 웹앱과 통신하기 위해 Bluetooth UART로 `x,y,z,strength` 순서의 숫자 CSV 한 줄을 보낸다. 처음에는 블록을 많이 바꾸기보다, 값이 어떤 순서로 전송되는지만 확인해도 충분하다.
 
-    if (command == "start") {
-        streaming = true
-        basic.showIcon(IconNames.Yes)
-    } else {
-        streaming = false
-        basic.clearScreen()
-    }
-})
+필수 규칙:
 
-basic.forever(function () {
-    if (streaming) {
-        sendSample()
-        basic.pause(1000)
-    } else {
-        basic.pause(50)
-    }
-})
+- 웹앱이 연결되면 펌웨어는 시작 명령 `start`를 받는다.
+- micro:bit는 센서 값을 쉼표로 구분한 한 줄 CSV로 보낸다.
+- 값의 개수와 순서는 웹앱 **실험 설정**의 CSV 필드 순서와 같아야 한다.
 
-function sendSample () {
-    // Replace this line with your sensor values.
-    bluetooth.uartWriteLine(convertToText(input.temperature()))
-}
-```
+MakeCode 블록 캡처 자리:
 
-MakeCode 환경에서 `trim()` 또는 `toLowerCase()`가 동작하지 않는 경우에는 명령 비교를 단순하게 바꿔도 된다.
+- 기본 magnet 예제의 `sendSample` 블록 부분
+- 후에 실제 MakeCode 블록 캡처로 교체
+- HTML 문서에서는 넉넉한 크기의 placeholder로 표시
 
-```javascript
-if (command == "start") {
-```
+MakeCode 블록이 `x,y,z,strength` 순서로 값을 보내면, 웹앱의 **실험 설정**도 같은 순서로 둔다. 색상 선택, 위아래 이동, 삭제, 기본 표시 체크박스는 핵심 흐름에서 생략한다.
 
-## 3. 여러 값 보내기
+| CSV 키 | 화면 이름 | 단위 | 소수점 |
+| --- | --- | --- | --- |
+| `x` | X 축 | uT | 2 |
+| `y` | Y 축 | uT | 2 |
+| `z` | Z 축 | uT | 2 |
+| `strength` | Strength | uT | 1 |
 
-예를 들어 온도와 밝기를 같이 보내려면 micro:bit는 다음 순서로 전송한다.
+## 3. HEX 파일을 micro:bit에 넣기
 
-```javascript
-function sendSample () {
-    bluetooth.uartWriteLine(
-        convertToText(input.temperature()) + "," +
-        convertToText(input.lightLevel())
-    )
-}
-```
+1. micro:bit를 USB 케이블로 컴퓨터에 연결한다.
+2. 컴퓨터에 **MICROBIT** 드라이브가 나타나는지 확인한다.
+3. MakeCode 화면 아래쪽의 **Download** 버튼을 누른다.
+4. 브라우저가 받은 `microbit-xxxx.hex` 파일을 **MICROBIT** 드라이브로 복사한다.
+5. 복사가 끝나면 micro:bit가 자동으로 다시 시작한다. LED 표시가 안정될 때까지 잠시 기다린다.
 
-웹앱 상단 **실험 설정**도 같은 순서로 맞춘다.
+참고: MakeCode에서 WebUSB 페어링을 사용하면 Download 버튼으로 바로 전송할 수도 있다. 수업 안내에서는 가장 익숙하고 기기 차이가 적은 `.hex` 파일 복사 흐름을 기본으로 설명한다.
 
-```text
-CSV 키: temperature, light
-화면 이름: 온도, 밝기
-단위: C, 없음
-```
+## 4. 웹앱으로 돌아와 연결하기
 
-## 4. 포크 프로젝트에서 정할 것
+1. 대시보드 탭으로 돌아온다.
+2. **디바이스 연결** 버튼을 누르고 목록에서 **BBC micro:bit**를 선택한다.
+3. Bluetooth 또는 위치 권한 요청이 나오면 허용한다. Android에서는 위치 권한이 켜져 있어야 검색된다.
+4. 첫 데이터가 들어오면 카드, 그래프, 데이터 로그가 자동으로 바뀐다.
+5. 수업 기록이 필요하면 화면 하단의 **CSV 다운로드** 버튼을 누른다.
 
-특화 프로젝트를 만들 때는 다음 항목을 먼저 정하면 좋다.
+## 참고 자료
 
-- 샘플링 간격: 빠른 변화가 필요한지, 배터리와 안정성을 더 우선할지
-- 시작 명령: 기본값 `start`를 쓸지, 기존 예제 호환을 위해 다른 명령을 받을지
-- 보정 과정: Magnetometer처럼 사용자가 움직여야 하는 준비 단계가 있는지
-- 화면 안내: 첫 데이터 전 안내 문구가 센서 상황에 맞는지
-- 전송 값 순서: CSV 순서와 웹앱 **실험 설정**의 필드 순서가 같은지
-
-처음에는 값 하나를 끝까지 표시해 본 뒤 여러 값으로 늘리는 흐름을 권장한다.
-
-## 5. HEX 빌드
-
-저장소에는 HEX 파일을 포함하지 않는다. MakeCode에서 필요한 예제 JS를 열고 사용자가 직접 HEX를 빌드한다.
-
-권장 흐름:
-
-1. `firmware/template.js` 또는 `firmware/examples/*.js` 중 하나를 MakeCode에 붙여 넣는다.
-2. 웹앱 **실험 설정**에서 필요한 센서 값과 CSV 필드 순서를 맞춘다.
-3. MakeCode에서 HEX를 빌드한다.
-4. 빌드한 HEX를 micro:bit에 복사한다.
-5. 웹앱의 `?mock=1` 확인 후 실제 micro:bit 연결을 확인한다.
-
-## 6. Magnetometer 예제
-
-Magnetometer는 이 템플릿의 기본 예제다. 자기장 센서는 compass calibration이 필요할 수 있어 `firmware/examples/magnetometer.js`를 일반 템플릿과 별도로 유지한다.
-
-- 기본 명령: `start`
-- 기존 원본 펌웨어 전송 순서: `x,y,z,strength`
-- 설정과 펌웨어 순서를 반드시 같이 확인한다.
-
-기본 설정은 기존 펌웨어 호환을 위해 다음 순서를 사용한다.
-
-```javascript
-fields: ['x', 'y', 'z', 'strength']
-```
-
-펌웨어 전송 순서를 바꾸지 않는다면 웹앱 **실험 설정**도 펌웨어와 같은 순서로 맞춰야 한다.
+- [MakeCode: Sharing your project](https://makecode.microbit.org/share)
+- [MakeCode: Downloading a program to the micro:bit](https://makecode.microbit.org/courses/csintro/making/activity)
+- [MakeCode: WebUSB](https://makecode.microbit.org/device/usb/webusb)

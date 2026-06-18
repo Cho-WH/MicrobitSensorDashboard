@@ -17,9 +17,10 @@ micro:bit는 한 줄 CSV 데이터를 보내고, 웹앱은 기본 설정 또는 
 
 ## 설정 계층
 
-- 주요 파일: `js/sensor-config.js`, `js/config.js`, `js/ui/experiment-settings.js`, `vendor/qrcodegen.js`, `vendor/simple-qrcode.js`
+- 주요 파일: `js/sensor-config.js`, `js/makecode-share.js`, `js/config.js`, `js/ui/experiment-settings.js`, `vendor/qrcodegen.js`, `vendor/simple-qrcode.js`
 - 역할: 기본 설정, deflate-raw 압축 `cfg` 인코딩/디코딩, 앱 제목, 시작 명령, CSV 파일명, 필드 목록, 단위, 색상, 공유 링크와 QR 표시
 - 일반 사용자는 웹앱의 **실험 설정** UI에서 바꾸고, 포크 개발자는 기본값을 코드로 바꿀 수 있다.
+- MakeCode 공유 프로젝트 링크는 `js/makecode-share.js`의 `MAKECODE_SHARE_URL`만 바꾸면 된다.
 
 필드 순서는 펌웨어의 CSV 전송 순서와 같아야 한다. 단순 센서 교체라면 대부분 펌웨어의 `sendSample()`과 웹앱의 실험 설정만 맞추면 된다.
 

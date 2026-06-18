@@ -1,6 +1,6 @@
 const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
-const TX_CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'
-const RX_CHARACTERISTIC_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'
+const UART_TX_CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'
+const UART_RX_CHARACTERISTIC_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'
 const CCCD_UUID = '00002902-0000-1000-8000-00805f9b34fb'
 const MAX_RX_BUFFER_LENGTH = 1024
 
@@ -150,8 +150,10 @@ export const connect = async (selectedDevice) => {
 
   const findByUuid = (uuid) => classified.find((item) => item.characteristic.uuid?.toLowerCase?.() === uuid)?.characteristic || null
 
-  txCharacteristic = findByUuid(TX_CHARACTERISTIC_UUID) || classified.find((item) => item.supportsWrite)?.characteristic || null
-  rxCharacteristic = findByUuid(RX_CHARACTERISTIC_UUID) || classified.find((item) => item.supportsNotify)?.characteristic || null
+  // micro:bit naming is from the device perspective:
+  // TX sends data to the browser, RX receives writes from the browser.
+  txCharacteristic = findByUuid(UART_RX_CHARACTERISTIC_UUID) || classified.find((item) => item.supportsWrite)?.characteristic || null
+  rxCharacteristic = findByUuid(UART_TX_CHARACTERISTIC_UUID) || classified.find((item) => item.supportsNotify)?.characteristic || null
 
   if (!txCharacteristic) {
     throw new Error('쓰기 가능한 BLE 특성을 찾지 못했습니다.')

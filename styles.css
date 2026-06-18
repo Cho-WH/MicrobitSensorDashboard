@@ -722,7 +722,8 @@ button {
   flex-wrap: wrap;
 }
 
-.usage-dialog__links a {
+.usage-dialog__links a,
+.usage-dialog__links button {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -732,17 +733,37 @@ button {
   color: #bfdbfe;
   text-decoration: none;
   background: rgba(59, 130, 246, 0.12);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
+.usage-dialog__links .usage-dialog__linkButton {
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #dcfce7;
+  background: rgba(34, 197, 94, 0.14);
+}
+
 .usage-dialog__links a:hover,
-.usage-dialog__links a:focus-visible {
+.usage-dialog__links a:focus-visible,
+.usage-dialog__links button:hover,
+.usage-dialog__links button:focus-visible {
   background: rgba(59, 130, 246, 0.22);
   border-color: rgba(147, 197, 253, 0.7);
   color: #e0f2fe;
 }
 
-.usage-dialog__links a:focus-visible {
+.usage-dialog__links .usage-dialog__linkButton:hover,
+.usage-dialog__links .usage-dialog__linkButton:focus-visible {
+  border-color: rgba(134, 239, 172, 0.75);
+  color: #f0fdf4;
+  background: rgba(34, 197, 94, 0.24);
+}
+
+.usage-dialog__links a:focus-visible,
+.usage-dialog__links button:focus-visible {
   outline: 2px solid rgba(147, 197, 253, 0.9);
   outline-offset: 2px;
 }

@@ -43,6 +43,12 @@ const getBluetoothErrorMessage = (error) => {
   if (name === 'NetworkError') {
     return 'micro:bit와 GATT 연결을 안정적으로 만들지 못했습니다.\n조치: micro:bit가 재부팅 중이거나 너무 멀리 있을 수 있습니다. 몇 초 뒤 다시 연결하세요.'
   }
+  if (name === 'NotSupportedError' || message.includes('GATT Error: Not supported')) {
+    return (
+      'micro:bit의 Bluetooth GATT 서비스를 이 브라우저가 열지 못했습니다.\n' +
+      '조치: MakeCode Bluetooth 설정이 "No Pairing Required"인지 확인하고 HEX를 다시 플래시한 뒤, OS Bluetooth 설정에서 이전 micro:bit 페어링을 삭제하고 다시 연결하세요.'
+    )
+  }
   if (message.includes('User cancelled')) {
     return '장치 선택이 취소되었습니다.\n조치: 디바이스 연결을 다시 누르고 목록에서 BBC micro:bit를 선택하세요.'
   }

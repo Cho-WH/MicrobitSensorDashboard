@@ -1,3 +1,5 @@
+import { MAKECODE_SHARE_URL } from '../makecode-share.js'
+
 const registerDialog = (dialog) => {
   if (!dialog) return
   if (dialog.open !== undefined && typeof dialog.showModal === 'function') {
@@ -15,6 +17,7 @@ export const initUsageGuide = () => {
   }
 
   const openButton = document.querySelector('[data-action="open-usage-guide"]')
+  const makeCodeButton = document.querySelector('[data-action="open-makecode-share"]')
   const dialog = document.getElementById('usage-guide-dialog')
 
   if (!openButton || !dialog) {
@@ -32,6 +35,10 @@ export const initUsageGuide = () => {
     }
   }
 
+  const handleOpenMakeCode = () => {
+    window.open(MAKECODE_SHARE_URL, '_blank', 'noopener')
+  }
+
   const handleBackdropClick = (event) => {
     if (event.target === dialog) {
       dialog.close()
@@ -45,11 +52,17 @@ export const initUsageGuide = () => {
   }
 
   openButton.addEventListener('click', handleOpen)
+  if (makeCodeButton) {
+    makeCodeButton.addEventListener('click', handleOpenMakeCode)
+  }
   dialog.addEventListener('click', handleBackdropClick)
   dialog.addEventListener('close', handleClose)
 
   return () => {
     openButton.removeEventListener('click', handleOpen)
+    if (makeCodeButton) {
+      makeCodeButton.removeEventListener('click', handleOpenMakeCode)
+    }
     dialog.removeEventListener('click', handleBackdropClick)
     dialog.removeEventListener('close', handleClose)
   }
