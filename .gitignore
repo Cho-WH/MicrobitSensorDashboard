@@ -1,0 +1,19 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor and local workspace files
+.idea/
+*.swp
+*.swo
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Dependency/build outputs if added later
+node_modules/
+dist/
+build/
+coverage/

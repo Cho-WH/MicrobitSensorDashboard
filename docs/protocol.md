@@ -1,0 +1,101 @@
+# Microbit Sensor Dashboard Protocol
+
+이 프로젝트의 기본 프로토콜은 교육용으로 단순하게 유지한다. micro:bit는 Nordic UART BLE로 CSV 한 줄을 보내고, 웹앱은 `js/sensor-config.js`의 `fields` 순서대로 값을 해석한다.
+
+## 1. 연결 방식
+
+- BLE 서비스: Nordic UART Service
+- 웹앱에서 micro:bit로 보내는 명령: `sensorConfig.startCommand + "\n"`
+- micro:bit에서 웹앱으로 보내는 데이터: 숫자 CSV 한 줄
+
+## 2. 시작 명령
+
+웹앱은 연결 후 시작 명령을 한 번 보낸다.
+
+```text
+start
+```
+
+기본 Magnetometer 예제는 기존 펌웨어와의 호환을 위해 다음 명령을 사용한다.
+
+```text
+magnet
+```
+
+새 센서 예제에서는 `start`를 권장한다. 프로젝트에 따라 `measure`, `stream`, `run` 같은 명령을 써도 되지만, 웹앱의 `sensorConfig.startCommand`와 펌웨어가 같은 값을 바라보게 해야 한다.
+
+## 3. 샘플 데이터
+
+micro:bit는 한 줄에 한 샘플을 보낸다.
+
+```text
+value1,value2,value3
+```
+
+규칙:
+
+- 모든 값은 숫자여야 한다.
+- 값 개수는 `sensorConfig.fields.length`와 같아야 한다.
+- 값 순서는 `sensorConfig.fields` 배열 순서와 같아야 한다.
+- 줄 끝은 `bluetooth.uartWriteLine()`이 붙이는 newline을 사용한다.
+- timestamp는 micro:bit가 보내지 않고 웹앱이 수신 시점에 붙인다.
+
+## 4. 예시
+
+`sensor-config.js`:
+
+```javascript
+fields: [
+  { key: 'temperature', label: '온도', unit: 'C', digits: 1 },
+  { key: 'light', label: '밝기', unit: '', digits: 0 }
+]
+```
+
+micro:bit 전송:
+
+```text
+24.1,128
+```
+
+웹앱 샘플:
+
+```javascript
+{
+  timestamp: 1781760000000,
+  temperature: 24.1,
+  light: 128
+}
+```
+
+## 5. CSV를 유지하면 좋은 경우
+
+기본 CSV 형식은 다음 상황에 잘 맞는다.
+
+- 샘플마다 같은 개수의 숫자 값이 온다.
+- 필드 의미를 웹앱 설정으로 설명할 수 있다.
+- 데이터 저장은 브라우저 수신 시각 기준이면 충분하다.
+- 수업이나 실험에서 사람이 쉽게 읽고 고쳐 쓰는 것이 중요하다.
+
+## 6. 다른 형식을 고민할 만한 경우
+
+포크 프로젝트에서 다음 요구가 생기면 프로토콜 확장을 검토할 수 있다.
+
+- 센서 상태, 오류, 보정 진행률 같은 메시지를 자주 보내야 한다.
+- 샘플마다 필드 구성이 달라진다.
+- 이벤트와 측정값을 같은 연결에서 구분해야 한다.
+- timestamp를 micro:bit 쪽에서 직접 보내야 한다.
+
+바로 복잡한 형식으로 바꾸기보다, 먼저 현재 CSV v1이 감당하지 못하는 요구를 분명히 적어두는 것을 권장한다.
+
+## 7. 예약된 control message
+
+현재 웹앱은 아래 접두어로 시작하는 줄을 샘플로 처리하지 않는다.
+
+```text
+HELLO,
+ACK,
+STATUS,
+ERR,
+```
+
+1차 버전에서는 필수가 아니다. 나중에 펌웨어 상태를 더 정확히 표시하고 싶을 때 사용할 수 있는 확장 여지로 남겨둔 것이다.

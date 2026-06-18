@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Microbit Sensor Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="header-leading">
+          <h1 class="title" data-bind="app-title">Microbit Sensor Dashboard</h1>
+          <button
+            type="button"
+            class="usage-guide-button"
+            data-action="open-usage-guide"
+            aria-haspopup="dialog"
+            aria-controls="usage-guide-dialog"
+            title="사용 안내"
+          >
+            사용 안내
+          </button>
+        </div>
+        <span class="badge" data-bind="app-badge">Vanilla build</span>
+      </header>
+
+      <div id="banner-root" class="banner-host" role="status"></div>
+
+      <div class="main">
+        <aside class="sidebar">
+          <section class="sidebar-section" data-component="connection-panel">
+            <div class="statusRow">
+              <span class="statusLabel">연결 상태</span>
+              <span class="statusValue" data-bind="status">연결 안 됨</span>
+            </div>
+
+            <div class="buttons">
+              <button class="button" type="button" data-action="connect">디바이스 연결</button>
+              <button class="button secondary" type="button" data-action="disconnect" disabled>
+                연결 해제
+              </button>
+            </div>
+
+            <div class="meta">
+              <span>마지막 업데이트: <span data-bind="last-updated">—</span></span>
+              <span>경과 시간: <span data-bind="relative-time">—</span></span>
+            </div>
+
+            <div class="connectionNotice" data-bind="notice" hidden></div>
+            <div class="error" data-bind="error" hidden></div>
+
+            <p class="devHelp" data-bind="helper">
+              연결이 안되는 경우, <button type="button" class="devHelp-link" data-action="show-supported">지원 브라우저</button>를 확인해주세요.<br />
+              기본 Magnetometer 예제에서는 micro:bit의 A 또는 B 버튼을 누른 상태로 연결하면 초기 보정을 건너뛰고 바로 측정이 시작됩니다.
+            </p>
+          </section>
+
+          <section class="sidebar-section field-selector" data-component="axis-selector">
+            <span class="title" data-bind="field-selector-title">표시할 항목 선택</span>
+            <div class="options" role="group" aria-label="표시할 항목" data-bind="field-options">
+            </div>
+            <span class="helper" data-bind="field-selector-help">최소 하나 이상 선택해야 합니다.</span>
+          </section>
+        </aside>
+
+        <section class="content">
+          <section class="card stats" data-component="live-stats">
+            <div class="stats-grid" data-bind="stats-grid">
+            </div>
+          </section>
+
+          <section class="card chart" data-component="sensor-chart">
+            <div class="chart-header">
+              <span class="title" data-bind="chart-title">실시간 센서 데이터</span>
+              <span class="subtitle" data-bind="fields">표시 항목: Strength</span>
+            </div>
+            <div class="canvasWrapper">
+              <canvas aria-label="센서 데이터 라인 차트"></canvas>
+              <p class="empty" data-bind="empty">데이터를 수신하면 그래프가 표시됩니다.</p>
+            </div>
+          </section>
+        </section>
+      </div>
+
+      <section class="log" data-component="data-log">
+        <div class="header">
+          <span class="title">최근 측정 로그</span>
+          <button class="button" type="button" data-action="download" disabled>CSV 다운로드</button>
+        </div>
+        <div class="tableWrapper">
+          <table>
+            <thead data-bind="table-head"></thead>
+            <tbody data-bind="rows">
+              <tr>
+                <td colspan="5">데이터를 수신하면 로그가 표시됩니다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <dialog id="supported-browsers-dialog" class="supported-dialog">
+      <form method="dialog" class="supported-dialog__content">
+        <h2>지원 브라우저 안내</h2>
+        <p>운영체제별 대표적인 Web Bluetooth 지원 브라우저는 다음과 같습니다.</p>
+        <ul>
+          <li><strong>Windows / macOS</strong>: Chrome, Microsoft Edge</li>
+          <li><strong>Chromebook</strong>: Chrome (최신 버전)</li>
+          <li><strong>Android</strong>: Chrome, 삼성 인터넷 브라우저</li>
+        </ul>
+        <p>iOS/iPadOS는 Safari 기반 브라우저에서 Web Bluetooth를 지원하지 않습니다. 필요 시 전용 앱(예: Bluefy)을 이용하세요.</p>
+        <button type="submit" class="button small">닫기</button>
+      </form>
+    </dialog>
+
+    <dialog id="usage-guide-dialog" class="usage-dialog">
+      <form method="dialog" class="usage-dialog__content">
+        <h2>사용 안내</h2>
+        <p class="usage-dialog__intro">
+          이 프로젝트는 <a href="https://javalab.org" target="_blank" rel="noopener">자바실험실</a>에서 영감을 받아 제작되었습니다.
+          micro:bit에서 전송하는 센서 데이터를 Web Bluetooth를 통해 실시간으로 시각화하고 CSV로 저장합니다.
+        </p>
+        <p class="usage-dialog__intro">
+          Chromium 기반 브라우저(크롬, 엣지, 안드로이드 크롬, 삼성 브라우저 등)에서 동작하며, HTTPS 환경이 필요합니다.
+        </p>
+
+        <section class="usage-dialog__section">
+          <h3>micro:bit 준비</h3>
+          <ul class="usage-dialog__list">
+            <li>처음 사용할 때는 기본 예제인 `firmware/examples/magnetometer.js`를 MakeCode에서 열고 HEX 파일을 빌드합니다.</li>
+            <li class="usage-dialog__download">
+              <span class="usage-dialog__label">펌웨어 소스:</span>
+              <div class="usage-dialog__links">                
+                <a href="firmware/examples/magnetometer.js" target="_blank" rel="noopener">Magnetometer 예제 보기</a>
+                <a href="docs/firmware-guide.html" target="_blank" rel="noopener">펌웨어 가이드</a>
+              </div>
+            </li>
+            <li>micro:bit를 USB로 연결하고 빌드한 HEX 파일을 micro:bit 드라이브에 복사한 뒤 안전하게 분리하세요.</li>
+          </ul>
+        </section>
+
+        <section class="usage-dialog__section">
+          <h3>웹앱에서 연결하기</h3>
+          <ul class="usage-dialog__list">
+            <li>상단 `디바이스 연결` 버튼을 누르면 브라우저가 BLE 장치 목록을 표시합니다.</li>
+            <li>목록에서 `BBC micro:bit`를 선택하고, Bluetooth·위치 권한 요청이 뜨면 모두 허용하세요.</li>
+          </ul>
+        </section>
+
+        <section class="usage-dialog__section">
+          <h3>기본 예제: Magnetometer</h3>
+          <ul class="usage-dialog__list">
+            <li>Magnetometer 예제는 연결 직후 micro:bit LED에 점이 회전하면 모든 방향으로 천천히 돌려 보정을 완료합니다.</li>
+            <li>A/B 버튼을 누른 채로 연결하면 보정을 건너뛸 수 있으나, 첫 측정 전에는 보정을 완료하는 것이 좋습니다.</li>
+            <li>측정 중에는 화면 하단 `CSV 다운로드` 버튼으로 현재 세션 데이터를 저장할 수 있습니다.</li>
+          </ul>
+        </section>
+
+        <section class="usage-dialog__section">
+          <h3>문제가 생길 때</h3>
+          <ul class="usage-dialog__list">
+            <li><strong>브라우저 미지원</strong>: 좌측 `지원 브라우저` 안내를 열어 Web Bluetooth 지원 여부를 확인하세요.</li>
+            <li><strong>장치가 목록에 없음</strong>: micro:bit 전원이 켜져 있고 다른 기기에 연결돼 있지 않은지 확인한 뒤 다시 검색하세요.</li>
+            <li><strong>연결 직후 오류</strong>: 펌웨어를 다시 플래시하고 micro:bit가 재부팅될 시간을 준 뒤 재시도하세요.</li>
+            <li><strong>데이터가 이상함</strong>: 펌웨어 전송 순서와 `js/sensor-config.js`의 `fields` 순서가 같은지 확인합니다.</li>
+          </ul>
+        </section>
+
+        <section class="usage-dialog__section">
+          <h3>추가 자료</h3>
+          <ul class="usage-dialog__list">
+            <li><a href="docs/protocol.html" target="_blank" rel="noopener">데이터 프로토콜</a></li>
+            <li><a href="https://github.com/Cho-WH/MagnetometerBit" target="_blank" rel="noopener">원본 MagnetometerBit 프로젝트</a></li>
+          </ul>
+        </section>
+
+        <div class="usage-dialog__actions">
+          <button type="submit" class="button small">닫기</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="vendor/chart.umd.js"></script>
+    <script src="js/dialog-polyfill.js"></script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
