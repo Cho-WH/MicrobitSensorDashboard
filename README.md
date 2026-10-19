@@ -72,7 +72,7 @@ MakeCode 프로젝트를 새로 만들거나 공유 링크를 갱신할 때는 B
 
 ## 개발자 문서
 
-- [통합 센서 실험 앱 기획](docs/unified-sensor-lab-plan.md): 게이뤼삭 기반 공통 구조, 센서·활동 선택, 수업 공유와 sco.pe.kr 주소 계획을 담은 구현 전 기획
+- [통합 센서 실험 앱 기획](docs/unified-sensor-lab-plan.md): 이 저장소 안의 센서·실험 활동 통합, 게이뤼삭 기반 공통 측정·분석, 수업 공유를 정의한 구현 전 기획
 - [포크 개발자 가이드](docs/forking-guide.md): 자기 프로젝트로 발전시키는 작업 흐름
 - [프로젝트 구조와 데이터 흐름](docs/project-overview.md): 앱의 주요 계층과 확장 지점
 - [데이터 프로토콜](docs/protocol.md): micro:bit와 웹앱 사이의 CSV 통신 규칙
