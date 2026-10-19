@@ -1,0 +1,31 @@
+{
+  "id": "magnetometer-uart",
+  "version": 1,
+  "target": "pxt-microbit@9.1.1",
+  "compiler": "pxt-core@13.0.1",
+  "cli": "pxt@0.5.1",
+  "targetCommit": "59408da502b825423ad2b0180bcf105927e7def0",
+  "source": "firmware/examples/magnetometer.js",
+  "sourceSha256": "2086b43f5cc8981485721de287b6cf1e51ec1d156a2484f33bc521b5bad4118b",
+  "configSha256": "7b90a07a0508eb8cdf64469c656777f16c627cccb17814bc820f88039fdbb846",
+  "hexSha256": "ccdaf8753785053273eee11572765ad1c8c5c90a1d4303357202ba82bbb24db3",
+  "digestMode": "utf8-crlf-to-lf",
+  "bytes": 1363980,
+  "runtimeFiles": [
+    {
+      "compileSha": "4170adf21cbebf715533d620ed1b1152d95468b9a77306a0091d4cbcd8504709",
+      "file": "4170adf21cbebf715533d620ed1b1152d95468b9a77306a0091d4cbcd8504709.hex",
+      "sha256": "10e36a21822c1fe0f27c4240114968365267ad80e920df27fb7d9998de7a925f",
+      "bytes": 635365
+    },
+    {
+      "compileSha": "11f3cd7e548072767ba7e4f2acaa47fde30e3337a625e615f56b881fb9b8d228",
+      "file": "11f3cd7e548072767ba7e4f2acaa47fde30e3337a625e615f56b881fb9b8d228.hex",
+      "sha256": "7e27d51e90670100b9785e0c4b2cbb4ecf21fce1554751cdd06a44167d3dd7be",
+      "bytes": 885059
+    }
+  ],
+  "embeddedSourceMatches": true,
+  "officialV2Reader": true,
+  "hardwareVerified": false
+}

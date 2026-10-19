@@ -1,5 +1,7 @@
 # Project Overview
 
+통합 실험실의 구현은 `lab.html`과 `src/`에 있다. [M2 홈·장비 준비·통신 구현](m2-implementation.md)과 [M1 저장·분석 기반](m1-implementation.md)을 참고한다. M2는 [UX 보완·재사용 재점검](m2-ux-review.md)의 소프트웨어 반영·검증을 마쳤으며, 실제 장비 인수는 남아 있다. 아래 구조와 데이터 흐름은 기존 `index.html` 대시보드의 설명이다.
+
 이 문서는 포크 개발자와 AI 에이전트가 프로젝트 구조를 빠르게 파악하기 위한 기술 개요다. 일반 사용자는 먼저 `README.md`의 빠른 시작을 보면 된다.
 
 ## 전체 흐름

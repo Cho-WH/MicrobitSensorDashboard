@@ -1,0 +1,67 @@
+// D's channel selection and live cards, using the shared G chart adapter and RunStore.
+import { createChartView } from './chart-view.js';
+import { readCell } from '../domain/columns.js';
+import { element, findElement } from './dom.js';
+import { setText } from './text.js';
+
+/** @param {ParentNode} root @param {()=>void} onChange */
+export function createMeasurementView(root,onChange) {
+  const fields=findElement(root,'div','#display-channels'), range=findElement(root,'select','#live-range');
+  const cards=findElement(root,'div','#live-cards'), chartSummary=findElement(root,'p','#live-chart-summary');
+  const reception=findElement(root,'p','#measurement-reception'), abort=new AbortController();
+  const receptionState=element('span'), receptionTime=element('span');
+  reception.replaceChildren(receptionState,receptionTime);
+  let contentAbort=new AbortController();
+  let context=null, selected=new Set(), chart=null, chartKey='', runId=null, rows=[], events=[], eventCount=-1;
+  range.addEventListener('change',onChange,{signal:abort.signal});
+  function configure(next) {
+    if(context===next)return;
+    contentAbort.abort();contentAbort=new AbortController();
+    context=next;chart?.dispose();chart=null;chartKey='';runId=null;rows=[];events=[];eventCount=-1;range.value='recent';
+    const defaults=next.classConfig?.presentation?.visibleChannelIds??next.sensor?.defaultVisibleChannelIds??next.channels.map(channel=>channel.id);
+    selected=new Set(defaults.filter(id=>next.channels.some(channel=>channel.id===id)));
+    if(!selected.size&&next.channels.length)selected.add(next.channels[0].id);
+    fields.replaceChildren(...next.channels.map(channel=>{
+      const label=element('label','channel-option'), input=element('input');input.type='checkbox';input.value=channel.id;input.checked=selected.has(channel.id);
+      label.append(input,element('span','',channel.name));label.style.setProperty('--channel-color',channel.color??'#176e75');
+      input.addEventListener('change',()=>{
+        if(!input.checked&&selected.size===1){input.checked=true;return;}
+        if(input.checked)selected.add(channel.id);else selected.delete(channel.id);
+        onChange();
+      },{signal:contentAbort.signal});return label;
+    }));
+    cards.replaceChildren(...next.channels.map(channel=>{
+      const card=element('div','lab-card');card.dataset.channel=channel.id;
+      card.append(element('span','',channel.name),element('strong','','—'),element('small','',channel.unit??''));return card;
+    }));
+  }
+  return {
+    render({context:next,store,latest,previewPoints,device,recording}) {
+      configure(next);
+      const saved=store?.getState(), stored=Boolean(saved?.sampleCount), reading=latest??store?.getLatestSample();
+      for(const channel of next.channels){
+        const card=cards.querySelector(`[data-channel="${channel.id}"]`), value=card.querySelector('strong');
+        const cell=reading?readCell(reading,channel.id):{value:null,reason:'값 없음'};
+        const text=cell.reason?'—':cell.value.toLocaleString('ko-KR',{maximumFractionDigits:channel.digits??2});
+        if(value.textContent!==text)value.textContent=text;
+      }
+      const fresh=device.status==='connected'&&device.confirmed;
+      reception.dataset.fresh=String(fresh);
+      const received=latest?.receivedAt??store?.getLatestSample()?.receivedAt;
+      setText(receptionState,fresh?'새 값 수신 중':device.status==='connecting'?'연결 중':device.status==='connected'?'수신 확인 필요':stored?'보관한 측정값':'수신 대기');
+      setText(receptionTime,received?'마지막 수신 '+new Date(received).toLocaleTimeString('ko-KR',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}):'');
+      const id=saved?.id??null;
+      if(id!==runId){runId=id;rows=[];events=[];eventCount=-1;}
+      if(stored&&saved.lastSampleId!==(rows.at(-1)?.sampleId??0))rows.push(...store.readSamples({afterId:rows.at(-1)?.sampleId??0}));
+      if(saved&&saved.eventCount!==eventCount){eventCount=saved.eventCount;events=store.getEvents(Number.MAX_SAFE_INTEGER);}
+      const source=stored?rows:previewPoints, end=recording||!stored?Date.now():source.at(-1)?.receivedAt??Date.now();
+      const points=range.value==='all'?source:source.filter(point=>!Number.isFinite(point.receivedAt)||point.receivedAt>=end-60000);
+      const channels=next.channels.filter(channel=>selected.has(channel.id)), key=channels.map(channel=>channel.id).join('|');
+      if(chartKey!==key||!chart){chart?.dispose();chart=createChartView(findElement(root,'canvas','#live-chart'),{context:next,channels,legendToggle:false});chartKey=key;}
+      chart.render(points,performance.now(),{range:range.value,events,origin:source[0]?.receivedAt,nowUtc:end});
+      chartSummary.textContent=`${range.value==='all'?'전체':'최근 60초'} · ${points.length.toLocaleString('ko-KR')}개 표시`;
+      range.querySelector('option[value="all"]').textContent=stored?'전체 기록':'전체 미리보기';
+    },
+    dispose(){abort.abort();contentAbort.abort();chart?.dispose();},
+  };
+}

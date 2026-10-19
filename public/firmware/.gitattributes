@@ -1,0 +1,4 @@
+# Preserve downloaded artifact bytes and reproducible source copies on Windows.
+*.hex -text
+*.ts text eol=lf
+*.json text eol=lf

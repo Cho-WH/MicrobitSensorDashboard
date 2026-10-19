@@ -1,0 +1,23 @@
+{
+    "dependencies": {
+        "core": "*",
+        "bluetooth": "*"
+    },
+    "files": [
+        "main.ts"
+    ],
+    "preferredEditor": "tsprj",
+    "yotta": {
+        "config": {
+            "microbit-dal": {
+                "bluetooth": {
+                    "enabled": 1,
+                    "open": 1,
+                    "pairing_mode": 0,
+                    "whitelist": 0,
+                    "security_level": null
+                }
+            }
+        }
+    }
+}

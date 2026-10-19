@@ -1,0 +1,524 @@
+{
+  "snapshot": {
+    "run": {
+      "id": "legacy-original",
+      "schemaVersion": 2,
+      "runRevision": 9,
+      "name": "온도와 압력 원본 검증",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000006000,
+      "status": "paused",
+      "source": "device",
+      "program": {
+        "url": "../firmware/bme_1.2.hex",
+        "fileName": "bme_1.2.hex",
+        "version": "bme 1.2",
+        "sha256": "481d3136ae9db5747066be9ef7f21604cb060799ab62ed3206bc9e78e1fb55ea",
+        "verification": "communication-verified",
+        "profile": {
+          "id": "bmp280-csv-v1",
+          "fieldCount": 3,
+          "temperatureRange": [
+            -40,
+            85
+          ],
+          "pressureRange": [
+            300,
+            1100
+          ],
+          "humiditySupported": false
+        }
+      },
+      "profile": {
+        "id": "bmp280-csv-v1",
+        "fieldCount": 3,
+        "temperatureRange": [
+          -40,
+          85
+        ],
+        "pressureRange": [
+          300,
+          1100
+        ],
+        "humiditySupported": false
+      },
+      "lastSavedSampleId": 4,
+      "lastSavedEventId": 1
+    },
+    "samples": [
+      {
+        "runId": "legacy-original",
+        "extraChannels": {
+          "humidityPct": 0
+        },
+        "validity": {
+          "temperatureC": "valid",
+          "pressureHpa": "valid",
+          "humidityPct": "unsupported"
+        },
+        "sampleId": 1,
+        "receivedAt": 1700000000000,
+        "temperatureC": 0,
+        "pressureHpa": 1000
+      },
+      {
+        "runId": "legacy-original",
+        "extraChannels": {
+          "humidityPct": 0
+        },
+        "validity": {
+          "temperatureC": "valid",
+          "pressureHpa": "valid",
+          "humidityPct": "unsupported"
+        },
+        "sampleId": 2,
+        "receivedAt": 1700000001000,
+        "temperatureC": 1,
+        "pressureHpa": 1003
+      },
+      {
+        "runId": "legacy-original",
+        "extraChannels": {
+          "humidityPct": 0
+        },
+        "validity": {
+          "temperatureC": "valid",
+          "pressureHpa": "valid",
+          "humidityPct": "unsupported"
+        },
+        "sampleId": 3,
+        "receivedAt": 1700000002000,
+        "temperatureC": 2,
+        "pressureHpa": 1006
+      },
+      {
+        "runId": "legacy-original",
+        "extraChannels": {
+          "humidityPct": 0
+        },
+        "validity": {
+          "temperatureC": "valid",
+          "pressureHpa": "valid",
+          "humidityPct": "unsupported"
+        },
+        "sampleId": 4,
+        "receivedAt": 1700000003000,
+        "temperatureC": 3,
+        "pressureHpa": 1009
+      },
+      {
+        "runId": "legacy-original",
+        "extraChannels": {
+          "humidityPct": 0
+        },
+        "validity": {
+          "temperatureC": "valid",
+          "pressureHpa": "valid",
+          "humidityPct": "unsupported"
+        },
+        "sampleId": 5,
+        "receivedAt": 1700000004000,
+        "temperatureC": 4,
+        "pressureHpa": 1012
+      },
+      {
+        "runId": "legacy-original",
+        "extraChannels": {
+          "humidityPct": 0
+        },
+        "validity": {
+          "temperatureC": "valid",
+          "pressureHpa": "valid",
+          "humidityPct": "unsupported"
+        },
+        "sampleId": 6,
+        "receivedAt": 1700000005000,
+        "temperatureC": 5,
+        "pressureHpa": 1015
+      }
+    ],
+    "events": [
+      {
+        "runId": "legacy-original",
+        "eventId": 1,
+        "receivedAt": 1700000000000,
+        "type": "placement",
+        "payload": {
+          "note": "첫 줄\n가열 전 \"확인\""
+        },
+        "source": "user"
+      }
+    ],
+    "workspace": {
+      "runId": "legacy-original",
+      "workspaceRevision": 12,
+      "analysisInputRevision": 5,
+      "tableLastSampleId": 6,
+      "table": {
+        "sort": {
+          "columnId": "sampleId",
+          "direction": "asc"
+        },
+        "filter": {
+          "validity": "all",
+          "columnId": "sampleId",
+          "min": null,
+          "max": null,
+          "usage": "all",
+          "ranges": {
+            "sampleId": {
+              "min": 3,
+              "max": 3
+            }
+          }
+        }
+      },
+      "selectedIds": [
+        3
+      ],
+      "appliedIds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "appliedScope": "selection",
+      "exclusions": [
+        {
+          "sampleId": 2,
+          "reason": "센서 이동"
+        }
+      ],
+      "calculatedColumns": [
+        {
+          "id": "calc-kelvin",
+          "name": "절대온도",
+          "unit": "K",
+          "lhs": {
+            "kind": "column",
+            "columnId": "temperatureC"
+          },
+          "op": "+",
+          "rhs": {
+            "kind": "constant",
+            "value": 273.15
+          }
+        },
+        {
+          "id": "calc-divide",
+          "name": "=압력/온도, \"비율\"",
+          "unit": null,
+          "lhs": {
+            "kind": "column",
+            "columnId": "pressureHpa"
+          },
+          "op": "/",
+          "rhs": {
+            "kind": "column",
+            "columnId": "temperatureC"
+          }
+        }
+      ],
+      "graph": {
+        "xColumnId": "temperatureC",
+        "yColumnId": "pressureHpa",
+        "type": "scatter",
+        "connectGaps": false,
+        "view": "extended"
+      },
+      "regression": {
+        "enabled": true
+      },
+      "note": "",
+      "analysisRange": {
+        "startAt": 1700000000000,
+        "endAt": 1700000003000,
+        "throughSampleId": 6
+      },
+      "reflection": {
+        "answers": {
+          "observation": "<b>원자료의 관계</b>",
+          "reasoning": "첫 줄\n둘째 줄",
+          "limitations": "측정 불확도 확인"
+        },
+        "evidence": {
+          "tableLastSampleId": 6,
+          "appliedIds": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "appliedScope": "selection",
+          "analysisRange": {
+            "startAt": 1700000000000,
+            "endAt": 1700000003000,
+            "throughSampleId": 6
+          },
+          "exclusions": [
+            {
+              "sampleId": 2,
+              "reason": "센서 이동"
+            }
+          ],
+          "calculatedColumns": [],
+          "graph": {
+            "xColumnId": "temperatureC",
+            "yColumnId": "pressureHpa",
+            "type": "scatter",
+            "connectGaps": false,
+            "view": "extended"
+          },
+          "regression": {
+            "enabled": true
+          }
+        }
+      }
+    }
+  },
+  "graph": {
+    "xColumnId": "temperatureC",
+    "yColumnId": "pressureHpa",
+    "type": "scatter",
+    "connectGaps": false,
+    "view": "extended",
+    "points": [
+      {
+        "x": 0,
+        "y": 1000,
+        "sampleId": 1
+      },
+      {
+        "x": 2,
+        "y": 1006,
+        "sampleId": 3
+      },
+      {
+        "x": 3,
+        "y": 1009,
+        "sampleId": 4
+      }
+    ],
+    "excludedPoints": [
+      {
+        "x": 1,
+        "y": 1003,
+        "sampleId": 2
+      }
+    ],
+    "line": [
+      {
+        "x": 0,
+        "y": 1000,
+        "sampleId": 1
+      },
+      {
+        "x": 1,
+        "y": null
+      },
+      {
+        "x": 2,
+        "y": 1006,
+        "sampleId": 3
+      },
+      {
+        "x": 3,
+        "y": 1009,
+        "sampleId": 4
+      }
+    ],
+    "invalidCount": 0,
+    "candidateCount": 4,
+    "excludedCount": 1,
+    "includedCount": 3,
+    "xUnit": "℃",
+    "yUnit": "hPa",
+    "xLabel": "온도 (℃)",
+    "yLabel": "압력 (hPa)",
+    "regression": {
+      "enabled": true,
+      "inputRevision": 5,
+      "timeOrigin": null,
+      "result": {
+        "count": 3,
+        "reason": null,
+        "slope": 3,
+        "intercept": 1000,
+        "originX": 0,
+        "originY": 1000,
+        "meanDx": 1.6666666666666665,
+        "meanDy": 4.999999999999999,
+        "minX": 0,
+        "maxX": 3,
+        "rSquared": 1,
+        "rSquaredReason": null,
+        "xIntercept": -333.3333333333333,
+        "xInterceptReason": null
+      }
+    },
+    "trend": {
+      "measured": [
+        {
+          "x": 0,
+          "y": 1000
+        },
+        {
+          "x": 3,
+          "y": 1009
+        }
+      ],
+      "extension": [
+        {
+          "x": -333.3333333333333,
+          "y": 0
+        },
+        {
+          "x": 0,
+          "y": 1000
+        }
+      ],
+      "intercept": [
+        {
+          "x": -333.3333333333333,
+          "y": 0
+        }
+      ]
+    }
+  },
+  "reflection": {
+    "xColumnId": "temperatureC",
+    "yColumnId": "pressureHpa",
+    "type": "scatter",
+    "connectGaps": false,
+    "view": "extended",
+    "points": [
+      {
+        "x": 0,
+        "y": 1000,
+        "sampleId": 1
+      },
+      {
+        "x": 2,
+        "y": 1006,
+        "sampleId": 3
+      },
+      {
+        "x": 3,
+        "y": 1009,
+        "sampleId": 4
+      }
+    ],
+    "excludedPoints": [
+      {
+        "x": 1,
+        "y": 1003,
+        "sampleId": 2
+      }
+    ],
+    "line": [
+      {
+        "x": 0,
+        "y": 1000,
+        "sampleId": 1
+      },
+      {
+        "x": 1,
+        "y": null
+      },
+      {
+        "x": 2,
+        "y": 1006,
+        "sampleId": 3
+      },
+      {
+        "x": 3,
+        "y": 1009,
+        "sampleId": 4
+      }
+    ],
+    "invalidCount": 0,
+    "candidateCount": 4,
+    "excludedCount": 1,
+    "includedCount": 3,
+    "xUnit": "℃",
+    "yUnit": "hPa",
+    "xLabel": "온도 (℃)",
+    "yLabel": "압력 (hPa)",
+    "regression": {
+      "enabled": true,
+      "inputRevision": 0,
+      "timeOrigin": null,
+      "result": {
+        "count": 3,
+        "reason": null,
+        "slope": 3,
+        "intercept": 1000,
+        "originX": 0,
+        "originY": 1000,
+        "meanDx": 1.6666666666666665,
+        "meanDy": 4.999999999999999,
+        "minX": 0,
+        "maxX": 3,
+        "rSquared": 1,
+        "rSquaredReason": null,
+        "xIntercept": -333.3333333333333,
+        "xInterceptReason": null
+      }
+    },
+    "trend": {
+      "measured": [
+        {
+          "x": 0,
+          "y": 1000
+        },
+        {
+          "x": 3,
+          "y": 1009
+        }
+      ],
+      "extension": [
+        {
+          "x": -333.3333333333333,
+          "y": 0
+        },
+        {
+          "x": 0,
+          "y": 1000
+        }
+      ],
+      "intercept": [
+        {
+          "x": -333.3333333333333,
+          "y": 0
+        }
+      ]
+    }
+  },
+  "rows": [
+    {
+      "runId": "legacy-original",
+      "sampleId": 3,
+      "receivedAt": 1700000002000,
+      "temperatureC": 2,
+      "pressureHpa": 1006,
+      "extraChannels": {
+        "humidityPct": 0
+      },
+      "validity": {
+        "temperatureC": "valid",
+        "pressureHpa": "valid",
+        "humidityPct": "unsupported"
+      },
+      "calculations": {
+        "calc-kelvin": {
+          "value": 275.15,
+          "reason": null
+        },
+        "calc-divide": {
+          "value": 503,
+          "reason": null
+        }
+      }
+    }
+  ]
+}

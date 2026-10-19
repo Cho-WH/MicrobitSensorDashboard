@@ -1,0 +1,132 @@
+{
+  "files": [
+    {
+      "source": "https://github.com/chartjs/Chart.js/tree/v4.5.0",
+      "file": "vendor/chart.umd.js",
+      "sha256": "142c618355d6cfeb081ccc5fdeddafb0b76f4b8bf9bc94efc54b6864cb29aebe",
+      "modified": false,
+      "version": "4.5.0",
+      "license": "public/vendor/chart-LICENSE.md"
+    },
+    {
+      "source": "https://github.com/jakearchibald/idb/tree/v8.0.4",
+      "file": "public/vendor/idb-8.0.4.umd.js",
+      "sha256": "84a1b83a821969a36592964874997757d8bde798dc1b89a5891391bd29e5c08c",
+      "modified": false,
+      "version": "8.0.4",
+      "license": "public/vendor/idb-LICENSE"
+    },
+    {
+      "source": "https://github.com/mholt/PapaParse/tree/5.7.0",
+      "file": "public/vendor/papaparse-5.7.0.min.js",
+      "sha256": "4d5d2d6e3282b66aafaa5e6de8ca3ae06f8d3440111ae99c6a30f6c00cfac33e",
+      "modified": false,
+      "version": "5.7.0",
+      "license": "public/vendor/papaparse-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/tree/0.468.0/icons",
+      "file": "public/vendor/lucide-history.svg",
+      "sha256": "4cae3e2950049803ddfc8cdb424cffb669d9ee0782d9ea2da3ce920c4b65d433",
+      "modified": true,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/tree/0.468.0/icons",
+      "file": "public/vendor/lucide-pencil.svg",
+      "sha256": "ea8449c8b7d1440d156d7c33f59d5ad7a59c47f1bf438ed4338d3e60e446630d",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/tree/0.468.0/icons",
+      "file": "public/vendor/lucide-message-square-plus.svg",
+      "sha256": "2207b9e27057168a191389e0c6af83a7df9907263b1cc9d2d77ca781b3e07da0",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/nayuki/QR-Code-generator",
+      "license": "vendor/qrcodegen.js (MIT header)",
+      "sha256": "be006905b896bea6ed5047fe8e6ca23bedb07b9d35bed1896cc1f71a3d22ccb5",
+      "file": "vendor/qrcodegen.js",
+      "modified": false,
+      "commit": "303a0bb957472d3a762ab05c6a2a043bedd29e8d"
+    },
+    {
+      "source": "https://github.com/Cho-WH/MicrobitSensorDashboard",
+      "license": "LICENSE",
+      "sha256": "8b99dc2d929febb096ec000a13b16f79ff4f26d1b3760dd5c06f7e9fe890a124",
+      "file": "vendor/simple-qrcode.js",
+      "modified": false,
+      "commit": "303a0bb957472d3a762ab05c6a2a043bedd29e8d"
+    },
+    {
+      "version": "@microbit/microbit-connection@1.0.0",
+      "license": "public/vendor/microbit-usb-LICENSES.md",
+      "source": "https://github.com/Cho-WH/bme280/tree/59c5c149450f970bace2deaa183857c275595853/gay-lussac/vendor",
+      "sha256": "04971f020a074892ba6fee6438683ef811270b29ae9f79a6389781cd4381726c",
+      "file": "public/vendor/microbit-usb-1.0.0.js",
+      "modified": false,
+      "rebuild": "dev/usb-library/README.md"
+    },
+    {
+      "digestMode": "utf8-crlf-to-lf",
+      "license": "public/firmware/NOTICES.md (upstream application license unspecified)",
+      "source": "https://github.com/Cho-WH/bme280/blob/59c5c149450f970bace2deaa183857c275595853/firmware/bme_1.2.hex",
+      "normalizedSha256": "481d3136ae9db5747066be9ef7f21604cb060799ab62ed3206bc9e78e1fb55ea",
+      "file": "public/firmware/bmp280-uart-v1.hex",
+      "sha256": "435fb8f8d160da517f3924d34cb22294a5d9e3c2aadca6bb4f5b305346e97186",
+      "modified": false,
+      "version": "bme 1.2"
+    },
+    {
+      "file": "public/firmware/magnetometer-uart-v1.hex",
+      "version": "magnetometer-uart@1",
+      "source": "firmware/examples/magnetometer.js",
+      "normalizedSha256": "ccdaf8753785053273eee11572765ad1c8c5c90a1d4303357202ba82bbb24db3",
+      "sha256": "ccdaf8753785053273eee11572765ad1c8c5c90a1d4303357202ba82bbb24db3",
+      "buildRecord": "public/firmware/magnetometer-build.json",
+      "modified": true,
+      "rebuild": "dev/firmware/README.md",
+      "license": "public/firmware/NOTICES.md",
+      "digestMode": "utf8-crlf-to-lf"
+    },
+    {
+      "file": "public/activities/gay-lussac/setup.svg",
+      "source": "https://github.com/Cho-WH/bme280/blob/59c5c149450f970bace2deaa183857c275595853/gay-lussac/assets/setup.svg",
+      "commit": "59c5c149450f970bace2deaa183857c275595853",
+      "sha256": "ee045c770c2aae38d7737044eea241959a645fc757efac29df55452a0921adee",
+      "modified": false,
+      "license": "THIRD_PARTY_NOTICES.md (upstream application license unspecified)"
+    },
+    {
+      "file": "public/activities/gay-lussac/experiment-preparation.png",
+      "source": "https://github.com/Cho-WH/bme280/blob/59c5c149450f970bace2deaa183857c275595853/gay-lussac/assets/experiment-preparation.png",
+      "commit": "59c5c149450f970bace2deaa183857c275595853",
+      "sha256": "ac0bb296c29a278d5c38b10883f32453b59b8f27efd51d3b99c44ad87283132e",
+      "modified": false,
+      "license": "THIRD_PARTY_NOTICES.md (upstream application license unspecified)"
+    },
+    {
+      "file": "public/activities/gay-lussac/experiment-heating.png",
+      "source": "https://github.com/Cho-WH/bme280/blob/59c5c149450f970bace2deaa183857c275595853/gay-lussac/assets/experiment-heating.png",
+      "commit": "59c5c149450f970bace2deaa183857c275595853",
+      "sha256": "54c4896db9488dfd1c1991d154ece02151621b01935b3c5e35aae432c3a1ffa7",
+      "modified": false,
+      "license": "THIRD_PARTY_NOTICES.md (upstream application license unspecified)"
+    },
+    {
+      "file": "public/activities/gay-lussac/experiment-analysis.png",
+      "source": "https://github.com/Cho-WH/bme280/blob/59c5c149450f970bace2deaa183857c275595853/gay-lussac/assets/experiment-analysis.png",
+      "commit": "59c5c149450f970bace2deaa183857c275595853",
+      "sha256": "2ab1d7eefcf26e4a75d70f33df68abe5404178e912e46c5da2f018b56cc92c6f",
+      "modified": false,
+      "license": "THIRD_PARTY_NOTICES.md (upstream application license unspecified)"
+    }
+  ],
+  "upstreamCommit": "59c5c149450f970bace2deaa183857c275595853"
+}

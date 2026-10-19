@@ -1,0 +1,50 @@
+{
+  "toolchain": {
+    "cli": "0.5.1",
+    "target": "9.1.1",
+    "compiler": "13.0.1",
+    "targetCommit": "59408da502b825423ad2b0180bcf105927e7def0"
+  },
+  "targets": {
+    "magnetometer": {
+      "id": "magnetometer-uart",
+      "version": 1,
+      "name": "sensor-lab-magnetometer-v1",
+      "description": "Microbit Sensor Lab four-channel magnetic field UART program",
+      "source": "firmware/examples/magnetometer.js",
+      "protocol": { "codecId": "magnetometer-csv-v1", "startCommand": "start", "sampleIntervalMs": 100 }
+    },
+    "temperature": {
+      "id": "temperature-uart",
+      "version": 1,
+      "name": "sensor-lab-temperature-v1",
+      "description": "Microbit Sensor Lab built-in temperature UART program",
+      "source": "firmware/examples/temperature.js",
+      "protocol": { "codecId": "temperature-csv-v1", "startCommand": "start", "sampleIntervalMs": 1000 }
+    },
+    "light-level": {
+      "id": "light-level-uart",
+      "version": 1,
+      "name": "sensor-lab-light-level-v1",
+      "description": "Microbit Sensor Lab built-in relative light level UART program",
+      "source": "firmware/examples/light-level.js",
+      "protocol": { "codecId": "light-level-csv-v1", "startCommand": "start", "sampleIntervalMs": 100 }
+    },
+    "accelerometer": {
+      "id": "accelerometer-uart",
+      "version": 1,
+      "name": "sensor-lab-accelerometer-v1",
+      "description": "Microbit Sensor Lab four-channel acceleration UART program",
+      "source": "firmware/examples/accelerometer.js",
+      "protocol": { "codecId": "accelerometer-csv-v1", "startCommand": "start", "sampleIntervalMs": 100 }
+    },
+    "temperature-light": {
+      "id": "temperature-light-uart",
+      "version": 1,
+      "name": "sensor-lab-temperature-light-v1",
+      "description": "Microbit Sensor Lab built-in temperature and light UART example",
+      "source": "firmware/examples/temperature-light.js",
+      "protocol": { "codecId": "temperature-light-csv-v1", "startCommand": "start", "sampleIntervalMs": 1000 }
+    }
+  }
+}

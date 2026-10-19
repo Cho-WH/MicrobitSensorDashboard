@@ -1,0 +1,114 @@
+# 내장 센서 펌웨어 빌드
+
+`targets.json`에서 센서별 **원본 소스·ID·버전·프로토콜**을 지정하고 공통 빌드로 HEX를 만든다.
+앱의 센서 등록과 설치 허용 목록은 별도다. 빌드 성공만으로 학생용 센서가 추가되거나
+`public/firmware/`의 배포 파일이 교체되지는 않는다.
+
+## 실행
+
+저장소의 Node 버전을 사용한다. 최초 한 번 이 폴더에서 개발 의존성을 설치한다.
+
+```sh
+npm ci --ignore-scripts --no-audit --no-fund
+```
+
+저장소 루트에서:
+
+```sh
+npm run build:firmware -- --list
+npm run build:firmware -- magnetometer
+npm run build:firmware -- temperature
+npm run build:firmware -- light-level
+npm run build:firmware -- accelerometer
+npm run build:firmware -- temperature-light
+npm run build:firmware -- --all
+npm run check:firmware
+```
+
+이 폴더에서는 `npm run build -- <이름>`도 가능하다. 이름을 생략하면 기존처럼
+자기장을 빌드한다. `--check`는 지정 대상의 재빌드 결과·다운로드 소스·프로토콜이
+설치 허용 목록 및 배포 파일과 정확히 일치하는지 검사한다. 자기장·온도·밝기·가속도에
+`--check`를 사용할 수 있다. 빌드 전용인 `temperature-light`는 미등록 오류로 컴파일 전에 중단한다.
+`npm run check:firmware`는 기존처럼 자기장을 검사한다.
+
+| 빌드 이름 | 원본 | 시작 명령 | CSV 순서 | 명목 간격 | 앱 등록 |
+|---|---|---|---|---|---|
+| `magnetometer` | `firmware/examples/magnetometer.js` | `start` | X, Y, Z, 크기 | 100 ms | 기존 자기장 센서 |
+| `temperature` | `firmware/examples/temperature.js` | `start` | 보드 온도 (°C) | 1000 ms | 내장 온도 |
+| `light-level` | `firmware/examples/light-level.js` | `start` | 밝기 (0–255 상대값) | 100 ms | 내장 밝기(조도) |
+| `accelerometer` | `firmware/examples/accelerometer.js` | `start` | X, Y, Z, 크기 (mg) | 100 ms | 내장 가속도 |
+| `temperature-light` | `firmware/examples/temperature-light.js` | `start` | 온도, 밝기 | 1000 ms | 빌드 예제만 |
+
+자기장은 기존 소스를 그대로 사용한다. 예전 대시보드의 `firmware/legacy/magnetometer.hex`는
+시작 명령이 다르므로 이 빌드의 입력으로 사용하지 않는다. BMP280는 게이뤼삭의 고정 HEX를
+그대로 유지한다. 원본 빌드 입력을 재현하지 못했으므로 공통 소스 빌드 대상으로 등록하지 않는다.
+
+## 입력과 결과
+
+- `targets.json`: 대상별 소스 경로, 산출물 ID·버전, MakeCode 프로젝트 이름·설명, 통신 규약.
+  `protocol`은 소스 동작을 기록하는 선언이며, 이 값을 바꿔도 소스가 자동 수정되지는 않는다.
+- `pxt-template.json`: 공유하는 core + Bluetooth UART, 페어링 없는 기존 설정.
+  toolchain 버전은 `targets.json`에서 가져와 프로젝트에 넣는다.
+- `built/projects/<이름>/`: 생성된 `pxt.json`, LF로 정규화한 `main.ts`, MakeCode 작업 파일.
+- `built/artifacts/<이름>/`: 검증을 통과한 `<id>-v<버전>.hex`, `.ts`, `.build.json` 후보.
+  `built/`는 Git에서 제외한다. 실패한 컴파일이나 검증 결과로 마지막 검증 후보를 바꾸지 않는다.
+
+빌드는 고정된 도구 버전과 네이티브 이미지 해시를 확인하고, 새 HEX를 컴파일한 뒤 공식
+micro:bit V2 해석기로 읽는다. HEX에 내장된 `main.ts`와 프로젝트 설정도 입력과 비교한다.
+검증이 끝나면 해시·소스·설정·도구·네이티브 이미지·통신 규약을 빌드 기록에 남긴다.
+과거 작업 폴더의 `binary.hex`를 새 빌드 성공으로 오인하지 않도록 컴파일 전에 제거한다.
+
+## 다른 내장 센서 추가
+
+1. `firmware/examples/<이름>.js` 또는 `.ts`에 BLE UART 프로그램을 작성한다.
+2. `targets.json`의 `targets`에 항목을 하나 추가한다. 고유한 키·ID·프로젝트 이름과
+   소스 경로, 버전, 실제 시작 명령·CSV codec ID·명목 간격을 지정한다.
+3. `npm run build:firmware -- <이름>`을 실행한다. 공통 스크립트나 PXT 설정을 복제할 필요가 없다.
+4. 소스의 시작·중단·열 순서·단위·간격을 검사하고, HEX를 실제 장치에 설치해 수신을 확인한다.
+5. 앱에 도입할 때 검증한 HEX·TS·빌드 기록을 `public/firmware/`로 옮기고 출처·라이선스를
+   보존한다. `src/device/firmware.js`에 ID·버전·해시·규약을 명시적으로 등록한 뒤,
+   [센서 모듈 등록 절차](../../src/catalog/README.md)를 따른다. 빌드가 이 단계를 자동 수행하지 않는다.
+
+같은 ID·버전의 배포 파일이 바뀌면 `--check`는 실패한다. 기존 해시를 자동으로 갱신하지 말고
+변경 사유와 기존 자료 호환성을 확인한 후 새 버전으로 등록한다. 현재 앱의 펌웨어 허용 목록은
+ID별 단일 설치 버전을 제공하므로 여러 버전을 동시에 설치 지원할 때는 그 계약도 별도 확장한다.
+
+## 고정 도구와 네이티브 런타임
+
+공식 [MakeCode CLI](https://makecode.com/cli)와
+[micro:bit target](https://github.com/microsoft/pxt-microbit/tree/v9.1.1)을 사용한다.
+lockfile은 `pxt@0.5.1`, `pxt-microbit@9.1.1`, `pxt-core@13.0.1` 및 하위 의존성을 고정한다.
+최초 npm 설치는 네트워크가 필요하며, 앱은 이 개발 의존성을 로드하지 않는다.
+
+`runtime-cache/`는 이 core + Bluetooth 설정을 공식 MakeCode 클라우드 컴파일러에서 만든
+V1·V2 네이티브 이미지다. C++ 런타임을 소스부터 다시 빌드한다는 뜻은 아니다.
+`offline.cjs`는 고정된 PXT 버전의 네이티브 이미지 요청을 이 캐시로 연결한다. CLI의
+`--force`는 변경 가능한 `node_modules` 캐시를 건너뛰게 하며, 어댑터는 요청된 compile key와
+원본 바이트 해시를 검사한다. 등록되지 않은 키는 클라우드 요청 없이 실패한다.
+
+현재 프로필은 core + bluetooth와 단일 main.ts를 지원한다. 추가 네이티브 라이브러리나
+Bluetooth 설정 변경이 필요하면 공통 프로필·캐시 키·해시·라이선스·빌드 검사를 함께 검토한다.
+소리 등 새로운 API가 이 런타임에서 제공되는지는 해당 소스로 실제 빌드해 확인해야 한다.
+
+V1·V2를 포함하는 Universal HEX를 생성하지만 앱의 설치 허용 보드는 V2다. CODAL V2
+`v0.3.5`, classic runtime `v2.2.0-rc6`의 출처·고지는
+[펌웨어 고지](../../public/firmware/NOTICES.md)에 있다.
+
+## 이번 검증 결과와 한계
+
+공통화 후 자기장 HEX는 기존과 같은 1,363,980바이트이며 SHA-256도 동일하다.
+
+```text
+ccdaf8753785053273eee11572765ad1c8c5c90a1d4303357202ba82bbb24db3
+```
+
+현재 다섯 빌드 대상 모두 실제 컴파일과 V2 해석·내장 소스·설정 검사를 통과했다.
+온도·밝기·가속도는 연결이 끊기면 송신을 중단하고, 재연결 뒤 새 `start`를 기다린다.
+밝기의 첫 API 호출은 준비용으로 버리며 이후 실제 0은 그대로 송신한다. 준비 중 중단·재연결도
+이전 시작 요청을 되살리지 않는다. 가속도는 ±8g 설정이며 중력을 포함한 mg 원값을 보낸다.
+정식 Node 검사는 대상 선택, 입력 충돌, 캐시 손상, 실패 후 후보 보존, 다섯 배포 HEX의
+해시·설치 가드, 시작·중단·재연결·CSV 순서·명목 간격 및 밝기 준비 경합을 확인한다.
+해시는 설치기와 동일하게 UTF-8의 CRLF만 LF로 바꾼 뒤 계산하며 공백이나 BOM을 제거하지 않는다.
+
+실제 보드 설치·무선 성능·센서 정확도·나침반 보정 정확도는 이번에 검증하지 않았다.
+기존 허용 목록과 새 빌드 기록 모두 `hardwareVerified: false`를 유지한다.

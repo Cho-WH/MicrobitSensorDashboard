@@ -1,0 +1,88 @@
+import { createGuideView } from '../../src/ui/guide-view.js';
+import { getExperiment } from '../../src/catalog/index.js';
+
+const check = (condition, message) => { if (!condition) throw new Error(message); };
+const waitFor = async predicate => {
+  const deadline = performance.now() + 12000;
+  while (!predicate() && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+  check(predicate(), '3D 안내의 준비 또는 복구 응답을 받지 못했습니다.');
+};
+
+// Actual UI, controller facts injected explicitly. This does not claim physical USB/BLE verification.
+export async function runGuideTests(report = (_message) => {}) {
+  const host = document.createElement('div'); host.style.cssText = 'max-width:1100px;margin:20px auto'; document.body.append(host);
+  const errors = [], changes = [], connections=[]; let disconnects = 0, installs = 0, measurements = 0;
+  const view = createGuideView(host, { onChange: value => changes.push(value), onError: error => errors.push(error),
+    onDisconnect: () => disconnects++, onInstall: () => installs++, onConnect: options=>connections.push(options), onMeasure:()=>measurements++ });
+  const $ = selector => host.querySelector(selector);
+  const step = id => { const item=view.getProgress().steps.find(item=>item.id===id);check(item,`준비 단계 ${id} 없음`);$(`[data-guide-group="${item.group}"]`).click();const node=$(`[data-guide-step="${id}"]`);if(node.getClientRects().length)node.click(); };
+  const click = id => { const node = $(`[data-guide-action="${id}"]`); check(node && !node.hidden && !node.disabled, `${id} 조작을 실행할 수 없음`); node.click(); };
+  try {
+    view.open(getExperiment('magnetometer'));
+    view.render({ attemptId: 'mag-1', connected: true, receptionReady: true, receivedAt: Date.now(), calibration: 'unknown', canInstall: true, canConnect: true });
+    check(!$('[data-guide-step="vcc"]'), '내장 센서에 외장 배선 단계가 나타났습니다.');
+    check(!$('iframe').getAttribute('src'), '자기장 준비에서 BMP280 3D 자원을 요청했습니다.');
+    step('reception');click('measure');
+    check(measurements===1&&!view.getProgress().ready,'체크 없이 수신된 장치로 이동할 수 없거나 미확인 준비가 완료 처리됐습니다.');
+    for (const id of ['equipment', 'program']) { step(id); click(id === 'program' ? 'program-confirm' : 'confirm'); }
+    check(!view.getProgress().ready, '수신만으로 나침반 보정까지 완료했습니다.');
+    step('calibration'); click('confirm'); check(view.getProgress().ready, '명시적 보정 확인 후 준비가 완료되지 않았습니다.');
+    check(changes.at(-1).observations.calibration === 'user-confirmed', '보정 확인의 근거가 사라졌습니다.');
+    view.render({ attemptId: 'mag-2', connected: false, receptionReady: false, connecting: true, busy: true, deviceMessage: 'micro:bit를 연결하는 중…' });
+    check(!view.getProgress().ready, '새 연결 시도가 이전 보정·수신 확인을 재사용했습니다.');
+    step('connection'); click('disconnect'); check(disconnects === 1, '연결 중 취소를 실행하지 못했습니다.');
+    check($('.guide-connection-status').textContent.includes('연결하는 중'), '실제 연결 상태를 표시하지 않았습니다.');
+    view.render({attemptId:'mag-2',connected:false,canConnect:true,canReconnect:true});
+    click('reconnect');check(connections.at(-1).reuseDevice===true,'이전 장치 재연결이 새 선택으로 바뀌었습니다.');
+    click('connect');check(connections.at(-1).reuseDevice===false,'다른 장치 선택이 이전 장치를 재사용했습니다.');
+    report('실제 준비 UI · 자기장 보정 근거·새 연결 무효화·연결 취소');
+
+    view.open(getExperiment('bmp280'), { reset: true });
+    view.render({ attemptId: 'bmp-1', connected: false, receptionReady: false, canInstall: true,
+      programmerState: { status: 'error', message: 'USB 전송을 마치지 못했어요.', progress: null } });
+    check(!view.getProgress().observations.programUserConfirmed, '새 준비가 이전 프로그램 확인을 복원했습니다.');
+    step('program'); check($('.guide-device-status').textContent.includes('마치지'), 'USB 실패 원인을 표시하지 않았습니다.');
+    click('install'); check(installs === 1, 'USB 재시도 콜백이 실행되지 않았습니다.');
+    view.render({ attemptId: 'bmp-1', connected: false, busy: true, programmerState: { status: 'flashing', progress: 42, message: '프로그램 설치 중', deviceName: 'micro:bit V2' } });
+    check($('.guide-device-status').textContent.includes('42%'), 'USB 진행률을 표시하지 않았습니다.');
+    check($('[data-guide-action="program-confirm"]').disabled, '설치 중에 수동 프로그램 확인을 허용했습니다.');
+    report('실제 준비 UI · USB 실패·진행률·재시도 표시');
+
+    check(!$('iframe').getAttribute('src'), '배선 안내를 열기 전에 3D 자원을 요청했습니다.');
+    view.render({ attemptId: 'bmp-1', connected: false, busy: false }); step('vcc');
+    check($('iframe').getAttribute('src').includes('/public/viewers/bmp280/index.html'), '로컬 3D 주소가 잘못되었습니다.');
+    await waitFor(() => ['applied', 'unavailable'].includes($('.guide-model').dataset.viewerState));
+    const viewerState = $('.guide-model').dataset.viewerState;
+    check($('iframe').contentDocument?.querySelector('#viewport'), '원본 3D 문서를 로드하지 못했습니다.');
+    if (viewerState === 'applied') {
+      check($('iframe').contentDocument.querySelector('#viewport canvas'), '3D 적용 응답에 실제 canvas가 없습니다.');
+      click('right'); await waitFor(() => $('.guide-model').dataset.viewerState === 'applied');
+      click('detail'); await waitFor(() => $('.guide-model').dataset.viewerState === 'applied');
+    }
+    $('iframe').dispatchEvent(new Event('error'));
+    check($('.guide-model').dataset.viewerState === 'unavailable', '3D 실패 상태를 표시하지 않았습니다.');
+    check($('.guide-wiring tbody').rows.length === 4 && !$('.guide-model').hidden, '3D 실패 시 배선 표가 사라졌습니다.');
+    click('confirm'); check(view.getProgress().steps.find(item => item.id === 'vcc').complete, '3D 실패 후 배선 확인을 계속하지 못했습니다.');
+    check($('[data-guide-step="gnd"]').getAttribute('aria-current')==='step'&&document.activeElement===$('.step-title'),'확인 후 다음 단계/제목 초점 이동 실패');
+    click('previous');check(!view.getProgress().steps.find(item=>item.id==='gnd').complete,'이전/탐색만으로 준비 완료');
+    click('retry-model');await waitFor(()=>['applied','unavailable'].includes($('.guide-model').dataset.viewerState));
+    report(`실제 준비 UI · 원본 3D 지연 로드(${viewerState === 'applied' ? 'WebGL 적용' : '배선 표 복구'})·실패 후 준비 계속`);
+
+    view.open(getExperiment('bmp280','gay-lussac'),{reset:true,prepared:true});
+    view.render({attemptId:'activity',connected:false});
+    check($('[data-guide-action="quick-confirm"]').disabled,'준비된 장치 확인을 생략했습니다.');
+    for(const checkbox of host.querySelectorAll('[data-quick-confirm]')){checkbox.checked=true;checkbox.dispatchEvent(new Event('change'));}
+    click('quick-confirm');check(!view.getProgress().ready,'빠른 준비만으로 수신/배터리/배치까지 통과했습니다.');
+    step('placement');check(!$('.guide-placement').hidden&&$('.guide-model').hidden,'용기 배치에 배선 모델이 표시되었습니다.');
+    check($('.guide-placement img').src.includes('/public/activities/gay-lussac/setup.svg'),'원본 배치 그림 누락');
+    click('confirm');check($('[data-guide-action="measure"]').disabled,'새 수신 없이 준비 결과에서 측정 이동을 허용했습니다.');
+    view.render({attemptId:'activity',connected:true,receptionReady:true});
+    click('measure');check(measurements===2&&!view.getProgress().steps.find(item=>item.id==='battery').complete,'수신 후 측정 이동이 배터리 확인에 막히거나 확인 이력을 조작했습니다.');
+    view.render({attemptId:'activity',connected:true,receptionReady:false});
+    check($('[data-guide-action="measure"]').disabled,'수신이 멈춰도 측정 이동이 활성화되어 있습니다.');
+    step('battery');view.render({attemptId:'activity',connected:false,canConnect:true,canReconnect:true});
+    check(!$('[data-guide-action="reconnect"]').hidden,'배터리 검사 중 끊긴 장치의 복구 경로 누락');
+    report('실제 준비 UI · 체크 이력과 측정 가능 분리·수신 중단 차단·활동 배치·배터리 복구');
+    check(errors.length === 0, errors.join('\n'));
+  } finally { view.dispose(); host.remove(); }
+}

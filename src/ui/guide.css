@@ -1,0 +1,91 @@
+/* Group navigation and parallel visual/instructions adapted from G/ui/guide.css. */
+.guide { --guide-motion-duration:220ms; --guide-motion-easing:cubic-bezier(.22,1,.36,1); }
+.guide-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.guide-status { color:var(--teal); font-size:13px; font-weight:600; margin:0; }
+.guide-top button { padding:5px 0; min-height:32px; font-size:12px; }
+.guide-progress { display:flex; list-style:none; padding:0; margin:0 0 16px; gap:8px; }
+.guide-progress li { flex:1; min-width:0; }
+.guide-progress button { border:0; border-top:3px solid var(--line); border-radius:0; background:transparent; width:100%; min-height:40px; padding:8px 5px; font-size:13px; justify-content:flex-start; font-weight:400; white-space:nowrap; }
+.guide-progress .completed::after { content:'✓'; color:var(--teal); margin-left:auto; }
+.guide-progress button[aria-current] { color:var(--teal); border-color:var(--teal); font-weight:700; }
+.guide-progress button:focus-visible { outline-offset:-3px; }
+.guide-layout { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(320px,1fr); gap:28px; align-items:start; overflow-anchor:none; }
+.guide-visual { min-width:0; background:#edf3f2; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.step-panel { min-width:0; padding:4px 0; }
+.step-counter { color:var(--teal); font-size:11px; letter-spacing:.08em; margin:8px 0 12px; }
+.step-title { font-size:25px; line-height:1.45; letter-spacing:-.04em; word-break:keep-all; margin:0 0 18px; }
+.step-title:focus { outline:none; }
+.step-description { color:var(--muted); line-height:1.85; font-size:15px; margin:0; overflow-wrap:anywhere; }
+.step-content[data-group=wiring] { min-height:var(--wiring-content-height,220px); }
+.guide-substeps { display:flex; flex-wrap:wrap; list-style:none; padding:0; margin:0 0 16px; gap:6px; }
+.guide-substeps button { padding:5px 10px; min-height:32px; font-size:12px; font-weight:400; background:transparent; }
+.guide-substeps [aria-current] { background:var(--pale); color:var(--teal); border-color:var(--teal); }
+.guide-substeps [data-complete=true]::before { content:'✓'; }
+.guide-evidence { min-height:22px; color:var(--teal); font-size:13px; margin:12px 0; }
+.step-actions,.guide-device-actions,.guide-program-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.step-actions { margin-top:20px; }
+.step-actions .primary { flex:1; }
+.guide-device-actions:not([hidden]) { margin:12px 0; }
+.guide-note,.guide-connection-status,.guide-device-status { font-size:13px; line-height:1.7; color:var(--muted); white-space:pre-line; }
+.guide-connection-status { border-left:3px solid #9cbeb9; padding-left:12px; }
+.guide-program { margin-top:12px; padding:16px; border:1px solid var(--line); border-radius:10px; background:white; }
+.guide-program strong { font-size:13px; }
+.guide-program-actions { flex-direction:column; }
+.guide-program progress { width:100%; height:9px; margin:0 0 16px; accent-color:var(--teal); }
+.guide-program .quiet-button { font-size:12px; }
+.model-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:8px; background:#f9fbfa; border-bottom:1px solid var(--line); }
+.viewer-modes { display:flex; flex-wrap:wrap; gap:4px; }
+.viewer-modes button,.wiring-view-controls button { font-size:12px; min-height:32px; padding:6px 10px; }
+.viewer-modes button[aria-pressed=true],.wiring-view-controls button[aria-pressed=true] { background:var(--pale); border-color:#9bbab4; color:var(--teal); }
+.viewer-large { font-size:12px; margin:0 6px; white-space:nowrap; }
+.wiring-view-controls { padding:6px 10px; display:flex; flex-wrap:wrap; gap:5px; border-bottom:1px solid var(--line); }
+.wiring-view-controls [data-guide-action=restore] { margin-left:auto; }
+.guide-frame { display:block; width:100%; height:clamp(280px,calc(100dvh - 410px),680px); border:0; background:#edf3f5; }
+.guide-model-status { margin:0; padding:6px 12px; color:var(--muted); font-size:12px; }
+.guide-table-panel { padding:24px; min-height:330px; }
+.guide-table-panel > p { font-size:13px; color:var(--muted); line-height:1.8; }
+.guide-wiring { width:100%; border-collapse:collapse; font-size:13px; }
+.guide-wiring caption { text-align:left; font-size:16px; font-weight:600; margin:0 0 20px; }
+.guide-wiring th,.guide-wiring td { padding:14px 8px; border-bottom:1px solid #ccdcd8; text-align:left; overflow-wrap:anywhere; }
+.guide-wiring small { display:block; font-size:10px; margin-top:4px; color:var(--teal); }
+.guide-wiring .is-current { background:#dcece5; }
+.wiring-note { border-top:1px solid var(--line); margin-top:20px; padding-top:12px; font-size:12px; line-height:1.8; color:var(--muted); }
+.wiring-note summary { cursor:pointer; color:var(--teal); }
+.guide-equipment { padding:24px; }
+.equipment-section + .equipment-section { margin-top:24px; }
+.equipment-section h4 { margin:0 0 12px; font-size:13px; color:var(--teal); }
+.equipment-list { list-style:none; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; padding:0; margin:0; }
+.equipment-list li { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px; border:1px solid #d7e3df; border-radius:8px; background:#ffffffb8; font-size:13px; }
+.equipment-list .help-trigger { flex:none; }
+.guide-placement { margin:0; padding:20px; }
+.guide-placement img { display:block; width:100%; height:clamp(300px,calc(100dvh - 340px),510px); object-fit:contain; }
+.guide-placement figcaption { font-size:12px; line-height:1.7; text-align:center; margin-top:10px; color:var(--muted); }
+.guide-reception { padding:28px; }
+.guide-values { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.guide-value { min-width:0; container-type:inline-size; padding:18px; background:white; border:1px solid var(--line); border-radius:10px; }
+.guide-value span { display:block; font-size:13px; color:var(--muted); }
+.guide-value strong { display:block; font-size:clamp(18px,15cqi,32px); font-weight:600; margin:12px 0 2px; height:2em; line-height:1.5; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:auto; scrollbar-width:thin; text-align:right; }
+.guide-value small { display:block; min-height:18px; line-height:18px; color:var(--muted); text-align:right; }
+.guide-reception[data-fresh=false] .guide-value strong { color:#768b8e; }
+.guide-last-received { min-height:3.4em; line-height:1.7; font-variant-numeric:tabular-nums; color:var(--muted); font-size:12px; margin:18px 0; }
+.guide-checks { list-style:none; padding:14px 0 0; margin:0; border-top:1px solid var(--line); display:flex; gap:12px 18px; flex-wrap:wrap; font-size:13px; }
+.guide-checks .complete { color:var(--teal); }
+.calibration-instructions { font-size:13px; line-height:1.9; padding-left:20px; margin:20px 0 0; }
+.guide-device-visual { padding:36px 28px; min-height:330px; }
+.usb-diagram { display:flex; justify-content:space-between; align-items:center; gap:16px; margin:30px 0; }
+.usb-diagram span:first-child,.usb-diagram strong { padding:24px 14px; border:2px solid #719e9a; border-radius:12px; background:white; font-size:16px; }
+.guide-device-visual h4 { font-size:18px; margin:0 0 12px; }
+.guide-device-visual p,.guide-device-visual small { color:var(--muted); font-size:13px; line-height:1.8; }
+.guide-quick { font-size:13px; line-height:1.7; }
+.guide-quick label { display:flex; align-items:flex-start; gap:10px; margin:12px 0; }
+.guide-quick input { width:18px; height:18px; margin-top:2px; accent-color:var(--teal); flex-shrink:0; }
+.guide-summary { padding:24px; }
+.guide-summary h3 { margin:8px 0 16px; font-size:20px; }
+.guide-summary ul { list-style:none; padding:0; margin:0; }
+.guide-summary li { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); padding:7px 0; font-size:13px; }
+.guide-summary button { padding:4px 6px; min-height:30px; white-space:nowrap; font-size:12px; }
+.guide [hidden] { display:none !important; }
+@media(min-width:1600px) { .guide-layout { gap:40px; } .step-title { font-size:29px; } .step-panel { padding-top:12px; } }
+@media(max-width:850px) { .guide-layout { grid-template-columns:minmax(0,1fr); gap:20px; } .guide-top { flex-wrap:wrap; } .guide-progress { overflow-x:auto; gap:10px; } .guide-progress li { flex:0 0 auto; min-width:90px; } .step-panel { padding:0; } .step-content[data-group=wiring] { min-height:0; } .guide-frame { height:350px; } .guide-visual { order:1; } .step-panel { order:0; } .step-actions { margin-top:12px; } }
+@media(max-width:480px) { .guide-progress button { font-size:12px; } .step-title { font-size:22px; } .equipment-list { grid-template-columns:1fr; } .guide-equipment,.guide-table-panel,.guide-reception { padding:16px; } .guide-value { padding:12px; } .guide-value strong { font-size:clamp(18px,15cqi,25px); } .guide-frame { height:310px; } .guide-table-panel { min-height:0; } .guide-wiring th,.guide-wiring td { padding:12px 5px; font-size:12px; } .usb-diagram { gap:8px; } .usb-diagram span:first-child,.usb-diagram strong { font-size:13px; padding:18px 10px; } }
+@media(prefers-reduced-motion:reduce) { .guide { --guide-motion-duration:0ms; } }

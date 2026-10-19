@@ -1,0 +1,7 @@
+﻿sample_id,timestamp,temperature_c,pressure_hpa,temperature_validity,pressure_validity
+1,2023-11-14T22:13:20.000Z,0,1000,valid,valid
+2,2023-11-14T22:13:21.000Z,1,1003,valid,valid
+3,2023-11-14T22:13:22.000Z,2,1006,valid,valid
+4,2023-11-14T22:13:23.000Z,3,1009,valid,valid
+5,2023-11-14T22:13:24.000Z,4,1012,valid,valid
+6,2023-11-14T22:13:25.000Z,5,1015,valid,valid

@@ -1,0 +1,19 @@
+{
+  "target": "pxt-microbit@9.1.1",
+  "pxt": "pxt-core@13.0.1",
+  "source": "Microsoft MakeCode official cloud compilation cache",
+  "files": [
+    {
+      "compileSha": "4170adf21cbebf715533d620ed1b1152d95468b9a77306a0091d4cbcd8504709",
+      "file": "4170adf21cbebf715533d620ed1b1152d95468b9a77306a0091d4cbcd8504709.hex",
+      "sha256": "10e36a21822c1fe0f27c4240114968365267ad80e920df27fb7d9998de7a925f",
+      "bytes": 635365
+    },
+    {
+      "compileSha": "11f3cd7e548072767ba7e4f2acaa47fde30e3337a625e615f56b881fb9b8d228",
+      "file": "11f3cd7e548072767ba7e4f2acaa47fde30e3337a625e615f56b881fb9b8d228.hex",
+      "sha256": "7e27d51e90670100b9785e0c4b2cbb4ecf21fce1554751cdd06a44167d3dd7be",
+      "bytes": 885059
+    }
+  ]
+}

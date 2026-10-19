@@ -1,0 +1,7 @@
+{
+  "name": "microbit-sensor-lab-firmware",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "devDependencies": { "pxt": "0.5.1", "pxt-microbit": "9.1.1" }
+}

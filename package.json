@@ -1,0 +1,17 @@
+{
+  "name": "microbit-sensor-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.18.0 <25" },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "test": "node --test tests/unit/*.test.mjs",
+    "typecheck": "tsc --project jsconfig.json",
+    "test:browser": "node scripts/dev.mjs --browser-tests",
+    "build": "node scripts/build.mjs",
+    "build:firmware": "node dev/firmware/build.mjs",
+    "check:firmware": "node dev/firmware/build.mjs magnetometer --check"
+  },
+  "devDependencies": { "typescript": "5.9.3" }
+}

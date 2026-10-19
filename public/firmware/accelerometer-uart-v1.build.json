@@ -1,0 +1,37 @@
+{
+  "id": "accelerometer-uart",
+  "version": 1,
+  "target": "pxt-microbit@9.1.1",
+  "compiler": "pxt-core@13.0.1",
+  "cli": "pxt@0.5.1",
+  "targetCommit": "59408da502b825423ad2b0180bcf105927e7def0",
+  "source": "firmware/examples/accelerometer.js",
+  "sourceSha256": "c82ea1593bc8000cb8a092eb2d1515b468dbf23acc709fdff30d759aab392b8d",
+  "configSha256": "b65893041c02a25224cbaeed6ebdb2d1eca90c045dc9596e5b25e45756aacc30",
+  "hexSha256": "5a790f86da1bd3d38fcebe4439a6a79f137491a4fe6663de8d2da15bee58ecaf",
+  "digestMode": "utf8-crlf-to-lf",
+  "bytes": 1348620,
+  "runtimeFiles": [
+    {
+      "compileSha": "4170adf21cbebf715533d620ed1b1152d95468b9a77306a0091d4cbcd8504709",
+      "file": "4170adf21cbebf715533d620ed1b1152d95468b9a77306a0091d4cbcd8504709.hex",
+      "sha256": "10e36a21822c1fe0f27c4240114968365267ad80e920df27fb7d9998de7a925f",
+      "bytes": 635365
+    },
+    {
+      "compileSha": "11f3cd7e548072767ba7e4f2acaa47fde30e3337a625e615f56b881fb9b8d228",
+      "file": "11f3cd7e548072767ba7e4f2acaa47fde30e3337a625e615f56b881fb9b8d228.hex",
+      "sha256": "7e27d51e90670100b9785e0c4b2cbb4ecf21fce1554751cdd06a44167d3dd7be",
+      "bytes": 885059
+    }
+  ],
+  "protocol": {
+    "codecId": "accelerometer-csv-v1",
+    "startCommand": "start",
+    "sampleIntervalMs": 100
+  },
+  "embeddedSourceMatches": true,
+  "embeddedConfigMatches": true,
+  "officialV2Reader": true,
+  "hardwareVerified": false
+}

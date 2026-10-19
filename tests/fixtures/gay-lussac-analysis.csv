@@ -1,0 +1,4 @@
+﻿sample_id,timestamp,temperature_c,pressure_hpa,temperature_validity,pressure_validity,절대온도 (K) [calc-kelvin],calc-kelvin:validity,calc-kelvin:reason,calc-kelvin:meta,"'=압력/온도, ""비율"" [calc-divide]",calc-divide:validity,calc-divide:reason,calc-divide:meta
+1,2023-11-14T22:13:20.000Z,0,1000,valid,valid,273.15,valid,,"{""name"":""절대온도"",""unit"":""K""}",,invalid,0으로 나눌 수 없습니다.,"{""name"":""=압력/온도, \""비율\"""",""unit"":null}"
+3,2023-11-14T22:13:22.000Z,2,1006,valid,valid,275.15,valid,,"{""name"":""절대온도"",""unit"":""K""}",503,valid,,"{""name"":""=압력/온도, \""비율\"""",""unit"":null}"
+4,2023-11-14T22:13:23.000Z,3,1009,valid,valid,276.15,valid,,"{""name"":""절대온도"",""unit"":""K""}",336.3333333333333,valid,,"{""name"":""=압력/온도, \""비율\"""",""unit"":null}"
