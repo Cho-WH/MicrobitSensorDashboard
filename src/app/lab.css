@@ -3,7 +3,6 @@
 .lab-identity p { color: var(--muted); margin: 0; }
 .lab-brand { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 #experiment-title { font-size: 13px; }
-#legacy-link { font-size: 12px; margin-left: auto; white-space: nowrap; }
 .lab-shell { max-width: 1800px; margin: auto; padding: 12px 24px 32px; }
 .lab-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 16px; }
 .lab-nav { display: flex; flex-wrap: wrap; gap: 4px; }

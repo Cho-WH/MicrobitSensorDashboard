@@ -1,97 +1,53 @@
-# Microbit Sensor Dashboard (마이크로비트 센서 대시보드)
+# 센서 실험실 · Microbit Sensor Lab
 
-마이크로비트(micro:bit) 센서 데이터를 Web Bluetooth로 받아 실시간 카드, 그래프, 로그, CSV 다운로드로 보여 주는 교육용 웹 대시보드입니다.
+micro:bit 센서를 선택하고 장비 준비·측정·저장·분석까지 이어서 사용하는 교육용 웹앱입니다.
 
-**통합 실험실 M2:** [센서 실험실](lab.html)에서 BMP280·내장 자기장·온도·밝기(조도)·가속도 센서와 게이뤼삭 활동을 선택하고, 장비 준비·프로그램 설치·연결 확인을 거쳐 기록·저장·분석할 수 있습니다. [UX 보완·재사용 재점검](docs/m2-ux-review.md)에 따라 단계별 준비·활동 안내·측정 표시를 보완하고 소프트웨어 검증을 마쳤습니다. 실제 장비 인수는 남아 있습니다. [M2 구현·검증 범위](docs/m2-implementation.md), [실행 명령과 저장·파일 계약](docs/m1-implementation.md)을 참고하세요. 아래의 빠른 시작과 공유 안내는 기존 대시보드(`index.html`) 기준입니다.
+**[센서 실험실 열기](https://cho-wh.github.io/MicrobitSensorDashboard/)** · [모의 장치로 살펴보기](https://cho-wh.github.io/MicrobitSensorDashboard/?mock=1)
 
-수업에서 바로 쓰는 흐름은 웹앱 안에 모아 두었습니다. 처음 연결하거나 펌웨어를 준비할 때는 상단 **사용 안내**를 열고, 센서 종류나 CSV 필드가 달라질 때는 **실험 설정**을 사용하세요.
+## 사용하기
 
-## 웹앱 실행 방법
+1. 내장 자기장·온도·밝기(조도)·가속도 또는 외장 BMP280 센서를 선택합니다. 게이뤼삭 활동도 선택할 수 있습니다.
+2. 장비 준비 안내에 따라 micro:bit V2에 해당 센서의 프로그램을 USB로 설치합니다.
+3. Bluetooth로 연결합니다. 자기장은 앱에서 보정 시작 또는 이번 보정 생략을 선택합니다.
+4. 새 값이 연속으로 들어오는 것을 확인한 뒤 측정 화면에서 기록을 시작합니다.
+5. 기록을 마치고 저장된 자료를 분석하거나 전체 실험 JSON·측정값 CSV로 내보냅니다.
 
-### 아래 방법 중 선택하세요.
+프로그램 설치와 무선 연결은 해당 Web USB·Web Bluetooth 기능을 지원하는 브라우저에서 사용하세요.
+HTTPS 또는 localhost가 필요합니다. 모의 장치는 실제 센서 측정이 아닙니다.
+실험 자료는 사용하는 브라우저에 보관되므로 다른 기기로 옮길 때는 전체 실험 JSON을 사용합니다.
 
-- Github pages: https://cho-wh.github.io/MicrobitSensorDashboard/ 접속
-- 로컬 실행: 로컬 서버 실행 후 브라우저에서 접속합니다.
+기본 주소에서 새 센서 실험실이 열립니다. `lab.html`도 같은 앱이며 센서·활동 주소로 직접 들어갈 수 있습니다.
+이전 대시보드의 설정·QR 공유 UI는 제공하지 않습니다. 새 앱의 수업 설정 링크·QR은 M3 범위로 아직 구현하지 않았습니다.
 
-> Web Bluetooth는 보안 정책상 `https://` 주소 또는 로컬 테스트 주소인 `http://localhost`에서만 동작합니다.
+## 로컬 개발과 배포
 
-## 빠른 시작
+Node.js 24.18 이상, 25 미만을 사용합니다.
 
-1. 웹앱에 접속합니다.
-2. 상단 **사용 안내**를 열고 **MakeCode에서 편집하기**로 micro:bit 펌웨어를 준비합니다.
-3. MakeCode에서 받은 `.hex` 파일을 micro:bit에 넣습니다.
-4. 웹앱으로 돌아와 **실험 설정**에서 시작 명령과 CSV 필드 순서를 펌웨어와 같게 맞춥니다.
-5. **디바이스 연결**을 누르고 `BBC micro:bit`를 선택합니다.
-
-micro:bit 없이 화면과 설정 흐름만 먼저 확인하려면 주소 뒤에 `?mock=1`을 붙입니다.
-
-```text
-https://cho-wh.github.io/MicrobitSensorDashboard/?mock=1
-http://localhost:8080/?mock=1
+```sh
+npm ci
+npm run dev
+npm run typecheck
+npm test
+npm run build
 ```
 
-## 앱 안에서 할 수 있는 일
+`npm run dev`의 기본 주소는 `http://localhost:8080/`입니다.
+브라우저 검사는 `/tests/browser/`에서 실행합니다. 정적 빌드 결과는 `dist/`에 생성됩니다.
 
-- **사용 안내**: 마이크로비트 용 MakeCode 프로젝트 열기, 펌웨어 준비, 다운로드를 할 수 있습니다.
-- **실험 설정**: 데이터 종류와 갯수, 그래프 표시 항목을 실험에 맞게 바꿀 수 있습니다.
-- **수업 공유**: 교사가 설정한 웹앱 세팅을 링크나 QR로 학생들과 쉽게 공유할 수 있습니다.
-- **CSV 다운로드**: 실험 중 받은 측정 로그를 분석용 파일로 저장할 수 있습니다.
+GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위 검사·빌드가 성공한 뒤
+`dist/`를 배포합니다. 저장소 Settings → Pages의 Source는 **GitHub Actions**를 사용합니다.
+루트 홈, 다섯 센서, 게이뤼삭 활동의 진입 페이지를 함께 생성하므로 직접 진입과 새로고침을 지원합니다.
+기존 대시보드의 `js/`·`styles.css`는 배포하지 않습니다.
 
-자세한 브라우저별 안내, 펌웨어 작성 흐름, 포크 개발 정보는 아래 개발자 문서와 웹앱 안의 안내를 함께 참고하세요.
+## 구조와 개발 문서
 
-## 수업 공유
-
-**실험 설정**을 완료한 뒤 **수업 공유** 를 눌러서 URL과 QR을 공유할 수 있습니다. 이 링크로 들어온 학생들은 같은 제목, 시작 명령, 필드 이름, 단위, CSV 파일명으로 웹앱을 바로 열 수 있습니다. 계정이나 서버 없이 URL만으로 동일한 실험 환경을 배포하여, 학생마다 설정이 조금씩 달라지는 일을 방지할 수 있습니다.
-
-- 온라인 수업에서는 공유 링크를 LMS, 채팅, 문서에 붙여 넣습니다.
-- 오프라인 수업에서는 **QR 표시**를 눌러 학생들이 스마트폰이나 태블릿으로 바로 열게 할 수 있습니다.
-- 센서나 측정 항목을 바꾼 뒤에는 링크를 다시 복사해 최신 설정을 공유합니다.
-
-## 맞춤형 센서로 바꾸기
-초기 세팅은 마이크로비트의 자기장 값을 읽도록 펌웨어와 웹앱이 세팅되어 있습니다. 이것을 실험에 따라 쉽게 수정하여 사용할 수 있습니다.
-1. 웹앱의 **실험 설정**에서 측정할 값 세팅을 바꿉니다.
-2. MakeCode에서 펌웨어 양식을 간단히 수정하세요. 수정 방법은 **사용 안내**의 **펌웨어 가이드**를 누르면 상세히 설명되어 있습니다.
-
-
----
-
-## 포크해서 나만의 프로젝트 만들기
-
-이 프로젝트를 공개한 것은 단순 센서 교체뿐 아니라, 특정 수업·실험·전시·연구 주제에 맞춘 micro:bit 센서 웹앱을 제작하는 데 출발점으로 사용하실 수 있도록 하기 위함입니다.
-MIT 라이센스를 따라 누구든 자유롭게 복제 및 수정이 가능합니다. 
-
-자세한 개발 흐름은 [포크 개발자 가이드](docs/forking-guide.md)를 참고하세요.
-
-### 개발자가 자주 보는 파일
-
-- `js/sensor-config.js`: 앱 제목, 시작 명령, CSV 파일명, 기본 필드, 표시 항목 같은 기본 설정
-- `js/makecode-share.js`: 웹앱의 **MakeCode에서 편집하기** 버튼이 여는 공유 프로젝트 링크
-- `js/config.js`: 실험 설정을 URL로 공유하기 위한 인코딩/디코딩 로직
-- `js/ui/experiment-settings.js`: 실험 설정 모달, 필드 편집, 링크 복사, QR 표시 UI
-- `vendor/qrcodegen.js`, `vendor/simple-qrcode.js`: 수업 공유용 QR 코드 생성
-
-MakeCode 프로젝트를 새로 만들거나 공유 링크를 갱신할 때는 Bluetooth UART service와 페어링 없이 연결 가능한 Bluetooth 설정을 반드시 다시 확인할 것을 권장합니다. 자세한 점검 순서는 [포크 개발자 가이드](docs/forking-guide.md)의 MakeCode Bluetooth 설정 확인을 참고하세요.
-
-## 개발자 문서
-
-- [통합 센서 실험 앱 기획](docs/unified-sensor-lab-plan.md): 이 저장소 안의 센서·실험 활동 통합, 게이뤼삭 기반 공통 측정·분석, 수업 공유를 정의한 구현 전 기획
-- [포크 개발자 가이드](docs/forking-guide.md): 자기 프로젝트로 발전시키는 작업 흐름
-- [프로젝트 구조와 데이터 흐름](docs/project-overview.md): 앱의 주요 계층과 확장 지점
-- [데이터 프로토콜](docs/protocol.md): micro:bit와 웹앱 사이의 CSV 통신 규칙
-- [펌웨어 작성 가이드](docs/firmware-guide.md): MakeCode 펌웨어 구조와 실전 판단
-- [펌웨어 예제 목록](firmware/examples/README.md): 기본 예제와 간단한 센서 예제
-
-## 배포 전 확인
-
-- `?mock=1`에서 카드, 차트, 로그, CSV 버튼이 정상 동작하는지 확인합니다.
-- 실제 micro:bit 연결에서 첫 데이터가 들어오는지 확인합니다.
-- 펌웨어 전송 순서와 **실험 설정**의 CSV 필드 순서가 같은지 확인합니다.
-- **수업 공유**의 링크 복사와 QR 표시가 배포 주소에서 정상 동작하는지 확인합니다.
-- 앱 안에서 여는 문서 링크와 GitHub Pages 배포 주소가 올바른지 확인합니다.
+- [기획](docs/unified-sensor-lab-plan.md) · [기술 설계](docs/unified-sensor-lab-architecture.md)
+- [M2 구현·검증 범위](docs/m2-implementation.md) · [실기기 확인 기록](docs/hardware-acceptance-2026-10-19.md)
+- [센서·활동 모듈 등록](src/catalog/README.md)
+- [펌웨어 빌드·프로토콜](dev/firmware/README.md)
+- [저장·파일 계약](docs/m1-implementation.md)
 
 ## 라이선스와 출처
 
-이 프로젝트는 micro:bit 센서 수업과 특화 웹앱 개발에 재사용할 수 있는 오픈소스 템플릿을 목표로 합니다. 이 프로젝트는 자바실험실(javalap.org)의 영향을 받았습니다.
-
-QR 코드 생성은 `vendor/qrcodegen.js`에 포함된 [Project Nayuki QR Code generator library](https://www.nayuki.io/page/qr-code-generator-library)를 사용합니다. 해당 라이브러리는 MIT 라이선스이며, 라이선스 전문은 vendored 파일 헤더에 포함되어 있습니다.
-
+저장소의 [LICENSE](LICENSE)와 [외부 자원 고지](THIRD_PARTY_NOTICES.md)를 참고하세요.
+재사용한 라이브러리·그림·펌웨어 런타임에는 각각의 원본 라이선스와 고지가 적용됩니다.

@@ -3,7 +3,7 @@ import { createTransport } from '../device/transport.js';
 import { createMockBleClient } from '../device/mock-client.js';
 import { createProgrammer } from '../device/programmer.js';
 import { createGuideView } from '../ui/guide-view.js';
-import { appBaseUrl, parseRoute, routeUrl, sameExperiment } from './routes.js';
+import { parseRoute, routeUrl, sameExperiment } from './routes.js';
 import { createRepository } from '../data/repository.js';
 import { openRunStore, openTemporaryRunStore } from '../data/run-store.js';
 import { createSession, restoreSession } from '../measurement/session.js';
@@ -360,7 +360,7 @@ export function createController(root = document, { repository = null, deviceTra
   listen('export-json',()=>exportFile('json'));listen('export-csv',()=>exportFile('csv'));
   $('open-file').addEventListener('click',()=>input('file-input').click(),{signal});
   input('file-input').addEventListener('change',()=>{const file=input('file-input').files[0];input('file-input').value='';act(()=>readFile(file));},{signal});
-  for(const id of ['legacy-link','mock-link']) $(id).addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) location.assign(id === 'mock-link' ? routeUrl(context,'prepare',{mock:true}).href : new URL('index.html',appBaseUrl).href);});},{signal});
+  $('mock-link').addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) location.assign(routeUrl(context,'prepare',{mock:true}).href);});},{signal});
   window.addEventListener('beforeunload',event=>{const draftsSaved=analysis.flush(),saved=store?.getState();if(!draftsSaved || session?.getState().recording || (saved?.writable && saved.status!=='clean') || (saved?.temporary && exportedRevision!==saved.runRevision)) {event.preventDefault();event.returnValue='';}},{signal});
   document.addEventListener('visibilitychange',()=>{if(document.hidden && store?.getState().writable){analysis.flush();store.flush().catch(showError);}},{signal});
   const interval = setInterval(()=>{
