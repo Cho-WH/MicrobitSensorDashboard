@@ -6,11 +6,11 @@ The upstream application snapshot has no repository-wide license; copying
 this artifact under the user's reuse instruction does not relicense it under
 this repository's MIT license. The original build inputs were not reproduced.
 
-`magnetometer-uart-v1.hex` is compiled from this repository's
+`magnetometer-uart-v2.hex` is compiled from this repository's
 `firmware/examples/magnetometer.js` (MIT, see the repository `LICENSE`).
 The downloadable `.ts` is an exact LF-normalized source copy. Build commands,
 fixed versions, runtime-cache explanation and validation limits are documented
-in `dev/firmware/README.md`; hashes are in `magnetometer-build.json`.
+in `dev/firmware/README.md`; hashes are in `magnetometer-uart-v2.build.json`.
 
 `temperature-uart-v1.hex`, `light-level-uart-v1.hex` and
 `accelerometer-uart-v1.hex` are compiled from this repository's corresponding

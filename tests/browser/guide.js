@@ -11,31 +11,51 @@ const waitFor = async predicate => {
 // Actual UI, controller facts injected explicitly. This does not claim physical USB/BLE verification.
 export async function runGuideTests(report = (_message) => {}) {
   const host = document.createElement('div'); host.style.cssText = 'max-width:1100px;margin:20px auto'; document.body.append(host);
-  const errors = [], changes = [], connections=[]; let disconnects = 0, installs = 0, measurements = 0;
+  const errors = [], changes = [], connections=[],deviceActions=[]; let disconnects = 0, installs = 0, measurements = 0;
   const view = createGuideView(host, { onChange: value => changes.push(value), onError: error => errors.push(error),
-    onDisconnect: () => disconnects++, onInstall: () => installs++, onConnect: options=>connections.push(options), onMeasure:()=>measurements++ });
+    onDisconnect: () => disconnects++, onInstall: () => installs++, onConnect: options=>connections.push(options), onMeasure:()=>measurements++,onDeviceAction:action=>deviceActions.push(action) });
   const $ = selector => host.querySelector(selector);
   const step = id => { const item=view.getProgress().steps.find(item=>item.id===id);check(item,`준비 단계 ${id} 없음`);$(`[data-guide-group="${item.group}"]`).click();const node=$(`[data-guide-step="${id}"]`);if(node.getClientRects().length)node.click(); };
   const click = id => { const node = $(`[data-guide-action="${id}"]`); check(node && !node.hidden && !node.disabled, `${id} 조작을 실행할 수 없음`); node.click(); };
   try {
     view.open(getExperiment('magnetometer'));
-    view.render({ attemptId: 'mag-1', connected: true, receptionReady: true, receivedAt: Date.now(), calibration: 'unknown', canInstall: true, canConnect: true });
-    check(!$('[data-guide-step="vcc"]'), '내장 센서에 외장 배선 단계가 나타났습니다.');
-    check(!$('iframe').getAttribute('src'), '자기장 준비에서 BMP280 3D 자원을 요청했습니다.');
-    step('reception');click('measure');
-    check(measurements===1&&!view.getProgress().ready,'체크 없이 수신된 장치로 이동할 수 없거나 미확인 준비가 완료 처리됐습니다.');
-    for (const id of ['equipment', 'program']) { step(id); click(id === 'program' ? 'program-confirm' : 'confirm'); }
-    check(!view.getProgress().ready, '수신만으로 나침반 보정까지 완료했습니다.');
-    step('calibration'); click('confirm'); check(view.getProgress().ready, '명시적 보정 확인 후 준비가 완료되지 않았습니다.');
-    check(changes.at(-1).observations.calibration === 'user-confirmed', '보정 확인의 근거가 사라졌습니다.');
+    const facts={attemptId:'mag-1',connected:true,canInstall:true,canConnect:true};
+    const showPhase=(phase,calibration='unknown',receptionReady=false)=>view.render({...facts,calibration,receptionReady,devicePreparation:{phase,calibration,allowReadings:phase==='receiving'}});
+    showPhase('handshake');step('connection');
+    check($('[data-guide-action="next"]').hidden,'장치 응답으로 자동 진행되는 연결 단계에 다음 버튼이 남았습니다.');
+    check(!$('[data-guide-step="vcc"]')&&!$('iframe').getAttribute('src'),'내장 센서에 외장 배선 자원이 나타났습니다.');
+    check($('.guide-reception').hidden&&!$('.guide-sensor-preparation').hidden,'응답 대기에 빈 수치 칸이 나타납니다.');
+    showPhase('choice');check($('[data-guide-step="calibration"]').getAttribute('aria-current')==='step','선택 안내 자동 전환 실패');
+    check($('[data-guide-action="confirm"]').hidden,'장치 보정을 직접 완료 처리하는 버튼이 남았습니다.');
+    $('[data-device-action="calibrate"]').focus();$('[data-device-action="calibrate"]').click();
+    check(deviceActions.at(-1)==='calibrate','보정 명령 콜백 누락');
+    showPhase('starting');showPhase('calibrating');
+    check($('.guide-reception').hidden&&$('.magnetic-actions').hidden,'보정 중 수치/선택 버튼이 노출됩니다.');
+    check($('[data-guide-action="next"]').hidden,'보정 완료 응답으로 자동 진행되는 단계에 다음 버튼이 남았습니다.');
+    check(document.activeElement===$('.magnetic-preparation h4'),'보정 선택 후 초점이 사라집니다.');
+    showPhase('receiving','device-reported');
+    check($('[data-guide-step="reception"]').getAttribute('aria-current')==='step'&&!$('.guide-reception').hidden,'완료 후 수신 안내 자동 전환 실패');
+    check(document.activeElement===$('.step-title'),'완료 후 숨겨진 보정 패널에 초점이 남았습니다.');
+    check(!view.getProgress().canMeasure,'완료 신호만으로 수신 검사를 통과했습니다.');
+    showPhase('receiving','device-reported',true);click('measure');
+    check(measurements===1&&!view.getProgress().ready,'준비 체크와 수신에 따른 측정 허용이 분리되지 않았습니다.');
+    for(const id of ['equipment','program']){step(id);click(id==='program'?'program-confirm':'confirm');}
+    check(view.getProgress().ready&&view.getProgress().setup.calibration==='device-reported','장치 보정 근거가 반영되지 않았습니다.');
+    facts.attemptId='mag-skip';showPhase('choice');step('calibration');$('[data-device-action="skip"]').click();
+    check(deviceActions.at(-1)==='skip','생략 명령 콜백 누락');showPhase('skipping');showPhase('receiving','skipped',true);
+    check(view.getProgress().canMeasure&&!view.getProgress().steps.find(step=>step.id==='calibration').complete,'생략이 완료로 둔갑하거나 측정을 차단했습니다.');
+    check(view.getProgress().setup.calibration==='skipped'&&$('.step-description').textContent.includes('생략'),'생략 이력 또는 안내 누락');
     view.render({ attemptId: 'mag-2', connected: false, receptionReady: false, connecting: true, busy: true, deviceMessage: 'micro:bit를 연결하는 중…' });
     check(!view.getProgress().ready, '새 연결 시도가 이전 보정·수신 확인을 재사용했습니다.');
     step('connection'); click('disconnect'); check(disconnects === 1, '연결 중 취소를 실행하지 못했습니다.');
     check($('.guide-connection-status').textContent.includes('연결하는 중'), '실제 연결 상태를 표시하지 않았습니다.');
-    view.render({attemptId:'mag-2',connected:false,canConnect:true,canReconnect:true});
+    view.render({attemptId:'mag-timeout',connected:false,canConnect:true,canReconnect:true,
+      deviceMessage:'자기장 프로그램의 응답이 없어요. 최신 프로그램을 설치하고 다시 연결하세요.'});
+    check(!$('.guide-connection-status').hidden&&$('.guide-connection-status').textContent.includes('응답이 없어요'),'응답 시간 초과의 복구 안내가 숨겨졌습니다.');
+    check($('.guide-reception').hidden&&$('.magnetic-actions').hidden&&!view.getProgress().canMeasure,'응답 실패 뒤 수치·보정 선택·측정 허용이 남았습니다.');
     click('reconnect');check(connections.at(-1).reuseDevice===true,'이전 장치 재연결이 새 선택으로 바뀌었습니다.');
     click('connect');check(connections.at(-1).reuseDevice===false,'다른 장치 선택이 이전 장치를 재사용했습니다.');
-    report('실제 준비 UI · 자기장 보정 근거·새 연결 무효화·연결 취소');
+    report('실제 준비 UI · 자기장 보정 근거·새 연결 무효화·연결 취소·응답 시간 초과 안내와 재연결');
 
     view.open(getExperiment('bmp280'), { reset: true });
     view.render({ attemptId: 'bmp-1', connected: false, receptionReady: false, canInstall: true,

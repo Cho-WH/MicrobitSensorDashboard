@@ -1,0 +1,12 @@
+.magnetic-preparation { padding:28px; text-align:center; min-height:350px; }
+.magnetic-preparation img { display:block; width:min(100%,280px); height:160px; margin:0 auto 14px; }
+.magnetic-preparation h4 { font-size:20px; margin:8px 0 10px; }
+.magnetic-preparation h4:focus { outline:none; }
+.magnetic-preparation p { color:var(--muted); font-size:14px; line-height:1.7; margin:8px 0; }
+.magnetic-preparation .magnetic-state { color:var(--teal); min-height:24px; }
+.magnetic-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin:18px 0 12px; }
+.magnetic-preparation .magnetic-hint { font-size:12px; max-width:360px; margin:0 auto; }
+.magnetic-preparation[data-phase=calibrating] img { animation:compass-tilt 3s ease-in-out infinite; }
+@keyframes compass-tilt { 0%,100% {transform:rotate(-12deg) scale(.95)} 50% {transform:rotate(12deg) scale(1)} }
+@media(max-width:600px) { .magnetic-preparation {padding:20px 16px;min-height:0} .magnetic-preparation img {height:140px} .magnetic-preparation h4 {font-size:18px} .magnetic-actions button {flex:1;min-width:125px;font-size:13px} }
+@media(prefers-reduced-motion:reduce) { .magnetic-preparation[data-phase=calibrating] img {animation:none} }

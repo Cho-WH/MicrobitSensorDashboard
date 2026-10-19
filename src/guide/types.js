@@ -14,12 +14,12 @@
  * @typedef {{status?:string,busy?:boolean,progress?:number|null,message?:string,deviceName?:string}} ProgramState
  * @typedef {{attemptId?:number|string,connected?:boolean,connecting?:boolean,receptionReady?:boolean,
  * receivedAt?:number|null,latest?:{values:Record<string,number|null>,validity:Record<string,string>}|null,
- * calibration?:string,firmwareInstalled?:ExperimentContext['firmware']|false,programmerState?:ProgramState,
+ * calibration?:string,devicePreparation?:{phase:string,calibration:string,allowReadings:boolean}|null,firmwareInstalled?:ExperimentContext['firmware']|false,programmerState?:ProgramState,
  * busy?:boolean,recording?:boolean,mock?:boolean,canInstall?:boolean,canConnect?:boolean,
  * canReconnect?:boolean,deviceMessage?:string,deviceName?:string,unsupported?:boolean}} GuideFacts
  * @typedef {{onInstall?:()=>unknown,onConnect?:(options:{reuseDevice:boolean})=>unknown,
  * onDisconnect?:()=>unknown,onChange?:(progress:ReturnType<ReturnType<import('./progress.js').createGuideProgress>['getState']>)=>void,
- * onMeasure?:()=>unknown,onError?:(message:string)=>void,
+ * onMeasure?:()=>unknown,onDeviceAction?:(action:string)=>unknown,onError?:(message:string)=>void,
  * viewerOptions?:Parameters<import('./viewer-adapter.js').createViewerAdapter>[2]}} GuideCallbacks
  */
 export {};

@@ -33,7 +33,8 @@ export function createController(root = document, { repository = null, deviceTra
   let targetContext = null, runtime = null, programmer = null, programmerState = {}, installed = false;
   let deviceState = transport.getState();
   const guide = createGuideView($('guide-host'), { onInstall: () => act(install), onConnect: options => act(()=>connect(options)),
-    onDisconnect: () => disconnect().catch(showError), onChange: () => { renderRequested = true; }, onMeasure:()=>navigate('measure'), onError: showError });
+    onDisconnect: () => disconnect().catch(showError), onChange: () => { renderRequested = true; }, onMeasure:()=>navigate('measure'), onError: showError,
+    onDeviceAction: action => act(async()=>{if(session?.getState().recording) return; await transport.performAction(action);}) });
   const measurement = createMeasurementView(root,()=>{renderRequested=true;});
   const experimentGuide = createExperimentGuide(root.querySelector('.lab-shell'));
   const analysis = createAnalysisView(root.querySelector('[data-screen="analysis"]'), { onError: showError, onExport: kind => act(() => exportFile(kind)) });
@@ -97,6 +98,7 @@ export function createController(root = document, { repository = null, deviceTra
         const wasConnected = connected;
         deviceState = state; attempt = state.attemptId;
         connected = state.status === 'connected'; connecting = state.status === 'connecting';
+        if (screen==='measure' && state.devicePreparation && !state.devicePreparation.allowReadings) navigate('prepare');
         if (wasConnected && !connected) { preview = null; previewPoints = []; session?.disconnected(); }
         renderRequested = true;
       },{reuseDevice});
@@ -278,7 +280,7 @@ export function createController(root = document, { repository = null, deviceTra
     deviceState=transport.getState();
     const saved = store?.getState(), current = session?.getState(), recording = current?.recording;
     guide.render({attemptId:attempt,connected,connecting,deviceMessage:deviceState.message,deviceName:deviceState.deviceName,receptionReady:hasFreshReading(),receivedAt:deviceState.lastReceivedAt,latest:preview,
-      firmwareInstalled:installed ? context.firmware : false,calibration:deviceState.calibration ?? 'unknown',
+      firmwareInstalled:installed ? context.firmware : false,calibration:deviceState.calibration ?? 'unknown',devicePreparation:deviceState.devicePreparation,
       busy:busy || programmerState.busy,recording:recording || current?.state === 'finishing',programmerState,mock,
       canInstall:canInstall(),canReconnect:deviceState.canReconnect,unsupported:!transport.isSupported(),canConnect:!!runtime && !recording && !connected && !connecting && saved?.source !== 'import' && transport.isSupported()});
     $('current-experiment').hidden = !store || !['home','preview','saved'].includes(screen);
@@ -290,7 +292,7 @@ export function createController(root = document, { repository = null, deviceTra
     button('activate-prepared').disabled = busy || !!programmerState.busy;
     $('disconnect').textContent = connecting ? '연결 취소' : '연결 해제';
     $('connect').textContent = mock ? '모의 장치 연결' : 'micro:bit 연결';
-    $('connection-status').textContent = connecting ? '연결 중' : connected ? mock ? '모의 수신' : '연결됨' : '연결 안 됨';
+    $('connection-status').textContent = connecting ? '연결 중' : connected ? mock ? '모의 연결' : '연결됨' : '연결 안 됨';
     $('recording-status').textContent = ({recording:'기록 중',paused:'일시정지',finishing:'기록 마감 중',ended:'기록 마침',preview:'준비'})[current?.state] ?? (saved ? '저장된 자료' : '준비');
     $('storage-status').textContent = !saved ? '기록 시작 전' : saved.temporary ? '임시 분석' : !saved.writable ? '읽기 전용' : ({clean:'저장됨',saving:'저장 중',pending:'저장 대기',error:'저장 오류'})[saved.status];
     $('experiment-title').textContent = context.activity?.name ?? context.sensor.name ?? '가져온 자료';
@@ -315,7 +317,7 @@ export function createController(root = document, { repository = null, deviceTra
     $('lab-notice').textContent = saved?.temporary ? '이 환경에서는 브라우저에 저장할 수 없습니다. 분석 결과는 전체 실험 JSON으로 보관하세요.' : saved?.error ? saved.error + ' 메모리의 자료는 유지됩니다. 다시 저장하거나 전체 실험 JSON을 보관하세요.'
       : saved?.nearLimit ? '보관 한도에 가까워졌습니다. 전체 실험 JSON으로 보관하고 새 실험을 준비하세요.'
       : current?.problem ? current.problem : !navigator.locks ? '이 브라우저에서는 새 실험을 기록할 수 없습니다. 저장된 자료를 열어 분석할 수 있어요.'
-      : mock && connected ? '모의 측정 중입니다. 실제 센서 측정값이 아닙니다.' : '';
+      : mock && connected ? '모의 장치를 사용하고 있어요. 실제 센서 측정값이 아닙니다.' : '';
     if (renderedContext !== context) {
       renderedContext = context;
       $('preparation-notes').replaceChildren(...(context.preparation ?? []).map(text => { const li=document.createElement('li'); li.textContent=text; return li; }));

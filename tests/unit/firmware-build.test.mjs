@@ -24,7 +24,7 @@ test('target selection and common profile preserve the exact published magnetic 
   assert.equal(parseArgs(['--list'], names).list, true);
   assert.equal(parseArgs(['temperature', '--check'], names).check, true);
   for (const args of [['unknown'], ['--publish'], ['--all','temperature'], ['--all','--check'], ['--list','--check']]) assert.throws(() => parseArgs(args, names));
-  const old = await readJson(new URL('../../public/firmware/magnetometer-build.json', import.meta.url));
+  const old = await readJson(new URL('../../public/firmware/magnetometer-uart-v2.build.json', import.meta.url));
   assert.equal(hash(plans.get('magnetometer').config), old.configSha256);
   const next = structuredClone(config);
   next.targets['test-sensor'] = { ...next.targets.temperature, id: 'test-uart', name: 'test-sensor', source: 'firmware/examples/test-sensor.ts' };
@@ -38,7 +38,7 @@ test('bad build identities, output collisions, source traversal and remote depen
     target => { target.id = '../escape'; }, target => { target.version = 0; },
     target => { target.source = '../outside.js'; }, target => { target.protocol.startCommand = 'start\nstop'; },
   ]) { const next = structuredClone(config); mutation(next.targets.temperature); assert.throws(() => createPlans(next, template, repository)); }
-  const duplicate = structuredClone(config); duplicate.targets.temperature.id = duplicate.targets.magnetometer.id;
+  const duplicate = structuredClone(config); duplicate.targets.temperature.id = duplicate.targets.magnetometer.id; duplicate.targets.temperature.version=duplicate.targets.magnetometer.version;
   assert.throws(() => createPlans(duplicate, template, repository), /Duplicate/);
   assert.throws(() => createPlans(config, { ...template, dependencies: { core: '*', remote: 'github:some/package' } }, repository), /bundled/);
 });

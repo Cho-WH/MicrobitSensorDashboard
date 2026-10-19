@@ -70,6 +70,18 @@ export async function runLayoutTests(report=()=>{}) {
           if(sensor!=='bmp280')check(!doc.querySelector('iframe').src,label+': 내장 센서 화면이 3D 자원을 열었습니다.');
         }
         doc.querySelector('[data-guide-group="connection"]').click();await settle();
+        if(sensor==='magnetometer'){
+          check(doc.querySelector('.guide-reception').hidden,label+': 연결 전 빈 수치 표시');
+          doc.querySelector('[data-guide-action="connect"]').click();await settle();
+          const deadline=performance.now()+5000;
+          while(doc.querySelector('.magnetic-preparation').dataset.phase!=='choice'&&performance.now()<deadline)await settle();
+          fits(doc,width,label+' 보정 선택');
+          const buttons=[...doc.querySelectorAll('[data-device-action]')].map(node=>node.getBoundingClientRect());
+          check(buttons.every(r=>r.width>0&&r.left>=0&&r.right<=width),label+': 보정 선택 버튼 넘침');
+          if(width>=1000)check(buttons.every(r=>r.bottom<=height),label+': 데스크톱 보정 선택이 화면 아래로 밀립니다.');
+          doc.querySelector('[data-device-action="skip"]').click();await settle();
+          check(!doc.querySelector('.guide-reception').hidden,label+': 생략 후 수치 표시 누락');
+        }
         const variants=sensor==='bmp280'?['—','0','999.99','1,000.01']:sensor==='magnetometer'?['—','0','-999.9','-1,000.1']:sensor==='accelerometer'?['—','0','999','-1,024','-9,999']:['—','0','99','100','255'];
         stableText(doc,'.guide-value strong','.guide-value,.guide-last-received,.guide-checks',variants,label+' 준비 값',{noScroll:true});
         doc.querySelector('#to-measure').click();await settle();

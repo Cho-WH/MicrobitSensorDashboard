@@ -57,7 +57,7 @@ export function createGuideProgress(initialContext, { now = () => Date.now(), mo
     lastProgrammerStatus = programmerStatus;
     if (facts.firmwareInstalled && firmwareKey(facts.firmwareInstalled) === firmwareKey(context.firmware)
       && firmwareKey(installedThisSession) !== firmwareKey(facts.firmwareInstalled)) installedThisSession = { ...structuredClone(facts.firmwareInstalled), observedAt: now() };
-    if (connected && facts.calibration === 'device-reported') calibration = 'device-reported';
+    if (connected && ['device-reported', 'skipped'].includes(facts.calibration)) calibration = facts.calibration;
     if (connected && facts.calibration === 'user-confirmed' && calibration === 'unknown') calibration = 'user-confirmed';
     if (battery.startedAt !== null && connected && Number.isFinite(facts.receivedAt) && facts.receivedAt > battery.startedAt && (battery.lastReceivedAt === null || facts.receivedAt > battery.lastReceivedAt)) {
       battery.firstReceivedAt ??= facts.receivedAt;
@@ -72,7 +72,7 @@ export function createGuideProgress(initialContext, { now = () => Date.now(), mo
       const evidence = step.kind === 'program' ? installedThisSession ? 'device-observed' : confirmations.has(step.id) ? 'user-confirmed' : null
         : step.kind === 'connection' ? connected ? simulated ? 'simulated' : 'device-observed' : null
         : step.kind === 'reception' ? receptionReady ? simulated ? 'simulated' : 'device-observed' : null
-        : step.kind === 'calibration' ? calibration === 'unknown' ? null : calibration
+        : step.kind === 'calibration' ? ['unknown','skipped'].includes(calibration) ? null : calibration
         : step.kind === 'battery' ? battery.observedAt !== null && receptionReady ? simulated ? 'simulated' : 'device-observed' : null
         : confirmations.get(step.id)?.evidence ?? null;
       return { ...step, complete: Boolean(evidence), evidence };

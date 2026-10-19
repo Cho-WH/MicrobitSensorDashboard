@@ -14,8 +14,9 @@ export function getSensorRuntime(context, modules = registry) {
     || context.channels.some((channel, index) => channel.id !== definition.channels[index].id)) {
     throw Object.assign(new Error('이 센서·프로그램 버전으로 장치를 연결할 수 없습니다. 새 실험을 준비하세요.'), { code: 'unsupported-sensor-runtime' });
   }
-  return { definition: structuredClone(definition), decode: module.decode, mockLine: module.mockLine };
+  return { definition: structuredClone(definition), decode: module.decode, mockLine: module.mockLine, preparation: module.preparation };
 }
+export const getSensorPreparation = context => registry.getSensor(context?.sensor)?.preparation;
 export function getActivityPolicy(context, modules = registry) {
   return modules.getActivity(context?.activity, context?.sensor)?.policy;
 }

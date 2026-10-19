@@ -1,6 +1,7 @@
 // Attempt, deadline, retry and chooser cases adapted from G/tests/connection.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createMockPreparation } from '../../src/catalog/sensors/magnetometer/preparation.js';
 import { createTransport } from '../../src/device/transport.js';
 import { catalog, getExperiment, getSensorRuntime } from '../../src/catalog/index.js';
 
@@ -46,22 +47,73 @@ test('BMP280 sends at most five bme commands and rejects invalid channels for it
   assert.match(f.transport.getState().message, /온도/);
 });
 
-test('magnetometer sends start once and leaves two minutes for device calibration without claiming completion', async () => {
-  const f = fixture('magnetometer'); await f.connect(); await f.timers.advance(3000);
-  assert.deepEqual(f.ble.commands, ['start']); assert.equal(f.transport.getState().status, 'connected');
-  assert.equal(f.transport.getState().calibration, 'unknown');
-  await f.timers.advance(116999); assert.equal(f.transport.getState().status, 'connected');
-  await f.timers.advance(1); assert.equal(f.transport.getState().status, 'disconnected');
-  assert.deepEqual(f.ble.commands, ['start']); assert.equal(f.timers.tasks.size, 0);
+test('magnetic handshake handles silence, old numeric firmware and write failure; timeout cleans up and permits a fresh reconnect', async () => {
+  for(const scenario of ['silent','numeric-only','write-failure']) {
+    const f=fixture('magnetometer'), originalSend=f.ble.sendStartCommand;
+    if(scenario==='write-failure') f.ble.sendStartCommand=async function(command){this.commands.push(command);throw new Error('write failed');};
+    await f.connect();const oldNotify=f.ble.handlers[0];
+    assert.deepEqual(f.ble.commands,['prepare']);
+    if(scenario==='numeric-only')oldNotify('1,2,3,4');
+    await f.timers.advance(9999);
+    assert.equal(f.transport.getState().status,'connected');assert.equal(f.transport.getState().confirmed,false);
+    assert.equal(f.inputs.length,0);
+    await f.timers.advance(1);await Promise.resolve();
+    const failed=f.transport.getState();
+    assert.equal(failed.status,'disconnected');assert.equal(failed.busy,false);
+    assert.equal(failed.devicePreparation,null);assert.equal(failed.calibration,'unknown');
+    assert.equal(failed.canReconnect,true);assert.match(failed.message,/프로그램.*응답/);
+    assert.equal(f.timers.tasks.size,0);assert.equal(f.ble.cleanups,1);
+    oldNotify('@mag,2,choice');oldNotify('1,2,3,4');
+    assert.equal(f.transport.getState().status,'disconnected');assert.equal(f.inputs.length,0);
+    f.ble.sendStartCommand=originalSend;
+    await f.connect({reuseDevice:true});oldNotify('@mag,2,choice');
+    assert.equal(f.transport.getState().devicePreparation.phase,'handshake');
+    f.ble.handlers[1]('@mag,2,choice');await f.timers.advance(180000);
+    assert.equal(f.transport.getState().devicePreparation.phase,'choice');assert.equal(f.timers.tasks.size,0);
+    assert.equal(f.ble.requests,1);assert.deepEqual(f.ble.commands,['prepare','prepare']);
+    await f.transport.disconnect();
+  }
+});
+
+test('calibration acknowledgements gate readings, cannot be forged by wrong-order statuses, and never become samples', async () => {
+  const f=fixture('magnetometer');await f.connect();const notify=f.ble.handlers[0];
+  notify('@mag,2,calibrated');notify('@mag,2,choice');notify('@mag,2,skipped');
+  assert.equal(f.transport.getState().calibration,'unknown');
+  await f.transport.performAction('calibrate');await f.transport.performAction('skip');
+  assert.deepEqual(f.ble.commands,['prepare','calibrate']);
+  notify('@mag,2,calibrating');notify('1,2,3,4');await f.timers.advance(119000);
+  assert.equal(f.inputs.length,0);assert.equal(f.transport.getState().status,'connected');
+  notify('@mag,2,calibrated');assert.equal(f.transport.getState().calibration,'device-reported');
+  assert.equal(f.transport.getState().confirmed,false);
+  for(let i=0;i<3;i++){notify('1,2,3,4');await f.timers.advance(500);}
+  assert.equal(f.transport.getState().confirmed,true);assert.equal(f.inputs.length,3);
+  const oldNotify=notify;await f.transport.disconnect();await f.connect({reuseDevice:true});
+  oldNotify('@mag,2,calibrated');oldNotify('1,2,3,4');
+  assert.equal(f.transport.getState().devicePreparation.phase,'handshake');assert.equal(f.transport.getState().calibration,'unknown');
+  await f.transport.disconnect();assert.equal(f.timers.tasks.size,0);
+});
+
+test('missing action acknowledgement, calibration completion or first reading closes the attempt', async () => {
+  for(const boundary of ['ack','calibration','reading','write']){
+    const f=fixture('magnetometer');await f.connect();const notify=f.ble.handlers[0];notify('@mag,2,choice');
+    if(boundary==='write')f.ble.sendStartCommand=async()=>{throw new Error('write failed');};
+    await f.transport.performAction(boundary==='reading'?'skip':'calibrate');
+    if(boundary==='calibration')notify('@mag,2,calibrating');
+    if(boundary==='reading')notify('@mag,2,skipped');
+    await f.timers.advance(boundary==='calibration'?120000:5000);await Promise.resolve();
+    assert.equal(f.transport.getState().status,'disconnected',boundary);assert.equal(f.transport.getState().confirmed,false);
+    assert.equal(f.transport.getState().calibration,'unknown');assert.equal(f.timers.tasks.size,0);
+  }
 });
 
 test('a first packet and a burst do not confirm reception; three fresh required-channel packets spanning a second do', async () => {
   const f = fixture('magnetometer'); await f.connect();
+  f.ble.handlers[0]('@mag,2,choice');await f.transport.performAction('skip');f.ble.handlers[0]('@mag,2,skipped');
   for (let i = 0; i < 3; i++) f.ble.handlers[0]('1,2,3,4');
   assert.equal(f.transport.getState().firstReading, true); assert.equal(f.transport.getState().confirmed, false);
   await f.timers.advance(500); f.ble.handlers[0]('1,2,3,4');
   await f.timers.advance(500); f.ble.handlers[0]('1,2,3,4');
-  assert.equal(f.transport.getState().confirmed, true); assert.equal(f.transport.getState().calibration, 'unknown');
+  assert.equal(f.transport.getState().confirmed, true); assert.equal(f.transport.getState().calibration, 'skipped');
   await f.timers.advance(5000); assert.equal(f.transport.getState().confirmed, false);
   assert.equal(f.transport.getState().status, 'connected');
   assert.equal(f.transport.getState().firstReading, true); await f.transport.disconnect();
@@ -141,4 +193,12 @@ test('registered sensor mock data passes exactly the matching decoder and never 
     assert.equal(reading.type, 'reading'); assert.ok(Object.values(reading.validity).every(v => v === 'valid'));
     assert.deepEqual(Object.keys(reading.values), runtime.definition.channels.map(c => c.id));
   }
+});
+
+test('mock preparation cancels pending completion on disconnect and never streams during calibration',async()=>{
+  const timers=new Timers(),lines=[];let streaming=false;
+  const mock=createMockPreparation({timers,emit:line=>lines.push(line),startStreaming:()=>streaming=true,stopStreaming:()=>streaming=false});
+  mock.command('prepare');mock.command('calibrate');mock.command('skip');assert.equal(streaming,false);
+  await timers.advance(1799);assert.equal(streaming,false);mock.dispose();await timers.advance(10000);
+  assert.deepEqual(lines,['@mag,2,choice','@mag,2,calibrating']);assert.equal(streaming,false);assert.equal(timers.tasks.size,0);
 });

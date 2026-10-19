@@ -2,7 +2,8 @@ import { validateChannels } from '../domain/contracts.js';
 /**
  * @typedef {{definition:typeof import('./sensors/bmp280/definition.js').bmp280|typeof import('./sensors/magnetometer/definition.js').magnetometer,
  * decode:typeof import('./sensors/bmp280/codec.js').decodeBmp280|typeof import('./sensors/magnetometer/codec.js').decodeMagnetometer,
- * mockLine:(time:number)=>string,guide:import('../guide/types.js').SensorGuide}} SensorModule
+ * mockLine:(time:number)=>string,guide:import('../guide/types.js').SensorGuide,
+ * preparation?:import('../device/preparation-types.js').SensorPreparation}} SensorModule
  * @typedef {{definition:typeof import('./activities/gay-lussac/definition.js').gayLussac,
  * policy?:typeof import('./activities/gay-lussac/policy.js').activityPolicy,guide:import('../guide/types.js').ActivityGuide}} ActivityModule
  */

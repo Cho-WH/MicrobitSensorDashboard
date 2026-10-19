@@ -84,12 +84,12 @@
       "version": "bme 1.2"
     },
     {
-      "file": "public/firmware/magnetometer-uart-v1.hex",
-      "version": "magnetometer-uart@1",
+      "file": "public/firmware/magnetometer-uart-v2.hex",
+      "version": "magnetometer-uart@2",
       "source": "firmware/examples/magnetometer.js",
-      "normalizedSha256": "ccdaf8753785053273eee11572765ad1c8c5c90a1d4303357202ba82bbb24db3",
-      "sha256": "ccdaf8753785053273eee11572765ad1c8c5c90a1d4303357202ba82bbb24db3",
-      "buildRecord": "public/firmware/magnetometer-build.json",
+      "normalizedSha256": "d683634aa1b7ecaa18ab1578f5e20bd3ddf637eb1ba0c4c546b51e8a13c76b56",
+      "sha256": "d683634aa1b7ecaa18ab1578f5e20bd3ddf637eb1ba0c4c546b51e8a13c76b56",
+      "buildRecord": "public/firmware/magnetometer-uart-v2.build.json",
       "modified": true,
       "rebuild": "dev/firmware/README.md",
       "license": "public/firmware/NOTICES.md",

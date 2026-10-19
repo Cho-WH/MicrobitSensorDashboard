@@ -89,6 +89,9 @@ export async function runAppTests(report=()=>{}) {
 
     await click('[data-view="home"]');await select('sensors/magnetometer');
     await step('connection');await click('[data-guide-action="connect"]');
+    await until(()=>!$('[data-device-action="skip"]').disabled&&$('.magnetic-preparation').dataset.phase==='choice','자기장 보정 선택 누락');
+    check(!app.getState().storage&&$('.guide-reception').hidden,'보정 선택 중 Run 또는 빈 수치 칸이 나타납니다.');
+    await click('[data-device-action="skip"]');
     await until(()=>$('[data-guide-step="reception"]').dataset.complete==='true','자기장 수신 확인 실패');
     check(!$('.guide-status').textContent.includes('준비 완료'),'숫자 수신을 보정 완료로 추정했습니다.');
     await click('[data-guide-action="measure"]');await click('#start-recording');
@@ -102,18 +105,20 @@ export async function runAppTests(report=()=>{}) {
     await click('#disconnect');check($('#connect').disabled,'기록 중 재연결이 새 보정을 시작할 수 있습니다.');
     await click('#pause-recording');await click('#prepare-device');
     await step('connection');await click('[data-guide-action="reconnect"]');
+    check($('[data-guide-step="calibration"]').dataset.complete==='false','재연결에서 이전 보정 근거가 복원됐습니다.');
+    await click('[data-device-action="skip"]');
     await until(()=>$('[data-guide-step="reception"]').dataset.complete==='true','재연결 수신 실패');
     check($('[data-guide-step="calibration"]').dataset.complete==='false','재연결에서 예전 보정 근거를 복원했습니다.');
     await click('[data-guide-action="measure"]');await click('#resume-recording');
     await click('#finish-recording');
     await until(()=>app.getState().storage.status==='clean','자기장 기록 저장 실패');
     const magnetic=await repo.readSnapshot(magnetId), json=parseExperimentJson(buildExperimentJson(magnetic)), csv=parseExperimentCsv(buildCsv(magnetic));
-    check(magnetic.run.context.setup.calibration==='unknown'&&Object.keys(magnetic.run.context.setup.confirmations).length===0,'체크를 생략한 기록에 준비 확인을 꾸며 넣었습니다.');
+    check(magnetic.run.context.setup.calibration==='skipped'&&json.run.context.setup.calibration==='skipped'&&Object.keys(magnetic.run.context.setup.confirmations).length===0,'체크를 생략한 기록에 준비 확인을 꾸며 넣었습니다.');
     check(JSON.stringify(json.samples)===JSON.stringify(magnetic.samples),'자기장 JSON 원자료 왕복 손실');
     check(magnetic.samples.every(sample=>Object.keys(sample.values).length===4),'그래프에서 숨긴 채널이 원자료에서 빠졌습니다.');
     check(csv.samples.length===magnetic.samples.length&&Object.keys(csv.samples[0].values).length===4,'자기장 CSV 왕복 채널 손실');
     await click('[data-view="analysis"]');check(!$('#analysis-message').textContent.includes('오류'),'자기장 분석 화면 오류');
-    report('M2 통합 · 수신만 확인한 자기장 기록·미확인 이력 보존, 재연결·재개, JSON/CSV·분석');
+    report('M2 통합 · 자기장 보정 생략 선택·저장·미확인 이력 보존, 재연결·재개, JSON/CSV·분석');
 
     for(const [sensorId,channelIds,unit] of [
       ['temperature',['temperatureC'],'℃'],
@@ -155,7 +160,9 @@ export async function runAppTests(report=()=>{}) {
 
     await click('[data-view="home"]');await select('sensors/magnetometer');
     for(const id of ['equipment','program']) await confirm(id);
-    await step('connection');await click('[data-guide-action="connect"]');await confirm('calibration');
+    await click('#to-measure');await click('#connect');
+    check(app.getState().screen==='prepare','측정 화면에서 연결한 장치의 준비 선택으로 이동하지 않았습니다.');
+    await step('connection');await click('[data-device-action="calibrate"]');
     await until(()=>$('.guide-status').textContent.includes('준비 완료'),'시작 경합 검사 준비 실패');await click('#to-measure');
     const beforeCreate=(await repo.listRuns()).length;delayCreate=true;
     await until(()=>!$('#start-recording').disabled,'기록 시작 경합 검사 준비 실패');$('#start-recording').click();

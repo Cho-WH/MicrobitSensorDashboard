@@ -1,72 +1,69 @@
-let mode = "none"
-let command = ""
-let connected = 0
-let calibrated = false
+// Sensor Lab protocol v2. Preparation status never occupies a measurement row.
+let connected = false
+let phase = "idle"
+let generation = 0
 
-bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
-    command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine))
-    command = command.trim().toLowerCase()
-
-    if (command == "start") {
-        mode = "magnet"
-        if (!(calibrated)) {
-            if (input.buttonIsPressed(Button.A) || input.buttonIsPressed(Button.B)) {
-                calibrated = true
-            } else {
-                input.calibrateCompass()
-                calibrated = true
-            }
-        }
-        basic.showString("M")
-    } else {
-        mode = "none"
-        basic.clearScreen()
-    }
-})
+function report (state = "") {
+    bluetooth.uartWriteLine("@mag,2," + state)
+}
 
 bluetooth.onBluetoothConnected(function () {
-    connected = 1
-    basic.showIcon(IconNames.Yes)
+    connected = true
+    phase = "idle"
+    generation += 1
+    basic.clearScreen()
 })
 
 bluetooth.onBluetoothDisconnected(function () {
+    connected = false
+    phase = "idle"
+    generation += 1
+    // End an in-progress compass animation as well as the UART session.
     control.reset()
 })
 
-function showName () {
-    basic.showString(control.deviceName().charAt(0))
-    basic.showString(control.deviceName().charAt(1))
-    basic.showString(control.deviceName().charAt(2))
-    basic.showString(control.deviceName().charAt(3))
-    basic.showString(control.deviceName().charAt(4))
-    basic.showString(" mg ")
-}
-
-function setup () {
-    input.setAccelerometerRange(AcceleratorRange.EightG)
-    mode = "none"
-    connected = 0
-    calibrated = false
-    bluetooth.startUartService()
-    while (connected == 0) {
-        showName()
+bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
+    let command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim().toLowerCase()
+    if (!connected) return
+    if (command == "prepare") {
+        if (phase == "calibrating") {
+            report("calibrating")
+            return
+        }
+        generation += 1
+        phase = "choice"
+        basic.clearScreen()
+        report("choice")
+    } else if (command == "calibrate" && phase == "choice") {
+        phase = "calibrating"
+        let attempt = generation
+        report("calibrating")
+        input.calibrateCompass()
+        if (!connected || generation != attempt || phase != "calibrating") return
+        basic.clearScreen()
+        report("calibrated")
+        phase = "streaming"
+    } else if (command == "skip" && phase == "choice") {
+        report("skipped")
+        phase = "streaming"
+    } else if (command == "stop") {
+        generation += 1
+        phase = "idle"
     }
-}
+})
 
-function sendSample () {
-    bluetooth.uartWriteLine(
-        convertToText(input.magneticForce(Dimension.X)) + "," +
-        convertToText(input.magneticForce(Dimension.Y)) + "," +
-        convertToText(input.magneticForce(Dimension.Z)) + "," +
-        convertToText(input.magneticForce(Dimension.Strength))
-    )
-}
-
-setup()
+input.setAccelerometerRange(AcceleratorRange.EightG)
+basic.clearScreen()
+bluetooth.startUartService()
 
 basic.forever(function () {
-    if (mode == "magnet") {
-        sendSample()
+    if (connected && phase == "streaming") {
+        bluetooth.uartWriteLine(
+            convertToText(input.magneticForce(Dimension.X)) + "," +
+            convertToText(input.magneticForce(Dimension.Y)) + "," +
+            convertToText(input.magneticForce(Dimension.Z)) + "," +
+            convertToText(input.magneticForce(Dimension.Strength))
+        )
         basic.pause(100)
     } else {
         basic.pause(50)

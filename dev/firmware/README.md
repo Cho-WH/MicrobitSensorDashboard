@@ -33,15 +33,26 @@ npm run check:firmware
 
 | 빌드 이름 | 원본 | 시작 명령 | CSV 순서 | 명목 간격 | 앱 등록 |
 |---|---|---|---|---|---|
-| `magnetometer` | `firmware/examples/magnetometer.js` | `start` | X, Y, Z, 크기 | 100 ms | 기존 자기장 센서 |
+| `magnetometer` | `firmware/examples/magnetometer.js` | `prepare` | X, Y, Z, 크기 | 100 ms | 자기장 v2 |
 | `temperature` | `firmware/examples/temperature.js` | `start` | 보드 온도 (°C) | 1000 ms | 내장 온도 |
 | `light-level` | `firmware/examples/light-level.js` | `start` | 밝기 (0–255 상대값) | 100 ms | 내장 밝기(조도) |
 | `accelerometer` | `firmware/examples/accelerometer.js` | `start` | X, Y, Z, 크기 (mg) | 100 ms | 내장 가속도 |
 | `temperature-light` | `firmware/examples/temperature-light.js` | `start` | 온도, 밝기 | 1000 ms | 빌드 예제만 |
 
-자기장은 기존 소스를 그대로 사용한다. 예전 대시보드의 `firmware/legacy/magnetometer.hex`는
+자기장 v2는 이 저장소의 소스를 수정해 앱에서 보정 여부를 선택하도록 한다. 예전 대시보드의 `firmware/legacy/magnetometer.hex`는
 시작 명령이 다르므로 이 빌드의 입력으로 사용하지 않는다. BMP280는 게이뤼삭의 고정 HEX를
 그대로 유지한다. 원본 빌드 입력을 재현하지 못했으므로 공통 소스 빌드 대상으로 등록하지 않는다.
+
+## 자기장 v2 규약
+
+개행으로 끝나는 `prepare`에 `@mag,2,choice`로 응답하고 선택을 기다린다.
+앱의 `calibrate`에는 `@mag,2,calibrating`을 보낸 뒤 MakeCode 보정을 실행한다.
+루틴이 반환되면 `@mag,2,calibrated`를 보내고 숫자 송신을 시작한다.
+`skip`에는 `@mag,2,skipped`로 응답하고 보정 루틴 없이 송신한다.
+보정 진행 중에는 다른 선택 명령을 무시하고 수치를 읽거나 보내지 않는다.
+`stop`은 송신과 현재 요청을 무효화한다. 연결 해제는 보드를 재시작하며,
+새 연결은 다시 선택을 기다린다. A/B 버튼을 생략 명령으로 사용하지 않는다.
+미배포 v1 펌웨어 호환은 제공하지 않는다. 앱에서 v2를 다시 설치해야 한다.
 
 ## 입력과 결과
 
@@ -96,10 +107,10 @@ V1·V2를 포함하는 Universal HEX를 생성하지만 앱의 설치 허용 보
 
 ## 이번 검증 결과와 한계
 
-공통화 후 자기장 HEX는 기존과 같은 1,363,980바이트이며 SHA-256도 동일하다.
+2026-10-20 자기장 v2는 보정 선택·진행·완료 상태를 추가했다. 재빌드와 배포 파일 일치 검사를 통과한 SHA-256:
 
 ```text
-ccdaf8753785053273eee11572765ad1c8c5c90a1d4303357202ba82bbb24db3
+d683634aa1b7ecaa18ab1578f5e20bd3ddf637eb1ba0c4c546b51e8a13c76b56
 ```
 
 현재 다섯 빌드 대상 모두 실제 컴파일과 V2 해석·내장 소스·설정 검사를 통과했다.

@@ -149,3 +149,11 @@ test('activity guide preferences are versioned, optional, and independent of pre
   blocked.setSuppressed(false);assert.equal(blocked.shouldShow(),true);
   assert.equal(fixture().progress.getState().ready,false);
 });
+
+test('explicit skipped calibration remains distinct from completion while current reception permits recording',()=>{
+  const progress=createGuideProgress(magnet());progress.setAttempt('skip');
+  progress.observe({attemptId:'skip',connected:true,receptionReady:true,calibration:'skipped',mock:true});
+  const state=progress.getState();assert.equal(state.canMeasure,true);assert.equal(state.steps.find(step=>step.id==='calibration').complete,false);
+  assert.equal(state.setup.calibration,'skipped');assert.equal(state.setup.simulated,true);
+  progress.setAttempt('next');assert.equal(progress.getState().setup.calibration,'unknown');assert.equal(progress.getState().canMeasure,false);
+});

@@ -16,10 +16,11 @@ const errorMessage = error => ({
 export function createTransport({ ble = createBleClient(), clock = { utc: () => Date.now(), mono: () => performance.now() }, timers = globalThis } = {}) {
   let attemptId = 0, pending = null, closing = null, previousDevice = null;
   let deadline = null, retry = null, freshness = null, monitor = null;
+  let preparation = null;
   let state = { status: 'disconnected', busy: false, deviceName: '', message: '', attemptId: 0,
-    firstReading: false, confirmed: false, readingsCompatible: false, calibration: 'unknown', lastReceivedAt: null };
+    firstReading: false, confirmed: false, readingsCompatible: false, calibration: 'unknown', devicePreparation: null, lastReceivedAt: null };
   const snapshot = () => ({ ...state, canReconnect: Boolean(previousDevice),
-    confirmed: state.status === 'connected' && Boolean(monitor?.getSnapshot(clock.mono()).reception.ready) });
+    confirmed: state.status === 'connected' && (!preparation || preparation.getState().allowReadings) && Boolean(monitor?.getSnapshot(clock.mono()).reception.ready) });
   let onState = (_state) => {};
   const emit = patch => { state = { ...state, ...patch, attemptId }; onState(snapshot()); };
   const clearStartup = () => { timers.clearTimeout(deadline); timers.clearTimeout(retry); deadline = retry = null; };
@@ -28,7 +29,7 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
 
   function connect(context, onInput, stateHandler = (_state) => {}, { reuseDevice = false } = {}) {
     if (pending || closing || state.status !== 'disconnected') return pending ?? closing ?? Promise.resolve();
-    const { definition, decode } = getSensorRuntime(context), policy = definition.connectionPolicy;
+    const { definition, decode, preparation: extension } = getSensorRuntime(context), policy = definition.connectionPolicy;
     onState = stateHandler;
     if (reuseDevice && !previousDevice) {
       emit({ message: '이전에 연결한 장치 정보가 없어요. 장치 연결을 눌러 선택해 주세요.' });
@@ -37,9 +38,18 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
     const id = ++attemptId;
     monitor = createReceptionMonitor(policy);
     let hasReading = false;
+    const waitForReading = () => {
+      if (hasReading || deadline !== null) return;
+      deadline = timers.setTimeout(() => { if (current(id) && !hasReading) return disconnect(policy.timeoutMessage); }, policy.firstReadingTimeoutMs);
+    };
     clearTimers();
     emit({ status: 'connecting', busy: true, message: '', deviceName: '', firstReading: false,
-      confirmed: false, readingsCompatible: false, calibration: 'unknown', lastReceivedAt: null });
+      confirmed: false, readingsCompatible: false, calibration: 'unknown', devicePreparation: null, lastReceivedAt: null });
+    preparation = extension?.createSession({ timers,
+      send: command => current(id) ? ble.sendStartCommand(command) : Promise.reject(new Error('연결이 바뀌었습니다.')),
+      onChange: value => { if (current(id)) { emit({devicePreparation:value,calibration:value.calibration}); if (value.allowReadings) waitForReading(); } },
+      onError: message => { if (current(id)) void disconnect(message); },
+    }) ?? null;
     ble.setDisconnectedListener(() => {
       if (current(id)) void disconnect('장치 연결이 끊겼어요. 전원과 거리를 확인해 주세요.');
     });
@@ -58,6 +68,9 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
           const at = { attemptId: id, receivedAt: clock.utc(), monotonicAt: clock.mono() };
           const input = typeof frame === 'string' ? decode(frame, at)
             : { type: 'parse-error', reasonCode: frame.reasonCode ?? 'invalid-frame', ...at };
+          // Optional module protocol events stay outside samples, reception counts and RunStore.
+          if (input.type === 'device-status') { preparation?.accept(input); return; }
+          if (preparation && !preparation.getState().allowReadings) return;
           const valid = input.type === 'reading' && 'validity' in input && policy.requiredChannelIds.every(channelId => input.validity[channelId] === 'valid');
           if (valid && !hasReading) { hasReading = true; clearStartup(); }
           monitor.accept(input);
@@ -77,9 +90,7 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
         previousDevice = device;
         emit({ status: 'connected', busy: false, deviceName: device.name || 'micro:bit', message: hasReading ? state.message : policy.waitingMessage });
         if (hasReading) return;
-        deadline = timers.setTimeout(() => {
-          if (current(id) && !hasReading) return disconnect(policy.timeoutMessage);
-        }, policy.firstReadingTimeoutMs);
+        if (preparation) preparation.start(); else waitForReading();
         let sends = 0;
         async function send() {
           if (!current(id) || hasReading || sends >= policy.retryLimit) return;
@@ -92,7 +103,8 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
       } catch (error) {
         if (current(id)) {
           ++attemptId;
-          emit({ status: 'disconnected', firstReading: false, confirmed: false, readingsCompatible: false,
+          preparation?.dispose(); preparation = null;
+          emit({ status: 'disconnected', firstReading: false, confirmed: false, readingsCompatible: false, devicePreparation:null,calibration:'unknown',
             message: reuseDevice ? '이전 장치에 다시 연결하지 못했어요. 전원을 확인하고 장치 연결을 눌러 선택해 주세요.' : errorMessage(error) });
         }
       } finally {
@@ -108,7 +120,8 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
   function disconnect(message = '') {
     if (closing) return closing;
     ++attemptId; clearTimers(); monitor?.disconnected(); ble.setDisconnectedListener(null);
-    emit({ status: 'disconnected', busy: true, firstReading: false, confirmed: false, readingsCompatible: false, message });
+    preparation?.dispose(); preparation = null;
+    emit({ status: 'disconnected', busy: true, firstReading: false, confirmed: false, readingsCompatible: false, devicePreparation:null,calibration:'unknown', message });
     closing = (async () => {
       try { await pending; await ble.disconnect(); }
       catch (error) { emit({ message: message || errorMessage(error) }); }
@@ -116,6 +129,6 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
     })();
     return closing;
   }
-  return { connect, disconnect, forgetDevice: () => { previousDevice = null; },
+  return { connect, disconnect, performAction: action => state.status === 'connected' && !closing && preparation ? preparation.act(action) : Promise.resolve(false), forgetDevice: () => { previousDevice = null; },
     isSupported: () => ble.isSupported(), getState: snapshot };
 }

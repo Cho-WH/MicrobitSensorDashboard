@@ -6,11 +6,14 @@ MakeCode JavaScript에서 열어 쓸 수 있는 간단한 예제들입니다.
 
 ## `magnetometer.js`
 
-기본 예제입니다. 범용 템플릿의 첫 실행 확인용으로 두고, 새 센서를 만들 때는 `template.js`를 복사해 시작하는 것을 권장합니다.
+통합 센서 실험실용 자기장 v2 프로그램입니다. 앱에서 보정을 선택한 뒤 수신합니다.
 
-- 시작 명령: `start`
+- 준비 명령: `prepare`; 선택: `calibrate` 또는 `skip`; 중단: `stop`
+- 상태: `@mag,2,choice`, `@mag,2,calibrating`, `@mag,2,calibrated`, `@mag,2,skipped`
 - 전송 순서: `x,y,z,strength`
-- 웹앱 기본 설정과 호환됩니다.
+- 보정 완료 또는 생략 후 100ms 간격으로 µT 값을 보냅니다.
+- 기존 대시보드의 `start` 규약과 다릅니다. 범용 센서는 `template.js`에서 시작하세요.
+- [고정 빌드와 검증 절차](../../dev/firmware/README.md)를 사용합니다.
 
 ## `temperature.js`
 

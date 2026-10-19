@@ -38,7 +38,7 @@ test('all pinned HEX artifacts match their specified digest and the official V2 
 });
 
 test('new built-in published source, build record and manifest agree on version, digest and protocol', async () => {
-  for (const id of ['temperature-uart', 'light-level-uart', 'accelerometer-uart']) {
+  for (const id of ['magnetometer-uart', 'temperature-uart', 'light-level-uart', 'accelerometer-uart']) {
     const artifact = getFirmwareArtifact(id), root = new URL('../../', import.meta.url);
     const record = JSON.parse(await readFile(new URL(artifact.source.buildRecord, root), 'utf8'));
     const source = (await readFile(new URL(artifact.source.path, root), 'utf8')).replace(/\r\n/g, '\n');
@@ -96,8 +96,8 @@ test('light warmup cannot revive an old start after stop or disconnect and recon
 
 test('magnetic build record matches the checked-in source, package lock, HEX and frozen runtime images', async () => {
   const source = (await readFile(new URL('../../firmware/examples/magnetometer.js', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
-  const record = JSON.parse(await readFile(new URL('../../public/firmware/magnetometer-build.json', import.meta.url), 'utf8'));
-  const published = await readFile(new URL('../../public/firmware/magnetometer-uart-v1.ts', import.meta.url), 'utf8');
+  const record = JSON.parse(await readFile(new URL('../../public/firmware/magnetometer-uart-v2.build.json', import.meta.url), 'utf8'));
+  const published = await readFile(new URL('../../public/firmware/magnetometer-uart-v2.ts', import.meta.url), 'utf8');
   const lock = JSON.parse(await readFile(new URL('../../dev/firmware/package-lock.json', import.meta.url), 'utf8'));
   assert.equal(source, published); assert.equal(digest(source), record.sourceSha256);
   assert.equal(record.hexSha256, getFirmwareArtifact('magnetometer-uart').sha256);
@@ -110,28 +110,43 @@ test('magnetic build record matches the checked-in source, package lock, HEX and
   }
 });
 
-test('magnetic source waits for start and calibration, sends X/Y/Z/strength, stops on other commands and resets on disconnect', async () => {
-  const source = await readFile(new URL('../../firmware/examples/magnetometer.js', import.meta.url), 'utf8');
-  for (const skipCalibration of [false, true]) {
-    const hooks = {}, calls = [], lines = []; let command = '', linked = false;
-    const context = {
-      bluetooth: { onUartDataReceived: (_delimiter, cb) => hooks.uart = cb, uartReadUntil: () => command,
-        onBluetoothConnected: cb => hooks.connect = cb, onBluetoothDisconnected: cb => hooks.disconnect = cb,
-        startUartService: () => calls.push('service'), uartWriteLine: line => { calls.push('sample'); lines.push(line); } },
-      serial: { delimiters: () => '\n' }, Delimiters: { NewLine: 1 },
-      input: { buttonIsPressed: () => skipCalibration, calibrateCompass: () => calls.push('calibrate'),
-        setAccelerometerRange: () => {}, magneticForce: axis => [0, -12, 4, 12.649110640673518][axis] },
-      Button: { A: 0, B: 1 }, Dimension: { X: 0, Y: 1, Z: 2, Strength: 3 }, AcceleratorRange: { EightG: 1 },
-      control: { deviceName: () => 'hello', reset: () => calls.push('reset') }, convertToText: String,
-      basic: { showString: () => { if (!linked) { linked = true; hooks.connect(); } }, showIcon: () => {},
-        clearScreen: () => {}, pause: () => {}, forever: cb => hooks.loop = cb }, IconNames: { Yes: 1 },
-    };
-    runInNewContext(source, context); hooks.loop(); assert.equal(lines.length, 0);
-    command = ' START '; hooks.uart(); hooks.loop();
-    assert.equal(lines[0], '0,-12,4,12.649110640673518');
-    assert.equal(calls.includes('calibrate'), !skipCalibration);
-    if (!skipCalibration) assert.ok(calls.indexOf('calibrate') < calls.indexOf('sample'));
-    command = 'stop'; hooks.uart(); hooks.loop(); assert.equal(lines.length, 1);
-    hooks.disconnect(); assert.equal(calls.at(-1), 'reset');
+async function magneticFirmware(duringCalibration=()=>{}) {
+  const hooks={}, lines=[], pauses=[];let command='', calibrations=0, resets=0;
+  const f={hooks,lines,pauses,send(value){command=value;hooks.uart();},get calibrations(){return calibrations;},get resets(){return resets;}};
+  runInNewContext(await readFile(new URL('../../firmware/examples/magnetometer.js',import.meta.url),'utf8'),{
+    bluetooth:{onUartDataReceived:(_,cb)=>hooks.uart=cb,uartReadUntil:()=>command,
+      onBluetoothConnected:cb=>hooks.connect=cb,onBluetoothDisconnected:cb=>hooks.disconnect=cb,
+      startUartService(){},uartWriteLine:line=>lines.push(line)},
+    serial:{delimiters:()=> '\n'},Delimiters:{NewLine:1},
+    input:{calibrateCompass(){calibrations++;duringCalibration(f);},setAccelerometerRange(){},magneticForce:axis=>[0,-12,4,13][axis]},
+    Dimension:{X:0,Y:1,Z:2,Strength:3},AcceleratorRange:{EightG:8},convertToText:String,
+    control:{reset(){resets++;}},basic:{clearScreen(){},pause:ms=>pauses.push(ms),forever:cb=>hooks.loop=cb},
+  });return f;
+}
+
+test('magnetic firmware acknowledges choice before calibration and only samples after completion or explicit skip', async()=>{
+  for(const action of ['calibrate','skip']) {
+    const f=await magneticFirmware(current=>{
+      assert.equal(current.lines.at(-1),'@mag,2,calibrating');
+      current.hooks.loop();assert.ok(current.lines.every(line=>line.startsWith('@mag')));
+      current.send('skip'); // Cannot interrupt a running calibration with a second choice.
+    });
+    f.send('prepare');f.hooks.loop();assert.equal(f.lines.length,0);
+    f.hooks.connect();f.send('start');f.hooks.loop();assert.equal(f.lines.length,0);
+    f.send(' PREPARE ');f.hooks.loop();assert.deepEqual(f.lines,['@mag,2,choice']);
+    f.send(action);f.send(action);f.hooks.loop();
+    assert.deepEqual(f.lines,action==='calibrate'?['@mag,2,choice','@mag,2,calibrating','@mag,2,calibrated','0,-12,4,13']:['@mag,2,choice','@mag,2,skipped','0,-12,4,13']);
+    assert.equal(f.calibrations,action==='calibrate'?1:0);assert.equal(f.pauses.at(-1),100);
+    const count=f.lines.length;f.send('stop');f.hooks.loop();assert.equal(f.lines.length,count);
+    f.hooks.disconnect();assert.equal(f.resets,1);f.hooks.connect();f.hooks.loop();assert.equal(f.lines.length,count);
+  }
+});
+
+test('stopped or disconnected calibration cannot later report completion or resume sampling',async()=>{
+  for(const interrupt of ['stop','disconnect']){
+    const f=await magneticFirmware(current=>{if(interrupt==='stop')current.send('stop');else{current.hooks.disconnect();current.hooks.connect();}});
+    f.hooks.connect();f.send('prepare');f.send('calibrate');f.hooks.loop();
+    assert.deepEqual(f.lines,['@mag,2,choice','@mag,2,calibrating']);
+    f.send('prepare');f.send('skip');f.hooks.loop();assert.equal(f.lines.at(-1),'0,-12,4,13');
   }
 });

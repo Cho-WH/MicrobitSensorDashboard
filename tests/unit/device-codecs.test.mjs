@@ -27,13 +27,18 @@ test('decimal codecs never coerce blank, hexadecimal, nonfinite or text tokens i
 
 test('magnetometer is a distinct registered free measurement and cannot run a thermal-only activity', () => {
   const context = getExperiment('magnetometer');
-  assert.equal(context.firmware.startCommand, 'start'); assert.equal(context.defaultGraph.yColumnId, 'magneticStrength');
+  assert.equal(context.firmware.startCommand, 'prepare'); assert.equal(context.defaultGraph.yColumnId, 'magneticStrength');
   assert.ok(context.channels.every(c => c.unit === 'µT'));
   assert.equal(context.activity, null); assert.deepEqual(context.analysisTemplates, []);
   assert.throws(() => getExperiment('magnetometer', 'gay-lussac'));
-  context.firmware.version = 2; assert.throws(() => getSensorRuntime(context), { code: 'unsupported-sensor-runtime' });
+  context.firmware.version = 999; assert.throws(() => getSensorRuntime(context), { code: 'unsupported-sensor-runtime' });
   const activity = getExperiment('bmp280', 'gay-lussac'); activity.activity.version = 999;
   assert.throws(() => getSensorRuntime(activity), { code: 'unsupported-sensor-runtime' });
   const changedChannels = getExperiment(); changedChannels.channels[0].id = 'another-channel';
   assert.throws(() => getSensorRuntime(changedChannels), { code: 'unsupported-sensor-runtime' });
+});
+
+test('magnetic status lines are distinct from numeric readings and require the v2 protocol',()=>{
+  for(const status of ['choice','calibrating','calibrated','skipped']) assert.deepEqual(decodeMagnetometer('@mag,2,'+status).status,status);
+  for(const line of ['@mag,1,choice','@mag,2,error','@mag,2,calibrated,1']) assert.equal(decodeMagnetometer(line).type,'parse-error');
 });

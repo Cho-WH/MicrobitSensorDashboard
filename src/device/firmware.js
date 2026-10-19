@@ -43,21 +43,21 @@ export const firmwareManifest = freeze({
       path: 'firmware/bme_1.2.hex', programVersion: 'bme 1.2' },
   },
   'magnetometer-uart': {
-    id: 'magnetometer-uart', version: 1, name: '내장 자기장 센서 프로그램', fileName: 'magnetometer-uart-v1.hex',
-    url: new URL('../../public/firmware/magnetometer-uart-v1.hex', import.meta.url).href,
-    boards: ['micro:bit-v2'], sha256: 'ccdaf8753785053273eee11572765ad1c8c5c90a1d4303357202ba82bbb24db3',
-    digestMode: 'utf8-crlf-to-lf', codecId: 'magnetometer-csv-v1', startCommand: 'start', sampleIntervalMs: 100,
+    id: 'magnetometer-uart', version: 2, name: '내장 자기장 센서 프로그램', fileName: 'magnetometer-uart-v2.hex',
+    url: new URL('../../public/firmware/magnetometer-uart-v2.hex', import.meta.url).href,
+    boards: ['micro:bit-v2'], sha256: 'd683634aa1b7ecaa18ab1578f5e20bd3ddf637eb1ba0c4c546b51e8a13c76b56',
+    digestMode: 'utf8-crlf-to-lf', codecId: 'magnetometer-csv-v2', startCommand: 'prepare', sampleIntervalMs: 100,
     hardwareVerified: false,
     verification: { hexReader: 'official-v2-reader', embeddedSource: 'exact-normalized-match', hardware: 'pending',
-      reproducibility: 'two local builds produced identical SHA-256 with pinned runtime cache' },
+      embeddedConfig: 'matched' },
     source: { repository: 'https://github.com/Cho-WH/MicrobitSensorDashboard',
-      path: 'firmware/examples/magnetometer.js', build: 'dev/firmware/build.mjs',
+      path: 'firmware/examples/magnetometer.js', build: 'dev/firmware/build.mjs', buildRecord: 'public/firmware/magnetometer-uart-v2.build.json',
       target: 'pxt-microbit@9.1.1', compiler: 'pxt-core@13.0.1' },
   },
 });
 
-export function getFirmwareArtifact(id, version = 1) {
-  if (typeof id !== 'string' || !Object.hasOwn(firmwareManifest, id) || firmwareManifest[id].version !== version)
+export function getFirmwareArtifact(id, version = null) {
+  if (typeof id !== 'string' || !Object.hasOwn(firmwareManifest, id) || (version !== null && firmwareManifest[id].version !== version))
     throw Object.assign(new Error('선택한 센서의 프로그램 버전을 찾지 못했어요.'), { code: 'unknown-firmware' });
   return firmwareManifest[id];
 }

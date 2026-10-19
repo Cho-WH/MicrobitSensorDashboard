@@ -3,6 +3,9 @@ import { magnetometer } from './definition.js';
 const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 export function decodeMagnetometer(raw, { receivedAt = Date.now(), monotonicAt = 0, attemptId = 0 } = {}) {
   const base = { receivedAt, monotonicAt, attemptId };
+  const status = typeof raw === 'string' && /^@mag,2,(choice|calibrating|calibrated|skipped)$/.exec(raw.trim());
+  if (status) return { type: 'device-status', status: status[1], ...base };
+  if (typeof raw === 'string' && raw.trim().startsWith('@')) return { type: 'parse-error', reasonCode: 'unknown-device-status', ...base };
   if (typeof raw !== 'string' || raw.split(',').length !== 4) return { type: 'parse-error', reasonCode: 'field-count', ...base };
   const tokens = raw.split(','), values = {}, validity = {};
   for (const [index, channel] of magnetometer.channels.entries()) {

@@ -8,11 +8,11 @@
   "targets": {
     "magnetometer": {
       "id": "magnetometer-uart",
-      "version": 1,
-      "name": "sensor-lab-magnetometer-v1",
+      "version": 2,
+      "name": "sensor-lab-magnetometer-v2",
       "description": "Microbit Sensor Lab four-channel magnetic field UART program",
       "source": "firmware/examples/magnetometer.js",
-      "protocol": { "codecId": "magnetometer-csv-v1", "startCommand": "start", "sampleIntervalMs": 100 }
+      "protocol": { "codecId": "magnetometer-csv-v2", "startCommand": "prepare", "sampleIntervalMs": 100 }
     },
     "temperature": {
       "id": "temperature-uart",
