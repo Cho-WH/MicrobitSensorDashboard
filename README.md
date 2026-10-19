@@ -72,6 +72,7 @@ MakeCode 프로젝트를 새로 만들거나 공유 링크를 갱신할 때는 B
 
 ## 개발자 문서
 
+- [통합 센서 실험 앱 기획](docs/unified-sensor-lab-plan.md): 게이뤼삭 기반 공통 구조, 센서·활동 선택, 수업 공유와 sco.pe.kr 주소 계획을 담은 구현 전 기획
 - [포크 개발자 가이드](docs/forking-guide.md): 자기 프로젝트로 발전시키는 작업 흐름
 - [프로젝트 구조와 데이터 흐름](docs/project-overview.md): 앱의 주요 계층과 확장 지점
 - [데이터 프로토콜](docs/protocol.md): micro:bit와 웹앱 사이의 CSV 통신 규칙
@@ -91,3 +92,4 @@ MakeCode 프로젝트를 새로 만들거나 공유 링크를 갱신할 때는 B
 이 프로젝트는 micro:bit 센서 수업과 특화 웹앱 개발에 재사용할 수 있는 오픈소스 템플릿을 목표로 합니다. 이 프로젝트는 자바실험실(javalap.org)의 영향을 받았습니다.
 
 QR 코드 생성은 `vendor/qrcodegen.js`에 포함된 [Project Nayuki QR Code generator library](https://www.nayuki.io/page/qr-code-generator-library)를 사용합니다. 해당 라이브러리는 MIT 라이선스이며, 라이선스 전문은 vendored 파일 헤더에 포함되어 있습니다.
+
