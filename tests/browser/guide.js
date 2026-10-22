@@ -71,11 +71,25 @@ export async function runGuideTests(report = (_message) => {}) {
     check(!$('iframe').getAttribute('src'), '배선 안내를 열기 전에 3D 자원을 요청했습니다.');
     view.render({ attemptId: 'bmp-1', connected: false, busy: false }); step('vcc');
     check($('iframe').getAttribute('src').includes('/public/viewers/bmp280/index.html'), '로컬 3D 주소가 잘못되었습니다.');
+    check(getComputedStyle($('iframe')).visibility==='hidden'&&$('iframe').getBoundingClientRect().height>0,'첫 장면 적용 전에 3D가 보이거나 화면 공간이 사라집니다.');
     await waitFor(() => ['applied', 'unavailable'].includes($('.guide-model').dataset.viewerState));
     const viewerState = $('.guide-model').dataset.viewerState;
     check($('iframe').contentDocument?.querySelector('#viewport'), '원본 3D 문서를 로드하지 못했습니다.');
     if (viewerState === 'applied') {
       check($('iframe').contentDocument.querySelector('#viewport canvas'), '3D 적용 응답에 실제 canvas가 없습니다.');
+      const frame=$('iframe'), model=$('.guide-model');
+      check(getComputedStyle(frame).visibility==='visible','첫 적용 완료 후 3D가 보이지 않습니다.');
+      for(const id of ['gnd','scl','sda','vcc']) {
+        const before=frame.getBoundingClientRect(), samples=[];
+        const sample=()=>{const r=frame.getBoundingClientRect();samples.push([r.x,r.y,r.width,r.height,getComputedStyle(frame).visibility]);};
+        const observer=new MutationObserver(sample);observer.observe(model,{attributes:true,subtree:true,childList:true});
+        try {
+          $(`[data-guide-step="${id}"]`).click();
+          check(model.dataset.viewerState==='loading','단계 적용 대기 상태를 검사하지 못했습니다.');
+          sample();await waitFor(()=>model.dataset.viewerState==='applied');sample();
+          check(samples.every(r=>r.slice(0,4).every((v,i)=>Math.abs(v-[before.x,before.y,before.width,before.height][i])<1)&&r[4]==='visible'),`${id}: 단계 적용 도중 3D 위치·크기·표시가 흔들립니다.`);
+        } finally { observer.disconnect(); }
+      }
       click('right'); await waitFor(() => $('.guide-model').dataset.viewerState === 'applied');
       click('detail'); await waitFor(() => $('.guide-model').dataset.viewerState === 'applied');
     }
@@ -85,8 +99,11 @@ export async function runGuideTests(report = (_message) => {}) {
     click('confirm'); check(view.getProgress().steps.find(item => item.id === 'vcc').complete, '3D 실패 후 배선 확인을 계속하지 못했습니다.');
     check($('[data-guide-step="gnd"]').getAttribute('aria-current')==='step'&&document.activeElement===$('.step-title'),'확인 후 다음 단계/제목 초점 이동 실패');
     click('previous');check(!view.getProgress().steps.find(item=>item.id==='gnd').complete,'이전/탐색만으로 준비 완료');
-    click('retry-model');await waitFor(()=>['applied','unavailable'].includes($('.guide-model').dataset.viewerState));
-    report(`실제 준비 UI · 원본 3D 지연 로드(${viewerState === 'applied' ? 'WebGL 적용' : '배선 표 복구'})·실패 후 준비 계속`);
+    click('retry-model');
+    check(getComputedStyle($('iframe')).visibility==='hidden'&&$('iframe').getBoundingClientRect().height>0,'재시도 첫 장면의 표시 보호 또는 공간 유지가 누락되었습니다.');
+    await waitFor(()=>['applied','unavailable'].includes($('.guide-model').dataset.viewerState));
+    if($('.guide-model').dataset.viewerState==='applied')check(getComputedStyle($('iframe')).visibility==='visible','재시도 완료 후 3D가 숨겨져 있습니다.');
+    report(`실제 준비 UI · 원본 3D 지연 로드(${viewerState === 'applied' ? 'WebGL 적용·네 배선 전환 중 위치 유지' : '배선 표 복구'})·첫 표시 보호·실패 후 준비 계속·재시도`);
 
     view.open(getExperiment('bmp280','gay-lussac'),{reset:true,prepared:true});
     view.render({attemptId:'activity',connected:false});

@@ -30,7 +30,7 @@ export function createGuideView(host, callbacks = {}) {
           <div class="model-toolbar"><div class="viewer-modes" role="group" aria-label="배선 보기 방식"></div><a class="viewer-large" target="_blank" rel="noopener">크게 보기 ↗</a></div>
           <div class="wiring-view-controls" role="group" aria-label="케이블 종류와 관찰 시점"></div>
           <p class="guide-model-status" role="status"></p>
-          <iframe class="guide-frame" title="배선 3D 안내" hidden></iframe>
+          <iframe class="guide-frame viewer-pending" title="배선 3D 안내" hidden></iframe>
           <div class="guide-table-panel" hidden><table class="guide-wiring"><caption></caption><thead><tr><th scope="col">역할</th><th scope="col" data-wiring-board></th><th scope="col" data-wiring-sensor></th></tr></thead><tbody></tbody></table><p>보드의 단자 이름을 비교하세요. 전원을 분리한 상태에서 배선합니다.</p></div>
         </div>
         <figure class="guide-placement" hidden><img alt=""><figcaption></figcaption></figure>
@@ -127,6 +127,7 @@ export function createGuideView(host, callbacks = {}) {
     const step=currentStep(); if (!step?.model || model.hidden || !content.viewer) return;
     if (!viewer) viewer=createViewerAdapter(frame,(state,detail)=>{
       viewerState=state; model.dataset.viewerState=state;
+      frame.classList.toggle('viewer-pending',!detail.hasAppliedState);
       buttons.get('detail').setAttribute('aria-pressed',String(detail.detail));
       buttons.get('detail').textContent=detail.detail?'전체 보기':'단자 자세히';
       for (const side of ['left','right']) buttons.get(side).setAttribute('aria-pressed',String(detail.side===side));
