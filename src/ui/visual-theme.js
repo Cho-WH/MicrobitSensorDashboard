@@ -11,12 +11,21 @@ export function readVisualTheme(root, channels = []) {
     font:color('--sl-font'), text:color('--sl-chart-axis'), grid:color('--sl-chart-grid'),
     colors:[1,2,3,4].map(index => color(`--sl-channel-${index}`)),
     channelColors:{},
+    analysis:{point:color('--sl-analysis-point'), excluded:color('--sl-analysis-excluded'),
+      focused:color('--sl-analysis-focused'), trend:color('--sl-analysis-trend')},
   };
   for (const [index, channel] of channels.entries()) {
     const key = quantitySlots[channel.quantity];
     theme.channelColors[channel.id] = theme.colors[key ?? index % theme.colors.length];
   }
   return theme;
+}
+
+// Relationships keep the Y channel's identity; calculated columns use a neutral
+// analysis color. Inclusion, exclusion and inspection also differ by shape/size.
+export function analysisColors(theme, model) {
+  return theme ? {...theme.analysis, point:theme.channelColors[model.yColumnId] ?? theme.analysis.point}
+    : {point:'#197f88', excluded:'#aebbbb', focused:'#d67b40', trend:'#9a5d30'};
 }
 
 export function channelColor(theme, channel, index = 0) {

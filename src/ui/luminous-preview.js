@@ -95,4 +95,7 @@ export async function prepareLuminousPreview(root = document) {
   measure.replaceChildren(heading, overview, actions, graph, notes, dialog);
   panel.remove();
   await loaded;
+  // Configure Canvas after the local face (or its fallback) has settled, so
+  // screen and immediate offscreen exports measure the same glyphs.
+  await doc.fonts.ready;
 }

@@ -7,6 +7,10 @@
 .magnetic-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin:18px 0 12px; }
 .magnetic-preparation .magnetic-hint { font-size:12px; max-width:360px; margin:0 auto; }
 .magnetic-preparation[data-phase=calibrating] img { animation:compass-tilt 3s ease-in-out infinite; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .magnetic-preparation { min-height:0; padding:24px; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .magnetic-preparation img { padding:12px; background:var(--sl-surface-soft); border-radius:var(--sl-radius-panel); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .magnetic-preparation .magnetic-state { color:var(--sl-stage-attention); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .magnetic-preparation .magnetic-hint { color:var(--sl-stage-muted); font-size:var(--sl-type-label); }
 @keyframes compass-tilt { 0%,100% {transform:rotate(-12deg) scale(.95)} 50% {transform:rotate(12deg) scale(1)} }
 @media(max-width:600px) { .magnetic-preparation {padding:20px 16px;min-height:0} .magnetic-preparation img {height:140px} .magnetic-preparation h4 {font-size:18px} .magnetic-actions button {flex:1;min-width:125px;font-size:13px} }
 @media(prefers-reduced-motion:reduce) { .magnetic-preparation[data-phase=calibrating] img {animation:none} }

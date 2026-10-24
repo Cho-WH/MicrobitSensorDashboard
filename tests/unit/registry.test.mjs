@@ -48,9 +48,8 @@ test('screen copy inherits defaults and only registered sensor/activity override
   const rules = steps => steps.map(({id,kind,scope,required,quickConfirm})=>({id,kind,scope,required,quickConfirm}));
   assert.deepEqual(rules(steps), rules(originalSteps));
   assert.equal(formatCopy(all.prepare.title, {name:'온도 센서'}), '온도 센서 · 장비 준비');
-  for (const sensor of registry.catalog.sensors) {
-    assert.deepEqual(getLabCopy({ sensor }), labDefaults);
-  }
+  const plain=extraSensor(), plainModules=createRegistry({sensors:[plain],activities:[]});
+  assert.deepEqual(getLabCopy({sensor:plain.definition},plainModules),labDefaults);
   context.activity.version++;
   assert.equal(getLabCopy(context, modules).measurement.start, '측정값 보관');
   context.sensor.version++;

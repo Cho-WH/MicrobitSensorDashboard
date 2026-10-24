@@ -4,7 +4,7 @@ import { columnLabel } from '../analysis/calculations.js';
 import { clockTime, formatClockTime, formatElapsedTime } from '../analysis/clock-time.js';
 import { formatCalculated } from '../analysis/calculations.js';
 import { trendSummary } from './trend-summary.js';
-import { channelColor as resolveChannelColor } from './visual-theme.js';
+import { channelColor as resolveChannelColor, analysisColors } from './visual-theme.js';
 
 // Keep axis lettering at its original size; only the plot bitmap stretches.
 function captureLayoutPreview(chart) {
@@ -43,7 +43,7 @@ function captureLayoutPreview(chart) {
   };
 }
 
-export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, responsive = true } = {}) {
+export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, responsive = true, theme = null } = {}) {
   if (!globalThis.Chart) throw new Error('그래프 도구를 불러오지 못했어요. 화면을 새로 열어 주세요.');
   let model = null, preview = null, pendingRender = null;
   const clock = value => formatClockTime(clockTime(value));
@@ -60,7 +60,7 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
       },
       plugins: {
         legend: { display: false },
-        tooltip: { filter: item => Boolean(item.raw.sampleId) || item.dataset.isIntercept === true, callbacks: {
+        tooltip: { ...(theme ? {titleFont:{family:theme.font}, bodyFont:{family:theme.font}} : {}), filter: item => Boolean(item.raw.sampleId) || item.dataset.isIntercept === true, callbacks: {
           title: items => items[0].dataset.isIntercept ? 'x절편' : '자료 ' + items[0].raw.sampleId,
           label: item => {
             const coordinates = [model.xLabel + ': ' + (model.xColumnId === 'receivedAt' ? clock(item.raw.x) : formatCalculated(item.raw.x)),
@@ -72,8 +72,11 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
         } },
       },
       scales: {
-        x: { type: 'linear', title: { display: true }, ticks: { maxTicksLimit: 6 }, grid: { color: '#edf1f2' } },
-        y: { type: 'linear', title: { display: true }, grid: { color: '#edf1f2' } },
+        ...Object.fromEntries(['x','y'].map(axis => [axis, {
+          type:'linear', title:{display:true, ...(theme ? {color:theme.text, font:{family:theme.font,size:13}} : {})},
+          ticks:{...(axis === 'x' ? {maxTicksLimit:6} : {}), ...(theme ? {maxTicksLimit:6,color:theme.text, font:{family:theme.font,size:12}} : {})},
+          grid:{color:theme?.grid ?? '#edf1f2'}, ...(theme ? {border:{color:theme.grid}} : {}),
+        }])),
       },
     },
   });
@@ -121,20 +124,21 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
     render(next, selectedIds = []) {
       if (preview) { pendingRender = [next, selectedIds]; return; }
       model = next;
-      const selected = new Set(selectedIds), color = c => selected.has(c.raw?.sampleId) ? '#d67b40' : '#197f88';
+      const colors = analysisColors(theme, model);
+      const selected = new Set(selectedIds), color = c => selected.has(c.raw?.sampleId) ? colors.focused : colors.point;
       chart.data.datasets = [
         { label: '분석 포함', data: model.type === 'line' ? model.line : model.points, showLine: model.type === 'line', spanGaps: false,
-          borderColor: '#197f88', pointBackgroundColor: color, pointBorderColor: color,
+          borderColor: colors.point, pointBackgroundColor: color, pointBorderColor: color,
           pointRadius: c => selected.has(c.raw?.sampleId) ? 5 : 3 },
         { label: '제외', data: model.excludedPoints, pointStyle: 'circle', pointRadius: 4, pointBorderWidth: 1.5,
-          pointBackgroundColor: '#ffffffcc', pointBorderColor: c => selected.has(c.raw?.sampleId) ? '#d67b40' : '#aebbbb' },
+          pointBackgroundColor: '#ffffffcc', pointBorderColor: c => selected.has(c.raw?.sampleId) ? colors.focused : colors.excluded },
       ];
       const line = (label, data, dashed = false) => ({ label, data, showLine: true, pointRadius: 0, pointHitRadius: 0,
-        borderColor: '#9a5d30', borderWidth: 1.8, borderDash: dashed ? [6, 4] : [], order: 1 });
+        borderColor: colors.trend, borderWidth: 1.8, borderDash: dashed ? [6, 4] : [], order: 1 });
       if (model.trend?.measured.length) {
         chart.data.datasets.push(line('추세선', model.trend.measured), line('연장선', model.trend.extension, true));
         if (model.trend.intercept.length) chart.data.datasets.push({ label: 'x절편', isIntercept: true, data: model.trend.intercept,
-          pointStyle: 'cross', pointRadius: 6, pointHitRadius: 7, pointBorderColor: '#9a5d30', pointBorderWidth: 2 });
+          pointStyle: 'cross', pointRadius: 6, pointHitRadius: 7, pointBorderColor: colors.trend, pointBorderWidth: 2 });
       }
       chart.options.scales.x.title.text = model.xLabel;
       chart.options.scales.y.title.text = model.yLabel;
@@ -148,14 +152,14 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
 
 // Render from a captured display model, including when the visible chart is hidden.
 // A separate fixed-size chart keeps download size independent of the window and view mode.
-export function exportAnalysisPng(model, { name = '', selectedIds = [] } = {}) {
+export function exportAnalysisPng(model, { name = '', selectedIds = [], theme = null } = {}) {
   if (!model) throw new Error('먼저 분석 그래프를 만드세요.');
   const plot = document.createElement('canvas'); plot.width = 1200; plot.height = 640;
-  const view = createAnalysisChart(plot, { responsive: false });
+  const view = createAnalysisChart(plot, { responsive: false, theme });
   try {
     view.render(model, selectedIds);
     const output = document.createElement('canvas'), ctx = output.getContext('2d');
-    const font = '"Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+    const font = theme?.font || '"Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
     const summary = trendSummary(model);
     const wrap = (text, size, weight = '') => {
       ctx.font = `${weight} ${size}px ${font}`.trim();
@@ -172,7 +176,7 @@ export function exportAnalysisPng(model, { name = '', selectedIds = [] } = {}) {
     const plotTop = 24 + title.length * 30 + 36;
     output.width = 1200; output.height = plotTop + 640 + caption.length * 26 + 28;
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, output.width, output.height);
-    ctx.textBaseline = 'top'; ctx.fillStyle = '#263b40'; ctx.font = `bold 22px ${font}`;
+    ctx.textBaseline = 'top'; ctx.fillStyle = theme?.text ?? '#263b40'; ctx.font = `bold 22px ${font}`;
     title.forEach((text, i) => ctx.fillText(text, 24, 20 + i * 30));
     ctx.font = `16px ${font}`;
     ctx.fillText(`분석 포함 ${model.includedCount ?? model.points.length}개 · 제외 ${model.excludedCount ?? model.excludedPoints.length}개 · 그래프 ${model.points.length}개${model.invalidCount ? ` · 값 없음 ${model.invalidCount}개` : ''} · ${model.view === 'extended' ? '추세선 연장' : '측정 범위'}   ● 분석 포함   ○ 제외`, 24, plotTop - 28);

@@ -2,7 +2,7 @@
  * @typedef {ReturnType<import('../catalog/index.js').getExperiment>} ExperimentContext
  * @typedef {{id:string,group:string,groupLabel:string,title:string,description:string,scope:string,
  * kind:string,action?:string,required:boolean,model?:{view:string,wire:string|null,explosion:number},
- * quickConfirm?:boolean,complete?:boolean,evidence?:string|null}} GuideStep
+ * instructions?:string[],quickConfirm?:boolean,complete?:boolean,evidence?:string|null}} GuideStep
  * @typedef {{id:string,name:string,help:string}} Equipment
  * @typedef {{src:string,alt:string}} GuideImage
  * @typedef {{equipment:Record<string,GuideImage>,usb:GuideImage,battery:GuideImage}} DeviceIllustrations

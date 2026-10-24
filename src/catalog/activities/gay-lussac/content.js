@@ -1,4 +1,8 @@
 const kelvin = { id: 'calc-kelvin', name: '절대온도', unit: 'K', lhs: { kind: 'column', columnId: 'temperatureC' }, op: '+', rhs: { kind: 'constant', value: 273.15 } };
+export const uiCopy = { guide: {
+  receptionNote: '용기를 닫기 전 온도·기압의 새 수신을 확인하세요. 준비 중 보이는 값은 미리보기이며, 기록 시작 뒤부터 자료로 저장돼요.',
+  summaryDescription: '배치와 수신을 확인한 뒤 측정 화면에서 기록을 시작하세요. 가열 전 기준값을 관찰하고, 데우기 시작할 때 가열 시작을 따로 남겨요.',
+} };
 export const analysisTemplates = [
   { id: 'kelvin', name: '절대온도', columns: [kelvin] },
   { id: 'ratio', name: '압력/절대온도', columns: [kelvin, { id: 'calc-ratio', name: '압력/절대온도', unit: 'hPa/K', lhs: { kind: 'column', columnId: 'pressureHpa' }, op: '/', rhs: { kind: 'column', columnId: 'calc-kelvin' } }] },

@@ -1,4 +1,5 @@
 // Preparation copy adapted from G/ui/action-help-content.js and G/guide/steps.js.
+export const uiCopy = { guide: { receptionNote: '온도와 기압을 함께 확인해요. 센서가 손이나 물체에 닿지 않게 두고 값이 안정될 때까지 기다리세요. 기압 단위는 hPa예요.' } };
 export const equipment = [
   { id: 'microbit', name: 'micro:bit V2', help: '센서의 측정값을 컴퓨터로 보내는 장치예요. 이 안내는 micro:bit V2를 기준으로 합니다.' },
   { id: 'sensor', name: 'BMP280 센서', help: '온도와 기압을 측정해요. 습도는 이 센서의 측정 항목이 아니에요.' },

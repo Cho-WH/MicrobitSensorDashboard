@@ -1,5 +1,5 @@
 // Adapted from Cho-WH/bme280 gay-lussac/ui/analysis-view.js at 59c5c149450f970bace2deaa183857c275595853.
-import { readCell } from '../domain/columns.js';
+import { readCell, getSourceColumns } from '../domain/columns.js';
 import { positionPopover } from './anchored-popover.js';
 import { createWorkspace } from '../analysis/workspace.js';
 import { createColumnFilters } from './column-filters.js';
@@ -15,10 +15,12 @@ import { formatCalculated } from '../analysis/calculations.js';
 import { formatElapsedTime } from '../analysis/clock-time.js';
 import { exportAnalysisPng, createChartView } from './chart-view.js';
 import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
+import { readVisualTheme } from './visual-theme.js';
 
 export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) => {} }) {
   let copy = getLabCopy(null);
   let copyContext = null;
+  let theme = null;
   applyLabCopy(root, copy);
   const $ = id => root.querySelector('#' + id), events = new AbortController(), { signal } = events;
   let store = null, workspace = null, task = 'overview', tableOpen = false, allColumns = false, focusedId = null;
@@ -62,7 +64,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
         if (header) $('raw-scroll').scrollLeft = header.offsetLeft - 32;
       }
     }, signal });
-  const graph = createAnalysisGraph(root, { getWorkspace: () => workspace, act, signal, onSelect: inspect });
+  const graph = createAnalysisGraph(root, { getWorkspace: () => workspace, act, signal, onSelect: inspect, getTheme:() => theme });
   let layoutTimer = null;
   function finishLayoutTransition() {
     clearTimeout(layoutTimer); layoutTimer = null; graph.endLayoutTransition();
@@ -71,7 +73,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     if (event.target === $('analysis-layout') && event.propertyName === 'grid-template-columns') finishLayoutTransition();
   }, { signal });
   const reflection = createReflectionView(root, { getWorkspace: () => workspace, getStoreState: () => store?.getState(), act,
-    getContext: () => copyContext, onBack: () => changeTask('relationship'), signal });
+    getContext: () => copyContext, getTheme:() => theme, onBack: () => changeTask('relationship'), signal });
   range = createRangeSelector(root, { getChart: () => overview, signal,
     onApply(draft) { if (act(() => workspace.applyTimeRange(draft))) { range.close(); changeTask('relationship'); } },
     onClose() { $('choose-range').focus({ preventScroll: true }); } });
@@ -253,7 +255,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     $('use-graph-for-reflection').disabled = !writable || !currentModel?.points.length;
     reflection.render(task === 'interpretation');
     if (task === 'overview' && workspace) {
-      overview ??= createChartView($('overview-chart'), { inspect: true, context: state.context, onLayout: () => range.layout(), onCursor(sample, elapsedSeconds) {
+      overview ??= createChartView($('overview-chart'), { inspect: true, theme, context: state.context, onLayout: () => range.layout(), onCursor(sample, elapsedSeconds) {
         $('overview-readout').textContent = sample ? (Number.isFinite(elapsedSeconds) ? formatElapsedTime(elapsedSeconds) : '자료 ' + sample.sampleId + ' · 시각 정보 없음')
           + state.sourceColumns.filter(c => !['sampleId', 'receivedAt'].includes(c.id)).map(c => { const cell = readCell(sample, c.id); return ' · ' + c.name + ' ' + (cell.reason ?? formatCalculated(cell.value) + (c.unit ? ' ' + c.unit : '')); }).join('')
           : copy.analysis.cursorHint;
@@ -297,6 +299,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
         reset(); store = nextStore; $('analysis-feedback').textContent = ''; $('exclusion-reason').value = '';
         try { if (store) workspace = createWorkspace({ store }); } catch (error) { onError('분석 작업을 열지 못했어요. ' + error.message); }
         copyContext = workspace?.getState().context ?? context;
+        theme = readVisualTheme(root, getSourceColumns(copyContext).filter(column => !['sampleId','receivedAt'].includes(column.id)));
         copy = getLabCopy(copyContext); applyLabCopy(root, copy);
         render({ resetScroll: true });
       } else render();
@@ -304,7 +307,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     flush: () => reflection.flush(), getWorkspace: () => workspace, updateStatus, hasGraph: () => Boolean(workspace && (task !== 'interpretation' || workspace.getReflectionModel())),
     exportPng: name => {
       const model = task === 'interpretation' ? workspace?.getReflectionModel() : workspace?.getGraphData();
-      return exportAnalysisPng(model, { name });
+      return exportAnalysisPng(model, { name, theme });
     },
     reset,
     dispose() { reset(); events.abort(); table.dispose(); },

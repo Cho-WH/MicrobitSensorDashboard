@@ -6,6 +6,60 @@ async function until(predicate,label) {
   while(!predicate()){if(performance.now()>deadline)throw new Error(label);await settle();}
 }
 
+// Reflow the same persisted experiment, then reopen it through the library.
+// This protects screen transitions without keeping separate layout fixtures.
+export async function runLuminousWorkspaceTests(report=()=>{}) {
+  const frame=document.createElement('iframe'); frame.title='분석·해석·저장 화면 검증';
+  frame.style.cssText='display:block;border:0;max-width:none;width:1366px;height:768px';
+  frame.src=new URL('../../dev/design/?sensor=bmp280&state=paused&view=relationship',import.meta.url).href;
+  document.body.append(frame);
+  try {
+    await until(()=>frame.contentDocument?.documentElement.dataset.reviewReady==='paused','분석 검토 화면을 열지 못했습니다.');
+    const doc=frame.contentDocument, win=frame.contentWindow, $=selector=>doc.querySelector(selector);
+    const click=async selector=>{const button=$(selector);check(button&&!button.disabled,'조작할 수 없습니다: '+selector);button.click();await settle();};
+    const points=()=>JSON.stringify(win.Chart.getChart($('#analysis-chart')).data.datasets[0].data);
+    const original=points();
+    for (const width of [1366,1024,390,320]) {
+      frame.style.width=width+'px'; await settle();
+      for (const mode of ['table','graph','split']) {
+        await click(`[data-relationship-mode="${mode}"]`);
+        check(doc.documentElement.scrollWidth<=width+1,`${width}px ${mode} 분석 화면이 페이지 밖으로 넘칩니다.`);
+      }
+      await click('#use-graph-for-reflection');
+      const answer=$('#reflection-observation');
+      answer.value='조건을 일정하게 두고 관찰한 결과입니다. '.repeat(20);
+      answer.dispatchEvent(new win.Event('input',{bubbles:true})); await settle();
+      check(doc.documentElement.scrollWidth<=width+1,`${width}px 해석 화면이 페이지 밖으로 넘칩니다.`);
+      check(answer.clientWidth>0&&answer.scrollWidth<=answer.clientWidth+1,`${width}px 해석 글이 옆으로 잘립니다.`);
+      await click('#reflection-back');
+      check(points()===original,'크기·보기 전환으로 그래프의 원자료가 바뀌었습니다.');
+    }
+    const answer=$('#reflection-observation').value;
+    await click('[data-view="saved"]');
+    await until(()=>$('#saved-runs button'),'저장한 실험이 목록에 나타나지 않습니다.');
+    check(doc.documentElement.scrollWidth<=321,'작은 화면의 저장 목록이 페이지 밖으로 넘칩니다.');
+    await click('[data-view="home"]');
+    check($('#sensor-cards').children.length===5&&$('#activity-cards').children.length>0,'홈의 센서·활동 탐색이 누락되었습니다.');
+    check(doc.documentElement.scrollWidth<=321,'작은 화면의 홈이 페이지 밖으로 넘칩니다.');
+    await click('#sensor-cards a');
+    check(!$('[data-screen="preview"]').hidden&&!$('#activate-experiment').disabled,'홈에서 준비 안내로 이어지지 않습니다.');
+    check(doc.documentElement.scrollWidth<=321,'작은 화면의 활동 소개가 페이지 밖으로 넘칩니다.');
+    await click('[data-view="saved"]');
+    await until(()=>$('#saved-runs button'),'저장 목록을 다시 열지 못했습니다.');
+    await click('#saved-runs button');
+    await until(()=>!$('[data-screen="analysis"]').hidden,'저장한 실험을 분석으로 열지 못했습니다.');
+    await click('#tab-interpretation');
+    check($('#reflection-observation').value===answer,'저장 목록에서 다시 연 실험의 해석 글이 달라졌습니다.');
+    check(win.Chart.getChart($('#reflection-chart')).data.datasets[0].data.length===600,'저장한 근거 그래프의 자료가 누락되었습니다.');
+    report('새 분석 화면 · 1366→1024→390→320px 표/그래프·해석 재배치와 자료 보존');
+    report('새 홈·저장 목록 · 센서/활동 탐색·미리보기·저장 실험의 근거/글 재열기');
+  } finally {
+    const cleanup=[...(frame.contentDocument?.querySelectorAll('footer button')??[])].find(button=>button.textContent==='검토 자료 정리');
+    if(cleanup){cleanup.click();await until(()=>frame.contentDocument.body.textContent.includes('검토용 자료를 정리했습니다.'),'검토 자료 정리에 실패했습니다.');}
+    frame.remove();
+  }
+}
+
 // Real app + real IndexedDB, fixed simulated input. No duplicate UI or run model.
 export async function runLuminousTests(report=()=>{}) {
   let frame;

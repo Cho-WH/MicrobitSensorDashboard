@@ -1,3 +1,4 @@
+export const uiCopy = { guide: { receptionNote: 'X·Y·Z 성분과 자기장 크기를 μT로 확인해요. 자석·금속 물체와의 거리, 보드의 방향을 함께 살펴보세요.' } };
 export const equipment = [
   { id: 'microbit', name: 'micro:bit V2', help: '보드 안의 자기장 센서를 사용해요. 외부 센서와 연결선은 필요하지 않아요.' },
   { id: 'usb', name: 'USB 데이터 케이블', help: '프로그램 설치에는 Micro-B 데이터 케이블이 필요해요. 이미 설치했다면 연결·보정 확인부터 진행할 수 있어요.' },

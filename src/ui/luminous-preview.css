@@ -3,6 +3,8 @@
 @import url('./tokens.css');
 @import url('./luminous-controls.css');
 @import url('./luminous-preparation.css');
+@import url('./luminous-analysis.css');
+@import url('./luminous-library.css');
 
 /* Measurement and app-shell composition. Decorative gradients remain local. */
 [data-visual-theme=luminous] body {

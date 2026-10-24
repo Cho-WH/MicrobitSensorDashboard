@@ -37,16 +37,17 @@ export function createGuideView(host, callbacks = {}) {
         <figure class="guide-placement" hidden><img alt=""><figcaption></figcaption></figure>
         <div class="guide-device-visual" hidden></div>
         <div class="guide-sensor-preparation" hidden></div>
-        <div class="guide-reception" hidden><p class="eyebrow" data-copy="guide.incoming"></p><div class="guide-values"></div><p class="guide-last-received"></p><ol class="guide-checks"></ol><ol class="calibration-instructions" hidden></ol></div>
+        <div class="guide-reception" hidden><div class="guide-reception-state" role="status"><strong></strong><p></p></div><p class="eyebrow" data-copy="guide.incoming"></p><div class="guide-values"></div><p class="guide-last-received"></p><p class="guide-reading-note" data-copy="guide.receptionNote"></p><ol class="guide-checks"></ol><ol class="calibration-instructions" hidden></ol></div>
         <details class="guide-power" hidden><summary data-copy="guide.powerHeading"></summary><figure class="guide-device-image"><img alt="" loading="lazy" decoding="async" width="1440" height="900"><figcaption data-copy="guide.powerNote"></figcaption></figure></details>
         <div class="guide-summary" hidden><p class="eyebrow" data-copy="guide.lastCheck"></p><h3 data-copy="guide.summaryTitle"></h3><ul></ul></div>
       </section>
       <section class="step-panel" data-copy-aria-label="accessibility.guideDescription">
         <ol class="guide-substeps" data-copy-aria-label="accessibility.guideSubsteps"></ol>
-        <div class="step-content"><p class="step-counter"></p><h3 class="step-title" tabindex="-1"></h3><p class="step-description"></p></div>
+        <div class="step-content"><p class="step-counter"></p><h3 class="step-title" tabindex="-1"></h3><p class="step-description"></p><ol class="step-instructions" hidden></ol></div>
+        <div class="guide-activity-equipment" hidden></div>
         <p class="guide-evidence"></p>
         <div class="guide-quick" hidden><p data-copy="guide.quickNote"></p><div></div></div>
-        <div class="guide-program" hidden><strong data-copy="guide.program"></strong><p class="guide-device-status" role="status"></p><progress max="100" data-copy-aria-label="accessibility.installProgress" hidden></progress><div class="guide-program-actions"></div></div>
+        <div class="guide-program" hidden><span class="guide-program-label" data-copy="guide.programTarget"></span><strong class="guide-program-target"></strong><p class="guide-device-status" role="status"></p><progress max="100" data-copy-aria-label="accessibility.installProgress" hidden></progress><div class="guide-program-actions"></div></div>
         <p class="guide-connection-status" role="status"></p>
         <div class="guide-device-actions"></div><div class="step-actions"></div><p class="guide-note"></p>
         <details class="wiring-note" hidden><summary></summary><p></p></details>
@@ -56,8 +57,10 @@ export function createGuideView(host, callbacks = {}) {
   const status = findElement(shell,'p','.guide-status'), nav = findElement(shell,'ol','.guide-progress');
   const subnav = findElement(shell,'ol','.guide-substeps'), copy = findElement(shell,'div','.step-content');
   const title = findElement(shell,'h3','.step-title'), description = findElement(shell,'p','.step-description');
+  const instructions = findElement(shell,'ol','.step-instructions');
   const evidence = findElement(shell,'p','.guide-evidence'), note = findElement(shell,'p','.guide-note');
   const equipment = findElement(shell,'div','.guide-equipment'), model = findElement(shell,'div','.guide-model');
+  const activityEquipment = findElement(shell,'div','.guide-activity-equipment');
   const modelStatus = findElement(shell,'p','.guide-model-status'), frame = findElement(shell,'iframe','iframe');
   const tablePanel = findElement(shell,'div','.guide-table-panel'), tableBody = findElement(shell,'tbody','.guide-wiring tbody');
   const placement = findElement(shell,'figure','.guide-placement'), deviceVisual = findElement(shell,'div','.guide-device-visual');
@@ -156,6 +159,8 @@ export function createGuideView(host, callbacks = {}) {
   }
   function buildContent() {
     applyLabCopy(shell, labels);
+    setText(findElement(shell,'strong','.guide-program-target'),context.sensor.name);
+    delete instructions.dataset.signature;
     const buttonLabels = {previous:labels.guide.previous,confirm:labels.guide.confirm,next:labels.guide.next,measure:labels.guide.measure,
       'quick-confirm':labels.guide.quickConfirm,install:labels.guide.install,'program-confirm':labels.guide.programConfirm,
       connect:labels.common.connect,reconnect:labels.common.reconnect,disconnect:labels.common.disconnect,battery:labels.guide.battery,
@@ -191,7 +196,7 @@ export function createGuideView(host, callbacks = {}) {
       const index=event.key==='ArrowRight'?(current+1)%items.length:event.key==='ArrowLeft'?(current-1+items.length)%items.length:event.key==='Home'?0:event.key==='End'?items.length-1:null;
       if(index===null||current<0)return;event.preventDefault();items[index].click();items[index].focus();items[index].scrollIntoView({block:'nearest',inline:'nearest'});
     },{signal});
-    const messages={}; equipment.replaceChildren();
+    const messages={}; equipment.replaceChildren(); activityEquipment.replaceChildren();
     deviceVisual.replaceChildren(); power.open=false;
     const powerImage=findElement(power,'img','img');
     if(content.illustrations){powerImage.src=content.illustrations.battery.src;powerImage.alt=content.illustrations.battery.alt;}
@@ -211,7 +216,7 @@ export function createGuideView(host, callbacks = {}) {
         helpButton.type='button'; helpButton.dataset.actionHelp=key; helpButton.setAttribute('aria-label',item.name+' 준비 안내');
         li.append(name,helpButton); list.append(li);
       }
-      section.append(list); equipment.append(section);
+      section.append(list); (items===content.equipment?equipment:activityEquipment).append(section);
     }
     tableBody.replaceChildren();
     for (const wire of content.wiring) {
@@ -264,22 +269,35 @@ export function createGuideView(host, callbacks = {}) {
     for (const item of steps) {
       const node=stepButtons.get(item.id); node.parentElement.hidden=item.group!==step?.group;
       node.dataset.complete=String(item.complete); node.disabled=Boolean(facts.programmerState?.busy);
+      const skipped=item.kind==='calibration'&&state.observations.calibration==='skipped';
+      node.dataset.skipped=String(skipped);
+      node.setAttribute('aria-label',`${node.textContent}${skipped?' · '+labels.guide.calibrationSkipped:item.complete?' · 완료':''}`);
       if (item.id===selectedId) node.setAttribute('aria-current','step'); else node.removeAttribute('aria-current');
     }
     subnav.hidden=quick||isSummary||steps.filter(item=>item.group===step?.group).length<2;
     setText(title,quick?labels.guide.quickTitle:isSummary?state.canMeasure?labels.guide.readyTitle:labels.guide.receptionTitle:(managed?presentation.title:step?.title)??labels.navigation.prepare);
     setText(description,quick?labels.guide.quickDescription:isSummary?labels.guide.summaryDescription:(managed?presentation.description:step?.description)??'');
+    const instructionItems=quick||isSummary?[]:step?.instructions??[], instructionSignature=JSON.stringify(instructionItems);
+    instructions.hidden=!instructionItems.length;
+    if(instructions.dataset.signature!==instructionSignature) {
+      instructions.dataset.signature=instructionSignature; instructions.replaceChildren(...instructionItems.map(text=>element('li','',text)));
+    }
     if(leavingPanel)title.focus({preventScroll:true});
     const groupIndex=[...groupButtons.keys()].indexOf(step?.group);
     setText(findElement(copy,'p','.step-counter'),quick?labels.guide.quickCounter:isSummary?labels.guide.summaryCounter:`${String(groupIndex+1).padStart(2,'0')} / ${String(groupButtons.size).padStart(2,'0')} · ${step?.groupLabel}`);
     const provenance = { 'user-confirmed': labels.guide.userConfirmed, 'device-observed': labels.guide.deviceObserved, 'device-reported': labels.guide.deviceReported, simulated: labels.guide.simulated };
-    setText(evidence,step?.complete?'✓ '+(provenance[step.evidence]??labels.guide.confirm):'');
+    const skipped=step?.kind==='calibration'&&state.observations.calibration==='skipped';
+    setText(evidence,skipped?labels.guide.calibrationSkippedNote:step?.complete?'✓ '+(provenance[step.evidence]??labels.guide.confirm):'');
+    evidence.dataset.state=skipped?'skipped':step?.complete?'complete':'pending';
     equipment.hidden=!quick&&step?.id!=='equipment';
+    activityEquipment.hidden=equipment.hidden||!content.activityEquipment.length;
     model.hidden=quick||isSummary||!content.viewer||!content.wiring.length||step?.group!=='wiring';
     placement.hidden=quick||step?.id!=='placement'||!content.setupImage;
     const connectionStep=!quick&&!isSummary&&['connection','calibration','reception','battery'].includes(step?.kind);
     reception.hidden=!connectionStep||Boolean(managed&&presentation.hideValues);
     power.hidden=!content.illustrations||quick||isSummary||!['connection','reception','battery'].includes(step?.kind);
+    if(step?.kind==='battery'&&power.dataset.step!==selectedId)power.open=true;
+    power.dataset.step=selectedId;
     deviceVisual.hidden=quick||isSummary||!model.hidden||!['usb','program'].includes(step?.id);
     if (!deviceVisual.hidden&&!deviceVisual.childElementCount) {
       deviceVisual.innerHTML='<p class="eyebrow" data-copy="guide.usbEyebrow"></p><div class="usb-diagram"><span data-copy="guide.computer"></span><span aria-hidden="true">⟷</span><strong>micro:bit V2</strong></div><h4 data-copy="guide.usbHeading"></h4><p data-copy="guide.usbNote"></p><small data-copy="guide.usbWireless"></small>';
@@ -299,25 +317,44 @@ export function createGuideView(host, callbacks = {}) {
         const value=facts.latest?.values[channel.id], valid=facts.latest?.validity[channel.id]==='valid';
         setText(values.querySelector(`[data-channel="${channel.id}"]`),valid&&Number.isFinite(value)?value.toLocaleString('ko-KR',{maximumFractionDigits:channel.digits??2}):'—');
       }
-      reception.dataset.fresh=String(facts.receptionReady===true);
+      reception.dataset.fresh=String(state.canMeasure);
+      const signal=facts.unsupported?'unsupported':facts.connecting?'connecting':!facts.connected?'disconnected':state.canMeasure?'receiving':'waiting';
+      reception.dataset.state=signal;
+      const receptionCopy={
+        unsupported:[labels.guide.receptionTitle,labels.guide.unsupported],
+        connecting:[labels.common.connecting,labels.guide.connectingNote],
+        disconnected:[labels.common.disconnected,facts.receivedAt?labels.guide.staleNote:labels.guide.disconnectedNote],
+        receiving:[labels.common.fresh,labels.guide.receivingNote],
+        waiting:[labels.guide.receptionWaiting,facts.receivedAt?labels.guide.lastReadingNote:labels.guide.waitingNote],
+      }[signal];
+      setText(findElement(reception,'strong','.guide-reception-state strong'),receptionCopy[0]);
+      setText(findElement(reception,'p','.guide-reception-state p'),receptionCopy[1]);
       setText(findElement(reception,'p','.guide-last-received'),facts.receivedAt?`${facts.receptionReady?labels.common.fresh:labels.common.checkReception} · ${formatCopy(labels.common.lastReceived,{time:new Date(facts.receivedAt).toLocaleTimeString('ko-KR',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})})}`:labels.guide.noReading);
-      const checks=findElement(reception,'ol','.guide-checks'), checksText=[[labels.guide.wireless,Boolean(facts.connected)],[labels.guide.continuous,Boolean(facts.receptionReady)],...(content.calibrationInstructions.length?[[labels.guide.calibration,state.observations.calibration!=='unknown']]:[]),...(step?.kind==='battery'?[[labels.guide.batteryCheck,step.complete]]:[])];
+      const calibration=state.observations.calibration, hasCalibration=steps.some(item=>item.kind==='calibration');
+      const checks=findElement(reception,'ol','.guide-checks'), checksText=[
+        [labels.guide.wireless,facts.connected?'complete':'pending'],[labels.guide.continuous,state.canMeasure?'complete':'pending'],
+        ...(hasCalibration?[[calibration==='skipped'?labels.guide.calibrationSkipped:calibration==='unknown'?labels.guide.calibrationPending:labels.guide.calibrationDone,calibration==='skipped'?'skipped':calibration==='unknown'?'pending':'complete']]:[]),
+        ...(step?.kind==='battery'?[[labels.guide.batteryCheck,step.complete?'complete':'pending']]:[])];
       const signature=JSON.stringify(checksText);
-      if (checks.dataset.signature!==signature) {checks.dataset.signature=signature; checks.replaceChildren(...checksText.map(([label,done])=>element('li',done?'complete':'',`${done?'✓':'○'} ${label}`)));}
+      if (checks.dataset.signature!==signature) {checks.dataset.signature=signature; checks.replaceChildren(...checksText.map(([label,state])=>element('li',state,`${state==='complete'?'✓':state==='skipped'?'—':'○'} ${label}`)));}
       findElement(reception,'ol','.calibration-instructions').hidden=!['calibration','reception'].includes(step?.kind)||!content.calibrationInstructions.length;
     }
     summary.hidden=!isSummary;
-    const summarySignature=JSON.stringify(steps.map(item=>[item.id,item.complete]));
+    const summarySignature=JSON.stringify([state.observations.calibration,steps.map(item=>[item.id,item.complete])]);
     if (isSummary&&summary.dataset.signature!==summarySignature) {
       summary.dataset.signature=summarySignature;
       findElement(summary,'ul','ul').replaceChildren(...steps.filter(item=>item.required).map(item=>{
-        const li=element('li'), label=element('span','',`${item.complete?'✓':'○'} ${item.title}`), change=element('button','quiet-button',item.complete?labels.guide.review:labels.guide.check);
+        const skipped=item.kind==='calibration'&&state.observations.calibration==='skipped';
+        const li=element('li',skipped?'skipped':item.complete?'complete':''), label=element('span','',`${item.complete?'✓':skipped?'—':'○'} ${skipped?labels.guide.calibrationSkipped:item.title}`), change=element('button','quiet-button',item.complete||skipped?labels.guide.review:labels.guide.check);
         change.type='button'; change.addEventListener('click',()=>select(item.id),{signal:contentAbort.signal}); li.append(label,change); return li;
       }));
     }
     quickPanel.hidden=!quick; for (const check of quickChecks.values()) check.disabled=locked();
     program.hidden=quick||step?.kind!=='program'; const programmer=facts.programmerState??{};
-    setText(deviceNotice,[programmer.message,Number.isFinite(programmer.progress)?`${Math.round(programmer.progress)}%`:'',programmer.deviceName].filter(Boolean).join(' · '));
+    const installing=Boolean(programmer.busy||['connecting','flashing'].includes(programmer.status));
+    program.dataset.state=programmer.status??'idle'; program.setAttribute('aria-busy',String(installing));
+    const programMessage=programmer.message||(programmer.status==='success'?labels.guide.programInstalled:labels.guide.programReady);
+    setText(deviceNotice,[programMessage,Number.isFinite(programmer.progress)?`${Math.round(programmer.progress)}%`:'',programmer.deviceName].filter(Boolean).join(' · '));
     bar.hidden=programmer.status!=='flashing'; if (programmer.progress==null) bar.removeAttribute('value'); else bar.value=programmer.progress;
     const deviceText=connectionStep?(facts.unsupported?labels.guide.unsupported:facts.deviceMessage??''):'';
     setText(connectionNotice,deviceText); connectionNotice.hidden=!deviceText||Boolean(managed&&facts.connected&&presentation.hideValues);
@@ -336,6 +373,7 @@ export function createGuideView(host, callbacks = {}) {
     buttons.get('measure').disabled=locked()||!state.canMeasure;
     buttons.get('quick-confirm').disabled ||= [...quickChecks.values()].some(check=>!check.checked);
     buttons.get('install').disabled ||= facts.canInstall===false||facts.mock===true||programmer.status==='unavailable';
+    buttons.get('install').setAttribute('aria-busy',String(installing));
     buttons.get('install').textContent=programmer.busy?labels.guide.installing:['error','cancelled'].includes(programmer.status)?labels.guide.retryInstall:programmer.status==='success'?labels.guide.reinstall:labels.guide.install;
     buttons.get('connect').disabled ||= facts.canConnect===false; buttons.get('connect').textContent=facts.canReconnect?labels.common.chooseDevice:facts.mock?labels.common.mockConnect:labels.common.connect;
     buttons.get('reconnect').disabled ||= facts.canConnect===false;

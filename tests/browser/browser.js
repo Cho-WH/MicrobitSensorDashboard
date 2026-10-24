@@ -1,21 +1,21 @@
 import { runStorageTests } from './storage.js';
 import { runFileTests } from './files.js';
 import { runUiTests } from './ui.js';
-import { runGuideTests } from './guide.js';
+import { runGuideTests, runPreparationTests } from './guide.js';
 import { runAppTests } from './app.js';
 import { runMeasurementTests } from './measurement.js';
 import { runLayoutTests } from './layout.js';
 import { runCopyTests } from './copy.js';
 import { runNavigationTests } from './navigation.js';
 import { runDeviceTests } from './devices.js';
-import { runLuminousTests } from './luminous.js';
+import { runLuminousTests, runLuminousWorkspaceTests } from './luminous.js';
 const button = document.getElementById('run'), status = document.getElementById('status'), list = document.getElementById('results');
 button.addEventListener('click', async () => {
   button.disabled = true; list.replaceChildren(); status.textContent = '검사 중'; delete status.dataset.result;
   let count = 0;
   const report = message => { count++; const li = document.createElement('li'); li.textContent = '통과 · ' + message; list.append(li); };
   try {
-    const suites = {copy:runCopyTests,storage:runStorageTests,files:runFileTests,ui:runUiTests,guide:runGuideTests,measurement:runMeasurementTests,app:runAppTests,navigation:runNavigationTests,layout:runLayoutTests,devices:runDeviceTests,luminous:runLuminousTests};
+    const suites = {copy:runCopyTests,storage:runStorageTests,files:runFileTests,ui:runUiTests,guide:runGuideTests,preparation:runPreparationTests,measurement:runMeasurementTests,app:runAppTests,navigation:runNavigationTests,layout:runLayoutTests,devices:runDeviceTests,luminous:runLuminousTests,workspace:runLuminousWorkspaceTests};
     const selected = new URL(location.href).searchParams.get('suite');
     const failures = [];
     for (const [name, run] of selected && suites[selected] ? [[selected, suites[selected]]] : Object.entries(suites)) {

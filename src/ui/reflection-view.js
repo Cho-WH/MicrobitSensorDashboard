@@ -21,12 +21,12 @@ export function evidenceDescription(evidence, model, origin) {
 }
 
 // An explicit print document keeps the student's saved evidence out of live analysis controls.
-export function createReflectionPrint({ name, model, evidence, answers, origin, questions = REFLECTION_QUESTIONS }) {
+export function createReflectionPrint({ name, model, evidence, answers, origin, questions = REFLECTION_QUESTIONS, theme = null }) {
   const sheet = node('article', null, 'reflection-print'); sheet.id = 'reflection-print';
   sheet.append(node('p', '센서 실험 · 탐구 기록', 'print-eyebrow'), node('h1', name));
   if (model) {
     sheet.append(node('p', `${model.xLabel} → ${model.yLabel}`), node('p', evidenceDescription(evidence, model, origin), 'print-meta'));
-    const image = document.createElement('img'); image.alt = '설명의 근거로 가져온 그래프'; image.src = exportAnalysisPng(model, { name });
+    const image = document.createElement('img'); image.alt = '설명의 근거로 가져온 그래프'; image.src = exportAnalysisPng(model, { name, theme });
     sheet.append(image);
   } else sheet.append(node('p', '아직 근거 그래프를 가져오지 않았습니다.'));
   for (const q of questions) {
@@ -35,7 +35,7 @@ export function createReflectionPrint({ name, model, evidence, answers, origin, 
   return sheet;
 }
 
-export function createReflectionView(root, { getWorkspace, getStoreState, act, onBack, signal, getContext = () => getWorkspace()?.getState().context }) {
+export function createReflectionView(root, { getWorkspace, getStoreState, act, onBack, signal, getTheme = () => null, getContext = () => getWorkspace()?.getState().context }) {
   let copy = getLabCopy(null);
   let attachedContext = null;
   const $ = id => root.querySelector('#' + id), inputs = new Map();
@@ -106,7 +106,7 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
     if (printing || !getWorkspace() || !flush()) return;
     printing = true; $('reflection-print-button').disabled = true;
     try {
-      clearPrint(); printSheet = createReflectionPrint({ name: getStoreState().name, model, evidence, answers: answers(), origin, questions });
+      clearPrint(); printSheet = createReflectionPrint({ name: getStoreState().name, model, evidence, answers: answers(), origin, questions, theme:getTheme() });
       document.body.append(printSheet);
       await Promise.all([...printSheet.querySelectorAll('img')].map(image => image.decode()));
       document.body.dataset.printReflection = 'true'; window.print();
@@ -137,7 +137,7 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
       $('reflection-scope').textContent = evidenceDescription(evidence, model, origin);
       const key = evidenceKey(evidence);
       if (visible && model && key !== chartKey) {
-        chart ??= createAnalysisChart($('reflection-chart'));
+        chart ??= createAnalysisChart($('reflection-chart'), {theme:getTheme()});
         chart.render(model); chartKey = key;
         $('reflection-chart').setAttribute('aria-label', `보관한 근거 그래프. ${model.xLabel} 대 ${model.yLabel}. 분석 포함 ${model.includedCount}개, 제외 ${model.excludedCount}개.`);
       } else if (!visible) chartKey = null;

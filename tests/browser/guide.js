@@ -1,5 +1,6 @@
 import { createGuideView } from '../../src/ui/guide-view.js';
 import { getExperiment } from '../../src/catalog/index.js';
+import { stableText } from './layout.js';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const waitFor = async predicate => {
@@ -61,6 +62,8 @@ export async function runGuideTests(report = (_message) => {}) {
     check(deviceActions.at(-1)==='skip','생략 명령 콜백 누락');showPhase('skipping');showPhase('receiving','skipped',true);
     check(view.getProgress().canMeasure&&!view.getProgress().steps.find(step=>step.id==='calibration').complete,'생략이 완료로 둔갑하거나 측정을 차단했습니다.');
     check(view.getProgress().setup.calibration==='skipped'&&$('.step-description').textContent.includes('생략'),'생략 이력 또는 안내 누락');
+    check($('.guide-checks .skipped')&&!$('.guide-checks .skipped').classList.contains('complete'),'수신 확인에 보정 생략이 완료로 표시됩니다.');
+    click('next');check($('.guide-summary .skipped')&&!$('.guide-summary .skipped').textContent.includes('✓'),'준비 결과에 보정 생략 표시 누락');
     view.render({ attemptId: 'mag-2', connected: false, receptionReady: false, connecting: true, busy: true, deviceMessage: 'micro:bit를 연결하는 중…' });
     check(!view.getProgress().ready, '새 연결 시도가 이전 보정·수신 확인을 재사용했습니다.');
     step('connection'); click('disconnect'); check(disconnects === 1, '연결 중 취소를 실행하지 못했습니다.');
@@ -88,6 +91,19 @@ export async function runGuideTests(report = (_message) => {}) {
     view.render({ attemptId: 'bmp-1', connected: false, busy: true, programmerState: { status: 'flashing', progress: 42, message: '프로그램 설치 중', deviceName: 'micro:bit V2' } });
     check($('.guide-device-status').textContent.includes('42%'), 'USB 진행률을 표시하지 않았습니다.');
     check($('[data-guide-action="program-confirm"]').disabled, '설치 중에 수동 프로그램 확인을 허용했습니다.');
+    check($('.guide-program').getAttribute('aria-busy')==='true','설치 진행 상태가 접근성 트리에 반영되지 않습니다.');
+    view.render({attemptId:'bmp-1',connected:false,firmwareInstalled:getExperiment('bmp280').firmware,programmerState:{status:'success'}});
+    check(!view.getProgress().canMeasure&&$('.guide-program').dataset.state==='success','USB 설치만으로 측정 준비를 완료했습니다.');
+    step('connection');
+    const latest={values:{temperatureC:22,pressureHpa:1001},validity:{temperatureC:'valid',pressureHpa:'valid'}};
+    view.render({attemptId:'bmp-1',connected:true,receptionReady:true,receivedAt:10000,latest});
+    const valueNode=$('.guide-value strong');
+    check($('.guide-reception').dataset.state==='receiving','새 수신 상태 누락');
+    view.render({attemptId:'bmp-1',connected:true,receptionReady:false,receivedAt:10000,latest});
+    check($('.guide-reception').dataset.fresh==='false'&&$('[data-guide-action="measure"]').hidden,'수신 중단 후 측정 행동이 남았습니다.');
+    check(valueNode===$('.guide-value strong')&&valueNode.textContent==='22','상태 갱신이 마지막 값이나 기존 표시 노드를 버렸습니다.');
+    view.render({attemptId:'bmp-1',connected:false,receivedAt:10000,latest});
+    check($('.guide-reception').dataset.state==='disconnected','연결 해제 상태 누락');
     report('실제 준비 UI · USB 실패·진행률·재시도 표시');
 
     check(!$('iframe').getAttribute('src'), '배선 안내를 열기 전에 3D 자원을 요청했습니다.');
@@ -144,4 +160,72 @@ export async function runGuideTests(report = (_message) => {}) {
     report('실제 준비 UI · 체크 이력과 측정 가능 분리·수신 중단 차단·활동 배치·배터리 복구');
     check(errors.length === 0, errors.join('\n'));
   } finally { view.dispose(); host.remove(); }
+}
+
+// Real app, isolated review DB and existing mock transport. Resize the same
+// document so this protects focus/viewer lifetime as well as small-screen fit.
+export async function runPreparationTests(report=()=>{}) {
+  const frame=document.createElement('iframe'); frame.title='준비 B안 동작과 화면 크기 검증';
+  frame.style.cssText='display:block;border:0;max-width:none;width:1366px;height:768px'; document.body.append(frame);
+  const settle=()=>new Promise(resolve=>setTimeout(resolve,160));
+  const until=async(predicate,message)=>{
+    const end=performance.now()+12000;
+    while(!predicate()&&performance.now()<end)await settle();
+    check(predicate(),message);
+  };
+  try {
+    for(const entry of ['sensor=bmp280','sensor=temperature','sensor=light-level','sensor=accelerometer','sensor=magnetometer','activity=gay-lussac']) {
+      frame.style.width='1366px';frame.style.height='768px';
+      const url=new URL(`../../dev/design/preparation.html?${entry}`,import.meta.url).href;
+      frame.src=url;
+      await until(()=>frame.contentDocument?.URL===url&&frame.contentDocument.documentElement.dataset.preparationReviewReady==='true',entry+': 준비 화면 로딩 실패');
+      const doc=frame.contentDocument, $=selector=>doc.querySelector(selector);
+      try {
+        const guide=$('.guide'), values=[...doc.querySelectorAll('.guide-value strong')];
+        $('[data-guide-action="confirm"]').click();
+        const first=$('[data-guide-group="equipment"]');
+        check(first.dataset.complete==='true',entry+': 준비물 확인 누락');
+        let viewerDocument;
+        for(const width of [1366,390]) {
+          frame.style.width=width+'px';frame.style.height=(width===390?844:768)+'px';await settle();
+          for(const group of doc.querySelectorAll('[data-guide-group]')) {
+            group.click();await settle();
+            check(doc.documentElement.scrollWidth<=width+1,`${entry} ${width}px: 준비 단계 가로 넘침`);
+            check($('[data-guide-action="previous"]').getBoundingClientRect().right<=width,entry+': 이전 버튼이 화면 밖에 있습니다.');
+            if(group.dataset.guideGroup==='wiring') {
+              await until(()=>['applied','unavailable'].includes($('.guide-model').dataset.viewerState),entry+': 배선 응답 없음');
+              const current=$('.guide-frame').contentDocument;
+              if(viewerDocument)check(viewerDocument===current,entry+': 크기 변경이 배선 뷰어를 다시 만들었습니다.');
+              viewerDocument=current;
+            }
+          }
+          $('[data-guide-group="equipment"]').click();
+          const help=$('.equipment-list [data-action-help]');help.focus();help.click();await settle();
+          const tooltip=doc.getElementById(help.getAttribute('aria-describedby'));
+          check(tooltip?.matches(':popover-open'),entry+': 준비물 도움말이 열리지 않습니다.');
+          const bounds=tooltip.getBoundingClientRect();
+          check(bounds.left>=0&&bounds.right<=width+1,entry+': 도움말 가로 넘침');
+          help.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+          check(doc.activeElement===help,entry+': 도움말 닫기 후 초점 손실');
+          $('[data-guide-group="connection"]').click();
+          if(!$('.guide-reception').hidden)stableText(doc,'.guide-value strong','.guide-value,.guide-last-received',['—','0','-1,024.1'],entry+' '+width+'px',{noScroll:true});
+        }
+        $('[data-guide-action="connect"]').click();
+        if(entry==='sensor=magnetometer') {
+          await until(()=>$('.magnetic-preparation').dataset.phase==='choice',entry+': 보정 선택 없음');
+          $('[data-device-action="skip"]').click();
+        }
+        await until(()=>!$('[data-guide-action="measure"]').hidden&&!$('[data-guide-action="measure"]').disabled,entry+': 모의 연속 수신 확인 실패');
+        check(guide===$('.guide')&&values.every((node,index)=>node===doc.querySelectorAll('.guide-value strong')[index]),entry+': 단계 이동이나 크기 변경이 표시를 다시 만들었습니다.');
+        check(first.dataset.complete==='true',entry+': 단계 이동이나 크기 변경이 준비 이력을 잃었습니다.');
+        const measure=$('[data-guide-action="measure"]');measure.focus();frame.style.width='1366px';await settle();
+        check(doc.activeElement===measure&&!measure.disabled,entry+': 크기 변경으로 초점이나 측정 가능 상태를 잃었습니다.');
+        if(entry==='sensor=magnetometer')check($('.guide-checks .skipped'),'보정 생략 상태 표시 누락');
+        report(`준비 B · ${entry} · 1366/390px 단계·도움말·모의 수신과 상태/초점 유지`);
+      } finally {
+        $('.preparation-review-cleanup').click();
+        await until(()=>$('.preparation-review-cleanup').textContent.includes('정리했습니다'),entry+': 검토용 자료 정리 실패');
+      }
+    }
+  } finally {frame.remove();}
 }

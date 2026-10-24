@@ -3,8 +3,9 @@ import { graphColumns } from '../domain/contracts.js';
 import { columnLabel } from '../analysis/calculations.js';
 import { createAnalysisChart } from './chart-view.js';
 import { createTrendControls } from './trend-controls.js';
+import { analysisColors } from './visual-theme.js';
 
-export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal }) {
+export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal, getTheme = () => null }) {
   const $ = id => root.querySelector('#' + id), x = $('graph-x'), y = $('graph-y'), type = $('graph-type'), gaps = $('graph-gaps');
   let chart = null, columnsKey = null;
   const trend = createTrendControls(root, { getWorkspace, act, signal });
@@ -35,7 +36,8 @@ export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal 
       $('graph-count').textContent = model ? '그래프 ' + model.points.length.toLocaleString() + '개' + (model.invalidCount ? ' · 현재 축의 값 없음 ' + model.invalidCount + '개' : '') : '';
       trend.render(model, canEdit);
       if (visible && model) {
-        chart ??= createAnalysisChart($('analysis-chart'), { onSelect });
+        chart ??= createAnalysisChart($('analysis-chart'), { onSelect, theme:getTheme() });
+        root.style.setProperty('--sl-graph-point', analysisColors(getTheme(), model).point);
         chart.render(model, focusedId == null ? [] : [focusedId]);
         $('analysis-chart').setAttribute('aria-label', model.xLabel + ' 대 ' + model.yLabel + '. 그래프 ' + model.points.length + '개, 제외 ' + model.excludedCount + '개. 점의 정보는 표에서도 확인할 수 있습니다.');
       }

@@ -1,5 +1,7 @@
 import { createAnalysisView } from '../../src/ui/analysis-view.js';
 import { stableText } from './layout.js';
+import { createReflectionPrint } from '../../src/ui/reflection-view.js';
+import { readVisualTheme } from '../../src/ui/visual-theme.js';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -27,6 +29,15 @@ function fixture({ count = 1500, dated = true, temporary = false } = {}) {
 }
 
 export async function runUiTests(report = (_message) => {}) {
+  const luminous = new URL(location.href).searchParams.get('visual') === 'luminous';
+  const previousTheme = document.documentElement.dataset.visualTheme;
+  let style;
+  if (luminous) {
+    style = document.createElement('link'); style.rel = 'stylesheet'; style.href = '../../src/ui/luminous-preview.css';
+    await new Promise((resolve,reject) => { style.onload = resolve; style.onerror = reject; document.head.append(style); });
+    document.documentElement.dataset.visualTheme = 'luminous';
+    await document.fonts.ready;
+  }
   const response = await fetch(new URL('../../lab.html', import.meta.url));
   check(response.ok, '분석 화면 HTML을 불러오지 못했습니다.');
   const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
@@ -38,6 +49,21 @@ export async function runUiTests(report = (_message) => {}) {
   const root = document.importNode(screen, true); root.hidden = false; host.append(root); document.body.append(host);
   const $ = selector => root.querySelector(selector);
   const failures = [], initialChartCount = Object.keys(globalThis.Chart.instances).length;
+  const presentation = chart => ({
+    font:chart.options.scales.x.title.font?.family,
+    axis:chart.options.scales.x.ticks.color, grid:chart.options.scales.x.grid.color,
+    series:chart.data.datasets.map((dataset,index) => ({
+      label:dataset.label, data:structuredClone(dataset.data), dash:dataset.borderDash ?? [],
+      color:dataset.borderColor, points:chart.getDatasetMeta(index).data.map(point => ({
+        fill:point.options.backgroundColor, border:point.options.borderColor, shape:point.options.pointStyle,
+      })),
+    })),
+  });
+  let exported;
+  const exportObserver = {id:'analysis-export-parity', beforeDestroy(chart) {
+    if (!chart.canvas.isConnected) exported = presentation(chart);
+  }};
+  globalThis.Chart.register(exportObserver);
   let view;
   const click = async selector => {
     const target = $(selector); check(target, '화면 조작을 찾지 못했습니다: ' + selector);
@@ -61,14 +87,35 @@ export async function runUiTests(report = (_message) => {}) {
     check($('#raw-rows').querySelectorAll('.sample-row').length < 100, '스크롤 후 가상 표 행 수가 제한을 벗어났습니다.');
     report('실제 DOM · 네 채널 표와 1,500행 가상 스크롤');
 
+    await click('#choose-range');
+    for (const [id,value] of [['time-range-start','0.1'],['time-range-end','0.3']]) {
+      $('#' + id).value = value; $('#' + id).dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    check(view.getWorkspace().getState().appliedIds.length === 1500, '구간 초안이 적용 전에 분석 범위를 변경했습니다.');
+    await click('#apply-time-range');
+    check(same(view.getWorkspace().getState().appliedIds,[2,3,4]), '구간 적용이 선택한 시간 밖의 자료를 포함했습니다.');
+    await click('#undo-analysis');
+    check(view.getWorkspace().getState().appliedIds.length === 1500, '구간 적용을 되돌려도 이전 범위가 복원되지 않았습니다.');
+    await click('#tab-overview');
+
     scroller.scrollTop = 0; scroller.dispatchEvent(new Event('scroll')); await settle();
     await click('[data-select="1"]'); await click('#exclude-selection');
     $('#exclusion-reason').value = '장치를 옮긴 순간'; await click('#apply-selection-exclusion');
     check(same(view.getWorkspace().getState().exclusions, [{ sampleId: 1, reason: '장치를 옮긴 순간' }]), '제외 사유가 분석 작업에 보존되지 않았습니다.');
     check(same(first.data.samples, original), 'UI의 제외 작업이 원자료를 변경했습니다.');
+    await click('[data-select="1"]'); await click('#restore-selection');
+    check(view.getWorkspace().getState().exclusions.length === 0, '제외한 자료를 다시 포함할 수 없습니다.');
+    await click('#undo-analysis');
+    check(view.getWorkspace().getState().exclusions[0]?.reason === '장치를 옮긴 순간', '복원 취소에서 이전 제외 사유가 사라졌습니다.');
+    if (!$('#clear-selection').disabled) await click('#clear-selection');
     await click('[data-select="2"]'); await click('[data-select="3"]'); await click('#analyze-selection');
     check(same(view.getWorkspace().getState().appliedIds, [2, 3]), '선택 자료로 분석하는 UI가 다른 행을 포함했습니다.');
+    const beforeLayout = structuredClone(first.data);
+    for (const mode of ['graph','table','split']) await click(`[data-relationship-mode="${mode}"]`);
+    check(same(first.data,beforeLayout), '표/그래프 보기 전환이 저장할 자료나 분석 작업을 변경했습니다.');
     await click('#trend-enabled');
+    await click('#trend-extended');
+    check(view.getWorkspace().getGraphData().trend.extension.length>0, '추세선 연장 자료를 만들지 못했습니다.');
     stableText(root,'.trend-metrics strong','.trend-metrics > div,.trend-result', ['0','-9,999.123 mg/초','-1.23456789e+100 mg/초'], '분석 통계 칸');
     await click('#use-graph-for-reflection');
     const text = '가로축 값이 증가할수록 크기도 증가했다.';
@@ -90,6 +137,35 @@ export async function runUiTests(report = (_message) => {}) {
     first.append(10); view.updateStatus(); await click('#apply-new-data');
     check(view.getWorkspace().getState().appliedIds.length === 1760 && view.getWorkspace().getSummary().includedCount === 1759, '전체 분석 모드가 새 자료를 포함하거나 이전 제외를 유지하지 못했습니다.');
     check(same(view.getWorkspace().getReflectionModel(), evidence), '전체 분석 전환이 보관 근거를 덮어썼습니다.');
+
+    // Offscreen PNG must preserve the displayed model and visual encoding,
+    // including excluded points and the saved (possibly older) evidence model.
+    const liveGraph = globalThis.Chart.getChart($('#analysis-chart'));
+    const screenPresentation = presentation(liveGraph), beforeExport = structuredClone(first.data);
+    const png = view.exportPng('분석 출력');
+    check(same(exported,screenPresentation), 'PNG의 자료·제외·추세선·글꼴·축 색이 화면 그래프와 다릅니다.');
+    if (luminous) {
+      const overview = globalThis.Chart.getChart($('#overview-chart'));
+      check(liveGraph.data.datasets[0].borderColor === overview.data.datasets.find(dataset => dataset.label === liveGraph.options.scales.y.title.text)?.borderColor,
+        '관계 그래프가 원자료 보기의 세로축 채널 색을 유지하지 못했습니다.');
+    }
+    const image = new Image(); image.src = png; await image.decode();
+    const output = document.createElement('canvas'); output.width = image.width; output.height = image.height;
+    const ctx = output.getContext('2d'); ctx.drawImage(image,0,0);
+    check(image.width === 1200 && image.height > 640 && same([...ctx.getImageData(0,0,1,1).data],[255,255,255,255]),
+      'PNG가 고정 너비 또는 불투명한 흰 바탕을 유지하지 못했습니다.');
+    await click('#tab-interpretation');
+    const evidencePresentation = presentation(globalThis.Chart.getChart($('#reflection-chart')));
+    view.exportPng('보관 근거');
+    check(same(exported,evidencePresentation), '해석 화면 PNG가 보관 근거 대신 현재 분석 그래프를 내보냈습니다.');
+    const reflection = view.getWorkspace().getState().reflection;
+    const sheet = createReflectionPrint({name:'인쇄 검토',model:evidence,evidence:reflection.evidence,
+      answers:reflection.answers,origin:first.data.samples[0].receivedAt,
+      theme:readVisualTheme(root,first.data.run.context.channels)});
+    check(same(exported,evidencePresentation) && sheet.textContent.includes(text), '인쇄 그래프 또는 해석 글이 보관한 내용과 다릅니다.');
+    check(same(first.data,beforeExport), 'PNG·인쇄 과정에서 저장할 자료나 근거가 변경되었습니다.');
+    report('실제 Canvas · 화면/PNG/인쇄의 자료·색·추세선 일치, 흰 출력 바탕과 보관 근거 유지');
+
     view.reset(); view.open(first.store); await settle();
     check(view.getWorkspace().getState().reflection.answers.observation === text && same(view.getWorkspace().getReflectionModel(), evidence), '분석 화면 재생성에서 글 또는 보관 근거가 달라졌습니다.');
     report('실제 DOM · 명시적 자료 반영과 전체/지정 범위 차이·근거/글 재열기 보존');
@@ -116,6 +192,10 @@ export async function runUiTests(report = (_message) => {}) {
     check(!failures.length, failures.join('\n'));
   } finally {
     view?.dispose(); host.remove();
+    globalThis.Chart.unregister(exportObserver);
+    style?.remove();
+    if (previousTheme === undefined) delete document.documentElement.dataset.visualTheme;
+    else document.documentElement.dataset.visualTheme = previousTheme;
     previousFocus?.focus?.({ preventScroll: true }); scrollTo(previousScroll.x, previousScroll.y);
   }
   check(Object.keys(globalThis.Chart.instances).length === initialChartCount, '분석 화면 종료 후 Chart 인스턴스가 남았습니다.');

@@ -5,37 +5,28 @@ import { createRepository } from '../../src/data/repository.js';
 
 await loadLabDocument();
 await prepareLuminousPreview(document);
+const archivedA = document.documentElement.dataset.preparationArchive === 'a';
 const style = document.createElement('link');
-style.rel = 'stylesheet'; style.href = new URL('./preparation.css', import.meta.url).href;
+style.rel = 'stylesheet'; style.href = new URL(archivedA ? './archive/preparation-a.css' : './preparation.css', import.meta.url).href;
 const styled = new Promise((resolve, reject) => { style.onload = resolve; style.onerror = reject; });
 document.head.append(style); await styled;
 const params = new URL(location.href).searchParams;
 const sensor = params.get('sensor') ?? 'bmp280';
+const entry = params.get('activity') === 'gay-lussac' ? 'activities/gay-lussac/' : `sensors/${encodeURIComponent(sensor)}/`;
 const databaseName = 'microbit.sensor-lab.preparation-review.' + crypto.randomUUID();
 const app = createController(document, { repository:createRepository({databaseName}), historyEnabled:false,
-  initialUrl:new URL(`sensors/${encodeURIComponent(sensor)}/?mock=1&visual=luminous`,document.baseURI).href });
+  initialUrl:new URL(`${entry}?mock=1&visual=luminous`,document.baseURI).href });
 const shell = document.querySelector('.guide');
-const controls = document.createElement('div'); controls.className = 'preparation-comparison';
-controls.setAttribute('role','group'); controls.setAttribute('aria-label','준비 화면 디자인 비교');
-const caption = document.createElement('p'); caption.className = 'preparation-comparison-caption';
-caption.textContent = '디자인 비교 · 모의 장치 · A/B를 바꿔도 현재 단계와 준비 상태는 유지됩니다.';
-document.querySelector('.preparation-heading').before(caption);
-document.querySelector('.preparation-heading').append(controls);
-const buttons = new Map();
-function select(variant) {
-  shell.dataset.stageStyle = variant;
-  for (const [value, button] of buttons) button.setAttribute('aria-pressed',String(value === variant));
-  const url = new URL(location.href); url.searchParams.set('variant',variant); history.replaceState(null,'',url);
+shell.dataset.stageStyle = archivedA ? 'light' : 'dark';
+if (archivedA) {
+  const caption = document.createElement('p'); caption.className = 'preparation-archive-caption';
+  caption.textContent = '보관된 A안 · 현재 적용안은 B안입니다.';
+  document.querySelector('.preparation-heading').before(caption);
 }
-for (const [variant,label] of [['light','A · 밝은 공통형'],['dark','B · 몰입형 통일']]) {
-  const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
-  button.addEventListener('click',() => select(variant)); buttons.set(variant,button); controls.append(button);
-}
-select(params.get('variant') === 'dark' ? 'dark' : 'light');
-const cleanup = document.createElement('button'); cleanup.type='button'; cleanup.className='preparation-review-cleanup'; cleanup.textContent='비교용 자료 정리';
+const cleanup = document.createElement('button'); cleanup.type='button'; cleanup.className='preparation-review-cleanup'; cleanup.textContent='검토용 자료 정리';
 cleanup.addEventListener('click',async () => {
   cleanup.disabled=true;
-  try { await app.dispose(); await globalThis.idb.deleteDB(databaseName); cleanup.textContent='비교용 자료를 정리했습니다.'; }
+  try { await app.dispose(); await globalThis.idb.deleteDB(databaseName); cleanup.textContent='검토용 자료를 정리했습니다.'; }
   catch(error) { cleanup.textContent=error.message; cleanup.disabled=false; }
 });
 document.body.append(cleanup);
@@ -46,5 +37,5 @@ while(app.getState().busy) {
   await new Promise(resolve=>setTimeout(resolve,25));
 }
 const initialStep = params.get('step');
-if (['equipment','wiring','program','connection'].includes(initialStep)) shell.querySelector(`[data-guide-group="${initialStep}"]`)?.click();
+if (['equipment','wiring','program','connection','calibration','battery','placement'].includes(initialStep)) shell.querySelector(`[data-guide-group="${initialStep}"]`)?.click();
 document.documentElement.dataset.preparationReviewReady='true';

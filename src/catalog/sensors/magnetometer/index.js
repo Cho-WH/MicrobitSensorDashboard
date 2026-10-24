@@ -3,4 +3,5 @@ import { decodeMagnetometer as decode, mockMagnetometerLine as mockLine } from '
 import { guide } from './guide.js';
 import { createPreparationSession as createSession, createMockPreparation as createMock } from './preparation.js';
 import { createPreparationView as createView } from './preparation-view.js';
-export default { definition, decode, mockLine, guide, preparation: { createSession, createMock, createView } };
+import { uiCopy } from './content.js';
+export default { definition, decode, mockLine, guide, uiCopy, preparation: { createSession, createMock, createView } };

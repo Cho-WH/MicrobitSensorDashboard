@@ -67,6 +67,18 @@ if (state !== 'idle') {
     if (state === 'error') { failSave = true; await advance(1000); await until(()=>app.getState().storage?.status==='error'); }
   }
 }
+// Entry points for reviewing V4 on the same real controller and isolated run.
+// Navigation and evidence capture go through the existing controls.
+const view = params.get('view');
+if (['overview','relationship','interpretation','saved','home'].includes(view)) {
+  if (!['idle','preview'].includes(state)) await click('#finish-recording');
+  if (view === 'saved' || view === 'home') await click(`[data-view="${view}"]`);
+  else {
+    await click('[data-view="analysis"]');
+    if (view !== 'overview') await click('#tab-relationship');
+    if (view === 'interpretation') await click('#use-graph-for-reflection');
+  }
+}
 const review = document.createElement('footer');
 review.style.cssText='margin:36px 0 0;padding:16px;border-top:1px solid #b9c6d8;font:13px system-ui;display:flex;gap:10px;flex-wrap:wrap;align-items:center';
 review.append(document.createTextNode(`개발 검토 · ${sensor} 모의 자료 · 고정 시각 · ${legacy?'기존':'Luminous'} 화면`));

@@ -3,14 +3,20 @@
 `npm run dev`로 로컬 서버를 실행한다. 이 폴더는 빌드 배포 대상이 아니다.
 
 - `preparation-comparison.html`: 준비물·배선·프로그램·연결의 A/B 실제 캡처 비교. 캡처는 `docs/design/review/v1/preparation-{light|dark}-{단계}.png`다.
-- `preparation.html?variant=light` / `?variant=dark`: 실제 앱의 준비 화면. 같은 화면의 A/B 버튼으로 단계·확인 상태를 유지하며 비교한다. `step=equipment|wiring|program|connection`, `sensor=bmp280|magnetometer|…`를 선택할 수 있다. BMP280가 기본이다.
+- `preparation.html`: 채택한 B안의 실제 준비 화면. 비교 버튼을 표시하지 않는다. `step=equipment|wiring|program|connection|calibration|battery|placement`, `sensor=bmp280|magnetometer|…`를 선택할 수 있다. BMP280가 기본이며 `activity=gay-lussac`으로 활동을 연다. 해당 센서·활동에 있는 단계만 이동한다.
+- `archive/preparation-a.html`: 보관된 A안. 현재 준비 화면에서는 연결하거나 선택하지 않는다. 최초 비교 캡처도 그대로 보관한다.
 - `index.html?state=recording`: 측정 화면의 고정 시각·모의 입력 검토. `idle`, `preview`, `paused`, `disconnected`, `error`와 `theme=legacy`를 지원한다. 이 페이지에서만 시계를 고정한다.
+- `index.html?state=paused&view=relationship`: V4 분석 검토. `view=overview|relationship|interpretation|saved|home`을 지원하며 기록을 마친 뒤 실제 화면 조작으로 이동한다. 빈 저장 목록은 `state=idle&view=saved`, 홈은 `state=idle&view=home`으로 연다.
 - `render-scene.html`: 기존 공통 모델의 카메라·조명으로 장치 PNG를 다시 렌더링한다.
 
-준비 비교와 측정 검토는 실제 DOM·Controller·기존 모의 BLE를 사용하며, 각 페이지마다 별도의 검토용 IndexedDB를 사용한다. 검토를 마치면 하단의 자료 정리 버튼으로 해당 DB와 실행 중인 뷰를 정리한다. 실물 USB/BLE 검증 결과로 해석하지 않는다.
+준비·측정 검토는 실제 DOM·Controller·기존 모의 BLE를 사용하며, 각 페이지마다 별도의 검토용 IndexedDB를 사용한다. 검토를 마치면 하단의 자료 정리 버튼으로 해당 DB와 실행 중인 뷰를 정리한다. 실물 USB/BLE 검증 결과로 해석하지 않는다.
 
 측정 화면 회귀 검사는 `/tests/browser/?suite=luminous`에서 다섯 센서·화면 크기 조합을 연속으로 검사한다. 실행 버튼을 누른 것만으로 통과한 것은 아니며, 마지막의 전체 통과 표시를 확인한다.
 
+준비 B 회귀 검사는 `/tests/browser/?suite=preparation`이다. 다섯 센서와 게이뤼삭을 실제 모의 연결하고, 같은 문서를 1366/390px로 바꾸면서 단계·도움말·값 표시·뷰어 수명·초점의 상태 보존을 확인한다. 설치 실패·취소·보정 응답·새 연결·수신 중단 등 사실별 동작은 기존 `suite=guide`에서 확인한다.
+
+분석 검사는 `/tests/browser/?suite=ui&visual=luminous`이며 `visual`을 생략하면 기존 화면을 검사한다. 같은 검사로 구간 초안/적용·복원/되돌리기·가상 표·근거/글 보존과 실제 Canvas의 PNG/인쇄 표현을 확인한다. `/tests/browser/?suite=workspace`는 실제 앱 하나를 1366→1024→390→320px로 바꾸고 홈·소개·저장 목록에서 근거/글을 다시 연다.
+
 ## 준비 A/B의 차이
 
-A는 기존 밝은 준비 화면의 배치를 따르며 프로그램도 같은 표현으로 맞춘다. B는 프로그램의 남색 무대와 설명/장치 배치를 모든 준비 단계로 확장한다. 두 안 모두 직선 단계 탭·기존 준비 확인·장치 그림 크기 조절을 사용한다. B의 3D 작업면은 배선 색과 작은 글자를 보존하기 위해 밝게 유지한다. 사용자가 B안을 선택하여 새 디자인의 준비 화면에 적용했다. A안과 최초 비교 캡처는 보관하며, B 직접 조작 경로는 다듬은 현재 B안을 보여 준다. V2 공통화·배포는 진행하지 않았다.
+A는 기존 밝은 준비 화면의 배치를 따르며 프로그램도 같은 표현으로 맞춘다. B는 프로그램의 남색 무대와 설명/장치 배치를 모든 준비 단계로 확장한다. 두 안 모두 직선 단계 탭·기존 준비 확인·장치 그림 크기 조절을 사용한다. B의 3D 작업면은 배선 색과 작은 글자를 보존하기 위해 밝게 유지한다. 사용자가 B안을 선택하여 새 디자인의 준비 화면에 적용했다. A안과 최초 비교 캡처는 보관하며, A안은 별도 archive 경로에 두며 현재 준비 검토 경로는 B안만 사용한다. 기본 적용·배포 전환은 하지 않았다.
