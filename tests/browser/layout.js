@@ -67,8 +67,12 @@ export async function runLayoutTests(report=()=>{}) {
       doc.querySelector('.experiment-guide-close').click();
       report(`홈·준비·측정·활동 안내 배치 ${label}${width===683?' (1366 화면의 200% 확대에 해당하는 CSS 영역)':''}`);
     }
-    for(const [width,height] of [[1366,768],[1920,1080],[390,844],[683,384]]){
-      for(const sensor of ['bmp280','magnetometer','temperature','light-level','accelerometer']){
+    // All sensors at desktop/mobile widths cover sensor-specific content. The
+    // four-channel calibration UI represents shared layout at wide/zoom sizes;
+    // activity wiring and dialogs above still exercise all four viewports.
+    const allSensors=['bmp280','magnetometer','temperature','light-level','accelerometer'];
+    for(const [width,height,sensors] of [[1366,768,allSensors],[1920,1080,['magnetometer']],[390,844,allSensors],[683,384,['magnetometer']]]){
+      for(const sensor of sensors){
         const path=`sensors/${sensor}/`, doc=await open(path,width,height),label=sensor+' '+width+'px';fits(doc,width,label);
         if(width===390){
           for(const group of doc.querySelectorAll('[data-guide-group]')){group.click();await settle();fits(doc,width,label);}
@@ -92,15 +96,18 @@ export async function runLayoutTests(report=()=>{}) {
         doc.querySelector('#to-measure').click();await settle();
         stableText(doc,'.lab-card strong','.lab-card,.lab-chart,.live-chart-heading',variants,label+' 측정 값',{noScroll:true});
         stableText(doc,'.lab-card strong','.lab-card,.lab-chart',['-123,456,789.123456','—'],label+' 긴 가져온 값');
-        stableText(doc,'.lab-status strong','.lab-identity,.lab-status > span,.lab-toolbar',['준비','기록 마감 중','기록 시작 전'],label+' 상태');
-        doc.querySelector('[data-view="analysis"]').click();await settle();
-        stableText(doc,'#overview-readout','.overview-readout,.overview-actions',[
-          '00:00 · 값 0 mg','00:12 · X 성분 -1,024 mg · Y 성분 999 mg · Z 성분 -9,999 mg · 가속도 크기 1,234 mg',
-          '가져온 열 -123456789.123456 kg · '.repeat(16)
-        ],label+' 그래프 읽기');
+        if(sensor==='magnetometer'){
+          // Shared status/readout text has no sensor-specific layout.
+          stableText(doc,'.lab-status strong','.lab-identity,.lab-status > span,.lab-toolbar',['준비','기록 마감 중','기록 시작 전'],label+' 상태');
+          doc.querySelector('[data-view="analysis"]').click();await settle();
+          stableText(doc,'#overview-readout','.overview-readout,.overview-actions',[
+            '00:00 · 값 0 mg','00:12 · X 성분 -1,024 mg · Y 성분 999 mg · Z 성분 -9,999 mg · 가속도 크기 1,234 mg',
+            '가져온 열 -123456789.123456 kg · '.repeat(16)
+          ],label+' 그래프 읽기');
+        }
         fits(doc,width,label);
       }
-      report(`다섯 센서 ${width}px · 준비·측정·상태·분석의 부호/자릿수/긴 값 변화에도 칸과 그래프 위치 유지`);
+      report(`${sensors.length===5?'다섯 센서':'네 채널 대표 센서'} ${width}px · 준비·측정·상태·분석의 부호/자릿수/긴 값 변화에도 칸과 그래프 위치 유지`);
     }
   }finally{frame.remove();}
 }

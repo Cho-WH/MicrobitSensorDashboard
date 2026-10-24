@@ -10,11 +10,8 @@ async function until(predicate,label) {
 export async function runLuminousTests(report=()=>{}) {
   let frame;
   const cases = [['bmp280',1366,768],['bmp280',1024,768],['bmp280',390,844],['magnetometer',1366,768],['light-level',390,844]];
-  const requested = new URL(location.href).searchParams.get('case');
-  const selected = requested ? cases.filter(([sensor,width])=>`${sensor}-${width}`===requested) : cases;
-  check(selected.length,'알 수 없는 새 화면 검사 조건입니다.');
   try {
-    for(const [sensor,width,height] of selected) {
+    for(const [sensor,width,height] of cases) {
       frame=document.createElement('iframe');frame.title='새 측정 화면 검증';frame.style.cssText='display:block;border:0;max-width:none';
       frame.style.width=width+'px';frame.style.height=height+'px';
       frame.src=new URL(`../../dev/design/?sensor=${sensor}&state=recording`,import.meta.url).href;

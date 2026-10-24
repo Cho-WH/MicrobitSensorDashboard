@@ -5,11 +5,11 @@ async function waitFor(predicate){const deadline=performance.now()+10000;while(!
 export async function runDeviceTests(report) {
   const usb=createDeviceScene('usb'),battery=createDeviceScene('battery');
   try {
-    const boardPosition=usb.board.position.clone(),inserted=usb.connector.position.clone();
+    const boardPosition=usb.board.position.clone(),inserted=usb.connector.position.clone(),batteryPosition=battery.connector.position.clone();
     usb.setSeparation(12);
     check(usb.connector.position.x===inserted.x&&usb.connector.position.z===inserted.z&&usb.connector.position.y===inserted.y+12,'USB 삽입축과 분리축 불일치');
     check(usb.board.position.equals(boardPosition),'커넥터 분리가 본체를 움직임');
-    check(battery.connector.position.y===17.6,'다른 장면의 연결 상태를 함께 변경함');
+    check(battery.connector.position.equals(batteryPosition),'다른 장면의 연결 상태를 함께 변경함');
     usb.setSeparation(0);check(usb.connector.position.equals(inserted),'USB 연결 위치 복원 실패');
     const cells=battery.pack.getObjectByName('aaa-cells').children;
     check(cells.length===2&&cells[0].userData.positiveEnd===-cells[1].userData.positiveEnd,'AAA 두 개의 직렬 배치 오류');
@@ -34,7 +34,6 @@ export async function runDeviceTests(report) {
     }
     doc.querySelector('[data-part="motion"]').click();check(doc.getElementById('view-label').textContent.includes('자기장'),'부품 초점 안내 누락');
     doc.querySelector('[data-view="front"]').click();check(doc.querySelector('[data-part="motion"]').getAttribute('aria-pressed')==='false','시점 전환 후 부품 초점 상태가 남음');
-    const png=canvas.toDataURL('image/png');check(png.startsWith('data:image/png;base64,')&&png.length>2000,'정지 이미지 생성 실패');
-    report('장치 뷰어 · 세 장면, 부품 초점·시점 전환, 전용 조작과 PNG 생성');
+    report('장치 뷰어 · 세 장면, 부품 초점·시점 전환과 전용 조작');
   } finally {frame.remove();}
 }

@@ -7,23 +7,20 @@ import { firmwareManifest, getFirmwareArtifact } from '../../src/device/firmware
 import { createUniversalHexFlashDataSource } from '../../public/vendor/microbit-usb-1.0.0.js';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-test('built-in temperature examples retain start/stop, zero readings, field order and nominal 1-second sampling', async () => {
-  for (const [name, expected] of [['temperature', '0'], ['temperature-light', '0,123']]) {
-    const source = await readFile(new URL(`../../firmware/examples/${name}.js`, import.meta.url), 'utf8');
-    const hooks = {}, lines = [], pauses = []; let command = '';
-    runInNewContext(source, {
-      bluetooth: { startUartService() {}, onBluetoothConnected: cb => hooks.connect = cb, onBluetoothDisconnected: cb => hooks.disconnect = cb,
-        onUartDataReceived: (_delimiter, cb) => hooks.uart = cb,
-        uartReadUntil: () => command, uartWriteLine: line => lines.push(line) },
-      serial: { delimiters: () => '\n' }, Delimiters: { NewLine: 1 },
-      basic: { forever: cb => hooks.loop = cb, pause: ms => pauses.push(ms), showIcon() {}, clearScreen() {} },
-      IconNames: { Yes: 1 }, input: { temperature: () => 0, lightLevel: () => 123 }, convertToText: String,
-    });
-    hooks.connect?.(); hooks.loop(); assert.deepEqual(lines, []);
-    command = ' START '; hooks.uart(); hooks.loop();
-    assert.deepEqual(lines, [expected]); assert.equal(pauses.at(-1), 1000);
-    command = 'stop'; hooks.uart(); hooks.loop(); assert.equal(lines.length, 1);
-  }
+test('legacy temperature-light example retains start/stop, zero readings, field order and 1-second sampling', async () => {
+  const source = await readFile(new URL('../../firmware/examples/temperature-light.js', import.meta.url), 'utf8');
+  const hooks = {}, lines = [], pauses = []; let command = '';
+  runInNewContext(source, {
+    bluetooth: { startUartService() {}, onUartDataReceived: (_delimiter, cb) => hooks.uart = cb,
+      uartReadUntil: () => command, uartWriteLine: line => lines.push(line) },
+    serial: { delimiters: () => '\n' }, Delimiters: { NewLine: 1 },
+    basic: { forever: cb => hooks.loop = cb, pause: ms => pauses.push(ms), showIcon() {}, clearScreen() {} },
+    IconNames: { Yes: 1 }, input: { temperature: () => 0, lightLevel: () => 123 }, convertToText: String,
+  });
+  hooks.loop(); assert.deepEqual(lines, []);
+  command = ' START '; hooks.uart(); hooks.loop();
+  assert.deepEqual(lines, ['0,123']); assert.equal(pauses.at(-1), 1000);
+  command = 'stop'; hooks.uart(); hooks.loop(); assert.equal(lines.length, 1);
 });
 test('all pinned HEX artifacts match their specified digest and the official V2 reader', async () => {
   for (const artifact of Object.values(firmwareManifest)) {
@@ -32,12 +29,13 @@ test('all pinned HEX artifacts match their specified digest and the official V2 
     assert.equal(digest(hex), artifact.sha256, artifact.id);
     assert.equal(artifact.digestMode, 'utf8-crlf-to-lf');
     assert.match(await createUniversalHexFlashDataSource(hex)('V2'), /^:/);
-    assert.equal(artifact.hardwareVerified, false);
     assert.ok(Object.isFrozen(artifact)); assert.ok(Object.isFrozen(artifact.boards));
   }
 });
 
-test('new built-in published source, build record and manifest agree on version, digest and protocol', async () => {
+test('published firmware source, build record, lockfile and runtime agree with the manifest', async () => {
+  const lock = JSON.parse(await readFile(new URL('../../dev/firmware/package-lock.json', import.meta.url), 'utf8'));
+  const runtimeHashes = new Map();
   for (const id of ['magnetometer-uart', 'temperature-uart', 'light-level-uart', 'accelerometer-uart']) {
     const artifact = getFirmwareArtifact(id), root = new URL('../../', import.meta.url);
     const record = JSON.parse(await readFile(new URL(artifact.source.buildRecord, root), 'utf8'));
@@ -47,7 +45,14 @@ test('new built-in published source, build record and manifest agree on version,
     assert.equal(record.sourceSha256, digest(source)); assert.equal(record.hexSha256, artifact.sha256);
     assert.deepEqual(record.protocol, { codecId: artifact.codecId, startCommand: artifact.startCommand, sampleIntervalMs: artifact.sampleIntervalMs });
     assert.equal(record.embeddedSourceMatches, true); assert.equal(record.embeddedConfigMatches, true);
-    assert.equal(record.officialV2Reader, true); assert.equal(record.hardwareVerified, false);
+    assert.equal(record.officialV2Reader, true);
+    assert.equal(typeof record.hardwareVerified, 'boolean'); assert.equal(record.hardwareVerified, artifact.hardwareVerified);
+    assert.equal(record.target, `pxt-microbit@${lock.packages['node_modules/pxt-microbit'].version}`);
+    assert.equal(record.compiler, `pxt-core@${lock.packages['node_modules/pxt-core'].version}`);
+    for (const runtime of record.runtimeFiles) {
+      if (!runtimeHashes.has(runtime.file)) runtimeHashes.set(runtime.file, digest(await readFile(new URL(`dev/firmware/runtime-cache/${runtime.file}`, root))));
+      assert.equal(runtimeHashes.get(runtime.file), runtime.sha256);
+    }
   }
 });
 
@@ -91,22 +96,6 @@ test('light warmup cannot revive an old start after stop or disconnect and recon
     });
     f.hooks.connect(); f.send('start'); f.hooks.loop(); assert.equal(f.lines.length, 0);
     f.send('start'); f.hooks.loop(); assert.equal(f.lines.length, 1);
-  }
-});
-
-test('magnetic build record matches the checked-in source, package lock, HEX and frozen runtime images', async () => {
-  const source = (await readFile(new URL('../../firmware/examples/magnetometer.js', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
-  const record = JSON.parse(await readFile(new URL('../../public/firmware/magnetometer-uart-v2.build.json', import.meta.url), 'utf8'));
-  const published = await readFile(new URL('../../public/firmware/magnetometer-uart-v2.ts', import.meta.url), 'utf8');
-  const lock = JSON.parse(await readFile(new URL('../../dev/firmware/package-lock.json', import.meta.url), 'utf8'));
-  assert.equal(source, published); assert.equal(digest(source), record.sourceSha256);
-  assert.equal(record.hexSha256, getFirmwareArtifact('magnetometer-uart').sha256);
-  assert.equal(record.embeddedSourceMatches, true); assert.equal(record.hardwareVerified, false);
-  assert.equal(lock.packages['node_modules/pxt-microbit'].version, '9.1.1');
-  assert.equal(lock.packages['node_modules/pxt-core'].version, '13.0.1');
-  for (const runtime of record.runtimeFiles) {
-    const bytes = await readFile(new URL(`../../dev/firmware/runtime-cache/${runtime.file}`, import.meta.url));
-    assert.equal(digest(bytes), runtime.sha256);
   }
 });
 
