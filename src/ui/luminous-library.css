@@ -1,21 +1,20 @@
 /* Entry, activity preview and saved experiments share bright paper surfaces. */
 [data-visual-theme=luminous] :is(.lab-home,.experiment-preview,[data-screen=saved]) { margin-top:var(--sl-space-6); }
 [data-visual-theme=luminous] .home-intro { padding:24px 0 28px; border-bottom:1px solid var(--sl-line); }
-[data-visual-theme=luminous] .home-intro h2 { font-size:clamp(28px,3vw,40px); line-height:1.3; letter-spacing:-.04em; margin:10px 0 14px; color:var(--sl-navy); }
-[data-visual-theme=luminous] .home-intro > p:last-child { font-size:15px; line-height:1.8; }
+[data-visual-theme=luminous] .home-intro h2 { font-size:clamp(1.75rem,3vw,2.5rem); line-height:1.3; letter-spacing:-.04em; margin:10px 0 14px; color:var(--sl-navy); }
+[data-visual-theme=luminous] .home-intro > p:last-child { font-size:0.9375rem; line-height:1.8; }
 [data-visual-theme=luminous] .lab-home .eyebrow { color:var(--sl-recording-text); font-size:var(--sl-type-small); }
-[data-visual-theme=luminous] .lab-home h3 { margin:28px 0 14px; font-size:17px; color:var(--sl-navy); }
+[data-visual-theme=luminous] .lab-home h3 { margin:28px 0 14px; font-size:1.0625rem; color:var(--sl-navy); }
 [data-visual-theme=luminous] .experiment-cards { gap:var(--sl-space-4); }
 [data-visual-theme=luminous] .experiment-card { position:relative; min-height:150px; padding:24px 48px 24px 24px; border:1px solid var(--sl-line); border-radius:var(--sl-radius-panel); background:var(--sl-surface); box-shadow:var(--sl-shadow-panel); transition:background var(--sl-motion-control),border-color var(--sl-motion-control); }
 [data-visual-theme=luminous] .experiment-card::after { content:''; position:absolute; top:28px; right:24px; width:7px; height:7px; border-top:1.5px solid var(--sl-muted); border-right:1.5px solid var(--sl-muted); transform:rotate(45deg); }
-[data-visual-theme=luminous] .experiment-card strong { font-size:20px; color:var(--sl-navy); }
+[data-visual-theme=luminous] .experiment-card strong { font-size:1.25rem; color:var(--sl-navy); }
 [data-visual-theme=luminous] .experiment-card span { color:var(--sl-muted); font-size:var(--sl-type-control); line-height:1.7; }
 [data-visual-theme=luminous] .experiment-card:hover { background:var(--sl-notice-bg); border-color:var(--sl-control-hover-line); }
 [data-visual-theme=luminous] .experiment-card:active { background:var(--sl-control-pressed); }
-[data-visual-theme=luminous] #activity-cards .experiment-card { border-left:3px solid var(--sl-nav-marker); }
 [data-visual-theme=luminous] :is(.experiment-preview,[data-screen=saved] > .lab-panel) { padding:var(--sl-space-8); border-color:var(--sl-line); border-radius:var(--sl-radius-panel); background:var(--sl-surface); box-shadow:var(--sl-shadow-panel); }
 [data-visual-theme=luminous] .experiment-preview { max-width:1000px; }
-[data-visual-theme=luminous] .experiment-preview h2 { color:var(--sl-navy); font-size:28px; }
+[data-visual-theme=luminous] .experiment-preview h2 { color:var(--sl-navy); font-size:1.75rem; }
 [data-visual-theme=luminous] .experiment-preview ul { line-height:1.9; }
 [data-visual-theme=luminous] .preview-channels { color:var(--sl-selection); }
 [data-visual-theme=luminous] .preview-equipment { background:var(--sl-surface-soft); border-left:3px solid var(--sl-selection); border-radius:0; padding:var(--sl-space-4); }

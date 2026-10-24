@@ -2,7 +2,7 @@
    original view; colors for DOM/Canvas/export come from tokens + visual-theme. */
 [data-visual-theme=luminous] .analysis-screen { margin-top:var(--sl-space-6); --analysis-duration:var(--sl-motion-panel); }
 [data-visual-theme=luminous] .analysis-topline { gap:var(--sl-space-4); margin-bottom:var(--sl-space-4); }
-[data-visual-theme=luminous] .analysis-heading h1 { color:var(--sl-navy); font-size:24px; letter-spacing:-.03em; }
+[data-visual-theme=luminous] .analysis-heading h1 { color:var(--sl-navy); font-size:1.5rem; letter-spacing:-.03em; }
 [data-visual-theme=luminous] .analysis-screen button { border-radius:var(--sl-radius-control); min-height:var(--sl-target-compact); font-size:var(--sl-type-label); }
 [data-visual-theme=luminous] .analysis-screen :is(button,summary,[role=slider]):focus-visible { outline:2px solid var(--sl-focus); outline-offset:3px; }
 
@@ -19,24 +19,23 @@
 [data-visual-theme=luminous] .analysis-screen .analysis-scope-bar { background:var(--sl-surface-soft); border-color:var(--sl-line); padding:12px 20px; gap:12px 20px; }
 [data-visual-theme=luminous] .analysis-screen .layout-switch { flex-basis:290px; }
 [data-visual-theme=luminous] .analysis-screen .history-actions button { min-width:var(--sl-target-compact); }
-[data-visual-theme=luminous] .analysis-screen :is(.scope-summary,.graph-summary,.table-status,.table-selection,.graph-controls label,.graph-tools,.trend-result,.overview-readout) { font-size:var(--sl-type-small); }
-[data-visual-theme=luminous] .analysis-screen :is(.overview-readout,.range-count small,.range-dash,.point-empty,.point-inspector dt,.tool-heading,.trend-metrics span,.trend-result summary,.trend-explanation),
-[data-visual-theme=luminous] :is(#trend-empty,#trend-detail) { color:var(--sl-muted); }
+[data-visual-theme=luminous] .analysis-screen :is(.scope-summary,.graph-summary,.table-status,.table-selection,.graph-controls label,.trend-result,.overview-readout) { font-size:var(--sl-type-small); }
+[data-visual-theme=luminous] .analysis-screen :is(.overview-readout,.range-count small,.range-dash,.point-empty,.point-inspector dt,.trend-metrics span,.trend-result summary,.trend-explanation),
+[data-visual-theme=luminous] :is(#trend-empty,#trend-detail,#right-trend-empty,#right-trend-detail) { color:var(--sl-muted); }
 [data-visual-theme=luminous] .analysis-feedback { background:var(--sl-recording-bg); }
-[data-visual-theme=luminous] .analysis-screen :is(.analysis-table-pane,.table-tools,.table-status,.graph-tools,.trend-result,.trend-explanation,.table-disclosure) { border-color:var(--sl-line); }
+[data-visual-theme=luminous] .analysis-screen :is(.analysis-table-pane,.table-tools,.table-status,.trend-result,.trend-explanation,.table-disclosure) { border-color:var(--sl-line); }
 [data-visual-theme=luminous] .analysis-screen .analysis-table-pane { background:var(--sl-surface); }
-[data-visual-theme=luminous] .analysis-screen :is(.range-controls,.point-inspector,.trend-metrics > div,.relationship-finish) { background:var(--sl-surface-soft); border-color:var(--sl-line); border-radius:var(--sl-radius-control); }
-[data-visual-theme=luminous] .analysis-screen :is(.point-inspector,.table-selection) { border-left:3px solid var(--sl-selection); }
+[data-visual-theme=luminous] .analysis-screen :is(.range-controls,.point-inspector,.trend-metrics > div) { background:var(--sl-surface-soft); border-color:var(--sl-line); border-radius:var(--sl-radius-control); }
+[data-visual-theme=luminous] .analysis-screen .table-selection { border-left:3px solid var(--sl-selection); }
 [data-visual-theme=luminous] .analysis-screen :is(.table-selection,.hidden-column-filters) { background:var(--sl-selected-bg); color:var(--sl-text); border-color:var(--sl-line); }
 [data-visual-theme=luminous] .analysis-screen .point-empty { background:transparent; }
 [data-visual-theme=luminous] .analysis-screen .analysis-toast { background:var(--sl-navy); box-shadow:var(--sl-shadow-menu); }
 [data-visual-theme=luminous] .analysis-screen :is(.table-tools,.selection-actions,.point-actions) button { font-size:var(--sl-type-small); min-height:var(--sl-target-compact); }
 [data-visual-theme=luminous] .analysis-screen .graph-controls select { background:var(--sl-surface-soft); }
-[data-visual-theme=luminous] .analysis-screen .graph-used { color:var(--sl-graph-point,var(--sl-analysis-point)); }
+[data-visual-theme=luminous] .analysis-screen .graph-used { color:var(--sl-graph-point-text,var(--sl-analysis-point-text)); }
 [data-visual-theme=luminous] .analysis-screen .graph-excluded { color:var(--sl-analysis-excluded); }
 [data-visual-theme=luminous] .analysis-screen .trend-metrics span { font-size:var(--sl-type-caption); }
-[data-visual-theme=luminous] .analysis-screen :is(.graph-tools summary,.graph-tools details label,.trend-result summary,.point-time,.point-inspector dt,.point-inspector .muted,.relationship-exports button) { font-size:var(--sl-type-small); }
-[data-visual-theme=luminous] .analysis-screen .relationship-finish p { color:var(--sl-muted); font-size:var(--sl-type-label); line-height:1.6; }
+[data-visual-theme=luminous] .analysis-screen :is(.trend-result summary,.point-time,.point-inspector dt,.point-inspector .muted,.relationship-exports button) { font-size:var(--sl-type-small); }
 [data-visual-theme=luminous] .analysis-screen .relationship-exports { gap:var(--sl-space-4); }
 [data-visual-theme=luminous] .analysis-screen .relationship-exports button { min-height:var(--sl-target-compact); padding:4px 8px; border-radius:var(--sl-radius-flat); }
 [data-visual-theme=luminous] .analysis-screen .switch-row input { border-radius:20px; background:var(--sl-input-border); box-shadow:none; }
@@ -53,6 +52,8 @@
 [data-visual-theme=luminous] .raw-table .sample-row[data-focused=true] td { background:var(--sl-inspected-bg); }
 [data-visual-theme=luminous] .raw-table .sample-row[data-focused=true] td:first-child { box-shadow:inset 3px 0 var(--sl-nav-marker); }
 [data-visual-theme=luminous] .raw-table .sample-row:focus-visible { outline-color:var(--sl-focus); }
+[data-visual-theme=luminous] .raw-table { font-size:var(--sl-type-small); }
+[data-visual-theme=luminous] .raw-table :is(th,.sample-row td) { line-height:1.5; }
 [data-visual-theme=luminous] .analysis-screen .raw-table th button { min-height:28px; background:transparent; color:inherit; }
 [data-visual-theme=luminous] .analysis-screen .raw-table .column-filter-button[data-active=true] { background:var(--sl-selection); color:var(--sl-surface); }
 [data-visual-theme=luminous] .analysis-screen .input-unit { border-color:var(--sl-input-border); background:var(--sl-surface); }
@@ -79,7 +80,7 @@
 [data-visual-theme=luminous] .question-heading label > span { font-size:var(--sl-type-control); line-height:1.7; }
 [data-visual-theme=luminous] .question-number { border:0; border-radius:0; background:var(--sl-recording-bg); color:var(--sl-recording-text); font-size:var(--sl-type-small); }
 [data-visual-theme=luminous] .reflection-question[data-written=true] .question-number { background:var(--sl-selected-bg); color:var(--sl-selection); }
-[data-visual-theme=luminous] .reflection-question textarea { font-family:var(--sl-font); font-size:16px; color:var(--sl-text); background:repeating-linear-gradient(transparent 0,transparent calc(2em - 1px),var(--sl-line) calc(2em - 1px),var(--sl-line) 2em); }
+[data-visual-theme=luminous] .reflection-question textarea { font-family:var(--sl-font); font-size:1rem; color:var(--sl-text); background:repeating-linear-gradient(transparent 0,transparent calc(2em - 1px),var(--sl-line) calc(2em - 1px),var(--sl-line) 2em); }
 [data-visual-theme=luminous] .reflection-question textarea::placeholder { color:var(--sl-muted); font-size:var(--sl-type-control); }
 [data-visual-theme=luminous] .reflection-question textarea:focus-visible { outline:2px solid var(--sl-focus); outline-offset:4px; }
 [data-visual-theme=luminous] :is(.reflection-stale,.reflection-hint) { background:var(--sl-recording-bg); color:var(--sl-recording-text); border-color:var(--sl-finish-line); }
@@ -91,14 +92,53 @@
 [data-visual-theme=luminous] .reflection-save-status:is([data-state=pending],[data-state=saving],[data-state=temporary])::before { background:var(--sl-nav-marker); }
 
 @media(min-width:1001px) {
-  [data-visual-theme=luminous] .analysis-screen .graph-stage { height:clamp(280px,calc(100dvh - 590px),520px); }
+  /* Keep the reference's light plot and straight navigation. Compact the
+     surrounding rows before assigning the remaining height to the canvas. */
+  [data-visual-theme=luminous] .analysis-screen[data-task=relationship] { margin-top:8px; }
+  [data-visual-theme=luminous] .analysis-screen[data-task=relationship] .analysis-topline { margin-bottom:8px; }
+  [data-visual-theme=luminous] .analysis-screen[data-task=relationship] :is(.analysis-tabs,.layout-switch) button { min-height:var(--sl-target-compact); padding:6px 10px; }
+  [data-visual-theme=luminous] .analysis-screen[data-task=relationship] .analysis-scope-bar { padding:4px 16px; gap:8px 16px; }
+  [data-visual-theme=luminous] .analysis-screen[data-task=relationship] .layout-switch { flex-basis:260px; }
+  [data-visual-theme=luminous] .analysis-screen .analysis-graph-pane { padding:8px 16px; }
+  [data-visual-theme=luminous] .analysis-screen .plot-heading { margin-bottom:4px; }
+  [data-visual-theme=luminous] .analysis-screen .graph-controls { gap:12px; margin-bottom:2px; }
+  [data-visual-theme=luminous] .analysis-screen .graph-summary { min-height:16px; margin-bottom:2px; }
+  [data-visual-theme=luminous] .analysis-screen .graph-stage { height:var(--analysis-plot-height,320px); }
+  [data-visual-theme=luminous] .analysis-screen .graph-trend-results { gap:12px; }
+  [data-visual-theme=luminous] .analysis-screen .trend-result { position:relative; margin-top:0; padding-top:6px; }
+  [data-visual-theme=luminous] .analysis-screen .trend-result:has(h3:not([hidden])) { padding-top:calc(1.5em + 8px); }
+  [data-visual-theme=luminous] .analysis-screen .trend-result h3 { position:absolute; top:6px; left:0; max-width:calc(100% - 6.5em); margin:0; font-size:var(--sl-type-small); line-height:1.5; white-space:nowrap; overflow:auto; }
+  [data-visual-theme=luminous] .analysis-screen .trend-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+  [data-visual-theme=luminous] .analysis-screen .trend-metrics > div { padding:4px 8px; gap:0; border-radius:var(--sl-radius-compact); }
+  [data-visual-theme=luminous] .analysis-screen .trend-metrics span { min-height:0; line-height:1.4; }
+  [data-visual-theme=luminous] .analysis-screen .trend-metrics strong { height:2em; line-height:1.4; }
+  [data-visual-theme=luminous] .analysis-screen .trend-result details { margin-top:0; }
+  [data-visual-theme=luminous] .analysis-screen .trend-result summary { position:absolute; top:4px; right:0; min-height:24px; line-height:1.5; }
+  [data-visual-theme=luminous] .analysis-screen .relationship-actions { margin-top:4px; }
+  [data-visual-theme=luminous] .analysis-screen #graph-point-slot:not([data-active=true]) { display:none; }
+  [data-visual-theme=luminous] .analysis-screen > .event-log { margin-top:6px; padding-top:6px; }
+  [data-visual-theme=luminous] .analysis-screen[data-task=relationship] .table-scroll { height:var(--analysis-table-height,360px); }
+  @container(min-width:40rem) {
+    .graph-controls .axis-select { flex-direction:row; align-items:center; gap:8px; }
+    .graph-controls .axis-select > span { flex:none; min-height:36px; }
+    .graph-controls .axis-select select { flex:1; width:0; }
+    .graph-controls #right-axis-controls { display:grid; grid-template-columns:auto minmax(0,1fr) 28px; column-gap:6px; }
+    #right-axis-controls .axis-heading { display:contents; }
+    #right-axis-controls .axis-heading label { grid-column:1; grid-row:1; align-self:center; color:var(--sl-muted); }
+    #right-axis-controls #graph-y-right { grid-column:2; grid-row:1; }
+    #right-axis-controls #remove-right-axis { grid-column:3; grid-row:1; min-width:28px; }
+    #right-axis-controls .axis-trend-controls { grid-column:1 / -1; }
+    .graph-controls .axis-trend-controls { margin-top:0; }
+    .graph-controls .switch-row { min-height:32px; }
+    .analysis-screen .graph-controls .axis-add { margin-top:0; }
+  }
 }
 @media(max-width:720px) {
   [data-visual-theme=luminous] .analysis-topline .analysis-tabs { width:100%; }
   [data-visual-theme=luminous] .analysis-screen .layout-switch { flex-basis:100%; }
   [data-visual-theme=luminous] .analysis-screen .analysis-scope-bar { padding:12px; }
   [data-visual-theme=luminous] .analysis-screen .scope-context { min-width:0; }
-  [data-visual-theme=luminous] .analysis-screen :is(.graph-tools button,.overview-actions button,.range-buttons button) { min-height:var(--sl-target); }
+  [data-visual-theme=luminous] .analysis-screen :is(.overview-actions button,.range-buttons button) { min-height:var(--sl-target); }
 }
 @media print {
   [data-visual-theme=luminous] body[data-print-reflection] { padding:0; background:white; color:var(--sl-text); }

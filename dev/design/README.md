@@ -2,6 +2,8 @@
 
 `npm run dev`로 로컬 서버를 실행한다. 이 폴더는 빌드 배포 대상이 아니다.
 
+V5부터 일반 홈·센서·활동 주소도 Luminous를 기본 사용한다. `theme=legacy`는 이 개발 측정 페이지의 비교 기능이며 사용자용 테마 설정이 아니다.
+
 - `preparation-comparison.html`: 준비물·배선·프로그램·연결의 A/B 실제 캡처 비교. 캡처는 `docs/design/review/v1/preparation-{light|dark}-{단계}.png`다.
 - `preparation.html`: 채택한 B안의 실제 준비 화면. 비교 버튼을 표시하지 않는다. `step=equipment|wiring|program|connection|calibration|battery|placement`, `sensor=bmp280|magnetometer|…`를 선택할 수 있다. BMP280가 기본이며 `activity=gay-lussac`으로 활동을 연다. 해당 센서·활동에 있는 단계만 이동한다.
 - `archive/preparation-a.html`: 보관된 A안. 현재 준비 화면에서는 연결하거나 선택하지 않는다. 최초 비교 캡처도 그대로 보관한다.
@@ -9,7 +11,7 @@
 - `index.html?state=paused&view=relationship`: V4 분석 검토. `view=overview|relationship|interpretation|saved|home`을 지원하며 기록을 마친 뒤 실제 화면 조작으로 이동한다. 빈 저장 목록은 `state=idle&view=saved`, 홈은 `state=idle&view=home`으로 연다.
 - `render-scene.html`: 기존 공통 모델의 카메라·조명으로 장치 PNG를 다시 렌더링한다.
 
-준비·측정 검토는 실제 DOM·Controller·기존 모의 BLE를 사용하며, 각 페이지마다 별도의 검토용 IndexedDB를 사용한다. 검토를 마치면 하단의 자료 정리 버튼으로 해당 DB와 실행 중인 뷰를 정리한다. 실물 USB/BLE 검증 결과로 해석하지 않는다.
+준비·측정 검토는 실제 DOM·Controller·기존 모의 BLE를 사용하며, 각 페이지마다 별도의 검토용 IndexedDB를 사용한다. 측정 검토의 개발 도구는 화면 높이에 영향을 주지 않는 왼쪽 아래 접힌 메뉴에 둔다. 검토를 마치면 개발 도구의 자료 정리 버튼으로 해당 DB와 실행 중인 뷰를 정리한다. 실물 USB/BLE 검증 결과로 해석하지 않는다.
 
 측정 화면 회귀 검사는 `/tests/browser/?suite=luminous`에서 다섯 센서·화면 크기 조합을 연속으로 검사한다. 실행 버튼을 누른 것만으로 통과한 것은 아니며, 마지막의 전체 통과 표시를 확인한다.
 
@@ -17,6 +19,12 @@
 
 분석 검사는 `/tests/browser/?suite=ui&visual=luminous`이며 `visual`을 생략하면 기존 화면을 검사한다. 같은 검사로 구간 초안/적용·복원/되돌리기·가상 표·근거/글 보존과 실제 Canvas의 PNG/인쇄 표현을 확인한다. `/tests/browser/?suite=workspace`는 실제 앱 하나를 1366→1024→390→320px로 바꾸고 홈·소개·저장 목록에서 근거/글을 다시 연다.
 
+## V5 검토 환경
+
+측정·준비 검토 주소에 `text=200&fallback=1&motion=reduce`를 붙이면 글자 200%, 글꼴 로딩 실패 후 시스템 서체, 필터 없음, 모션 감소 분기를 함께 확인한다. 글꼴 오류 로그는 이 실패 검토에서 의도한 결과다. 모션은 개발 페이지에서 CSS/JS 분기를 강제하며 운영체제 설정을 바꾸지 않는다.
+
+`/tests/browser/?suite=accessibility`는 확대·대체 환경의 넘침, 실제 글자/입력 대비, 대화상자 초점 복귀, 확대 가상 표 끝 행 접근을 검사한다. `/tests/browser/?suite=performance`는 같은 4채널 모의 자료로 기존/기본 표현을 비교한다. 시간은 실행 환경에 따라 달라지는 관찰값이며 합격 기준으로 고정하지 않는다. 정지 중 자료 보존·불필요한 갱신 방지·재개 후 700행·차트 수명은 동작 계약으로 검사한다. 성능 비교는 전체 suite에 자동 포함하지 않는다.
+
 ## 준비 A/B의 차이
 
-A는 기존 밝은 준비 화면의 배치를 따르며 프로그램도 같은 표현으로 맞춘다. B는 프로그램의 남색 무대와 설명/장치 배치를 모든 준비 단계로 확장한다. 두 안 모두 직선 단계 탭·기존 준비 확인·장치 그림 크기 조절을 사용한다. B의 3D 작업면은 배선 색과 작은 글자를 보존하기 위해 밝게 유지한다. 사용자가 B안을 선택하여 새 디자인의 준비 화면에 적용했다. A안과 최초 비교 캡처는 보관하며, A안은 별도 archive 경로에 두며 현재 준비 검토 경로는 B안만 사용한다. 기본 적용·배포 전환은 하지 않았다.
+A는 기존 밝은 준비 화면의 배치를 따르며 프로그램도 같은 표현으로 맞춘다. B는 프로그램의 남색 무대와 설명/장치 배치를 모든 준비 단계로 확장한다. 두 안 모두 직선 단계 탭·기존 준비 확인·장치 그림 크기 조절을 사용한다. B의 3D 작업면은 배선 색과 작은 글자를 보존하기 위해 밝게 유지한다. 사용자가 B안을 선택하여 기본 준비 화면에 적용했다. A안과 최초 비교 캡처는 보관하며, A안은 별도 archive 경로에 두고 현재 준비 검토 경로는 B안만 사용한다.

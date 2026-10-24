@@ -28,7 +28,11 @@ export function graphData(samples, state, imported = [], context = state.context
       || (!graph.connectGaps && sample.receivedAt - previous.receivedAt >= (context?.connectionPolicy?.staleMs ?? context?.connection?.staleMs ?? 5000)))) line.push({ x, y: null });
     points.push(point); line.push(point); previous = { x, receivedAt: sample.receivedAt };
   }
-  return { ...graph, points, excludedPoints, line, invalidCount, candidateCount, excludedCount, includedCount: candidateCount - excludedCount,
+  const yColumn = columns.find(c => c.id === graph.yColumnId);
+  const right = graph.right ? graphData(samples,{...state,graph:{...graph,right:undefined,yColumnId:graph.right.yColumnId,
+    view:graph.right.view,trendEnabled:graph.right.trendEnabled}},imported,context) : null;
+  return { ...graph, ...(right ? {right} : {}), points, excludedPoints, line, invalidCount, candidateCount, excludedCount, includedCount: candidateCount - excludedCount,
+    yQuantity:yColumn?.quantity, yQuantityLabel:yColumn?.quantityLabel,
     xUnit: graph.xColumnId === 'receivedAt' ? '초' : columns.find(c => c.id === graph.xColumnId)?.unit,
     yUnit: columns.find(c => c.id === graph.yColumnId)?.unit,
     xLabel: columnLabel(columns.find(c => c.id === graph.xColumnId)),

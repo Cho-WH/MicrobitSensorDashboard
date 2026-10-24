@@ -17,12 +17,11 @@ export function parseRoute(input, base = appBaseUrl, modules = registry) {
   return { context: entry ? getExperiment(entry.sensorId, entry.activityId, modules) : null,
     screen: requestedView ?? (entry ? 'prepare' : 'home') };
 }
-export function routeUrl(context, screen, { base = appBaseUrl, mock = false, visual = null, modules = registry } = {}) {
+export function routeUrl(context, screen, { base = appBaseUrl, mock = false, modules = registry } = {}) {
   const entry = context && modules.entryRoutes.find(route => route.sensorId === context.sensor.id && route.activityId === (context.activity?.id ?? null));
   const url = new URL(['home', 'saved'].includes(screen) || !entry ? 'lab.html' : entry.path, base);
   if (!['home', 'prepare'].includes(screen)) url.searchParams.set('view', screen);
   if (mock) url.searchParams.set('mock', '1');
-  if (visual === 'luminous') url.searchParams.set('visual', visual);
   return url;
 }
 export function sameExperiment(left, right) {

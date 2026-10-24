@@ -1,16 +1,17 @@
-// Opt-in screen composition; shared visual rules are loaded by the stylesheet.
+// Default screen composition; shared visual rules are loaded by the stylesheet.
 // Move the real controls before controller binding;
 // recording, connection, persistence and navigation still have their existing owners.
 import { element } from './dom.js';
+import { bindDisclosureMenu } from './disclosure-menu.js';
 
-export async function prepareLuminousPreview(root = document) {
+export async function prepareLuminousShell(root = document) {
   if (root.querySelector('.luminous-sidebar')) return;
   const doc = root.ownerDocument ?? root;
   doc.documentElement.dataset.visualTheme = 'luminous';
   const style = doc.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('./luminous-preview.css', import.meta.url).href;
+  style.rel = 'stylesheet'; style.href = new URL('./luminous.css', import.meta.url).href;
   const loaded = new Promise((resolve, reject) => {
-    style.onload = resolve; style.onerror = () => reject(new Error('디자인 미리보기 스타일을 불러오지 못했어요.'));
+    style.onload = resolve; style.onerror = () => reject(new Error('화면 스타일을 불러오지 못했어요. 새로고침해 주세요.'));
   });
   doc.head.append(style);
   const $ = selector => root.querySelector(selector);
@@ -23,19 +24,15 @@ export async function prepareLuminousPreview(root = document) {
   rail.append(logo, $('.lab-nav'), atmosphere, element('small', 'luminous-signature', 'micro:bit · 센서로 만나는 과학'));
   $('.lab-identity').before(rail);
   $('.lab-identity').append($('#file-tools'));
-  const exports = element('details', 'luminous-export');
+  const exports = element('details', 'luminous-export disclosure-menu');
   const exportToggle = element('summary', '', '파일 저장');
-  const exportOptions = element('div', 'luminous-export-options');
+  const exportOptions = element('div', 'luminous-export-options disclosure-menu-panel');
   exportOptions.id = 'file-save-options'; exportToggle.setAttribute('aria-controls', exportOptions.id);
   for (const [id, description] of [['export-json', '측정값·사건·분석을 함께 보관'], ['export-csv', '측정값을 표 계산 프로그램에서 열기']]) {
     const option = element('div'); option.append($('#'+id), element('small', '', description)); exportOptions.append(option);
   }
   exports.append(exportToggle, exportOptions); $('#file-tools').append(exports);
-  exportOptions.addEventListener('click', event => {
-    if (event.target instanceof Element && event.target.closest('button:not(:disabled)')) { exports.open = false; exportToggle.focus(); }
-  });
-  exports.addEventListener('keydown', event => { if (event.key === 'Escape' && exports.open) { event.preventDefault(); exports.open = false; exportToggle.focus(); } });
-  doc.addEventListener('click', event => { if (event.target instanceof Node && !exports.contains(event.target)) exports.open = false; });
+  bindDisclosureMenu(exports);
   $('.lab-toolbar').remove();
 
   const measure = $('[data-screen="measure"]');

@@ -9,6 +9,7 @@ import { runCopyTests } from './copy.js';
 import { runNavigationTests } from './navigation.js';
 import { runDeviceTests } from './devices.js';
 import { runLuminousTests, runLuminousWorkspaceTests } from './luminous.js';
+import { runPresentationPerformance, runPresentationAccessibility } from './presentation.js';
 const button = document.getElementById('run'), status = document.getElementById('status'), list = document.getElementById('results');
 button.addEventListener('click', async () => {
   button.disabled = true; list.replaceChildren(); status.textContent = '검사 중'; delete status.dataset.result;
@@ -17,6 +18,8 @@ button.addEventListener('click', async () => {
   try {
     const suites = {copy:runCopyTests,storage:runStorageTests,files:runFileTests,ui:runUiTests,guide:runGuideTests,preparation:runPreparationTests,measurement:runMeasurementTests,app:runAppTests,navigation:runNavigationTests,layout:runLayoutTests,devices:runDeviceTests,luminous:runLuminousTests,workspace:runLuminousWorkspaceTests};
     const selected = new URL(location.href).searchParams.get('suite');
+    suites.accessibility = runPresentationAccessibility;
+    if (selected === 'performance') suites.performance = runPresentationPerformance;
     const failures = [];
     for (const [name, run] of selected && suites[selected] ? [[selected, suites[selected]]] : Object.entries(suites)) {
       try { await run(report); }

@@ -4,7 +4,8 @@ import { columnLabel } from '../analysis/calculations.js';
 import { clockTime, formatClockTime, formatElapsedTime } from '../analysis/clock-time.js';
 import { formatCalculated } from '../analysis/calculations.js';
 import { trendSummary } from './trend-summary.js';
-import { channelColor as resolveChannelColor, analysisColors } from './visual-theme.js';
+import { channelColor as resolveChannelColor, channelTextColor, analysisSeriesColors } from './visual-theme.js';
+import { groupChartAxes } from './chart-axes.js';
 
 // Keep axis lettering at its original size; only the plot bitmap stretches.
 function captureLayoutPreview(chart) {
@@ -24,6 +25,7 @@ function captureLayoutPreview(chart) {
   const plotWidth = area.right - area.left, plotBottom = Math.ceil(area.bottom + 1);
   piece(0, 0, area.left, plotBottom, () => 'none');
   piece(area.left, 0, plotWidth, plotBottom, delta => `scaleX(${Math.max(0, plotWidth + delta) / plotWidth})`);
+  piece(area.right, 0, width-area.right, plotBottom, delta => `translateX(${delta}px)`);
   const title = chart.options.scales.x.title;
   const titleHeight = title.display ? globalThis.Chart.helpers.toFont(title.font).lineHeight
     + globalThis.Chart.helpers.toPadding(title.padding).height : 0;
@@ -63,10 +65,11 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
         tooltip: { ...(theme ? {titleFont:{family:theme.font}, bodyFont:{family:theme.font}} : {}), filter: item => Boolean(item.raw.sampleId) || item.dataset.isIntercept === true, callbacks: {
           title: items => items[0].dataset.isIntercept ? 'x절편' : '자료 ' + items[0].raw.sampleId,
           label: item => {
-            const coordinates = [model.xLabel + ': ' + (model.xColumnId === 'receivedAt' ? clock(item.raw.x) : formatCalculated(item.raw.x)),
-              model.yLabel + ': ' + formatCalculated(item.raw.y)];
+            const series=item.dataset.seriesModel??model;
+            const coordinates = [series.xLabel + ': ' + (series.xColumnId === 'receivedAt' ? clock(item.raw.x) : formatCalculated(item.raw.x)),
+              series.yLabel + ': ' + formatCalculated(item.raw.y)];
             if (!item.dataset.isIntercept) return [item.dataset.label, ...coordinates];
-            if (model.xColumnId === 'receivedAt') coordinates.push('경과 시간: ' + formatCalculated(model.regression.result.xIntercept) + '초');
+            if (series.xColumnId === 'receivedAt') coordinates.push('경과 시간: ' + formatCalculated(series.regression.result.xIntercept) + '초');
             return coordinates;
           },
         } },
@@ -124,24 +127,40 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
     render(next, selectedIds = []) {
       if (preview) { pendingRender = [next, selectedIds]; return; }
       model = next;
-      const colors = analysisColors(theme, model);
-      const selected = new Set(selectedIds), color = c => selected.has(c.raw?.sampleId) ? colors.focused : colors.point;
-      chart.data.datasets = [
-        { label: '분석 포함', data: model.type === 'line' ? model.line : model.points, showLine: model.type === 'line', spanGaps: false,
-          borderColor: colors.point, pointBackgroundColor: color, pointBorderColor: color,
-          pointRadius: c => selected.has(c.raw?.sampleId) ? 5 : 3 },
-        { label: '제외', data: model.excludedPoints, pointStyle: 'circle', pointRadius: 4, pointBorderWidth: 1.5,
-          pointBackgroundColor: '#ffffffcc', pointBorderColor: c => selected.has(c.raw?.sampleId) ? colors.focused : colors.excluded },
-      ];
-      const line = (label, data, dashed = false) => ({ label, data, showLine: true, pointRadius: 0, pointHitRadius: 0,
-        borderColor: colors.trend, borderWidth: 1.8, borderDash: dashed ? [6, 4] : [], order: 1 });
-      if (model.trend?.measured.length) {
-        chart.data.datasets.push(line('추세선', model.trend.measured), line('연장선', model.trend.extension, true));
-        if (model.trend.intercept.length) chart.data.datasets.push({ label: 'x절편', isIntercept: true, data: model.trend.intercept,
-          pointStyle: 'cross', pointRadius: 6, pointHitRadius: 7, pointBorderColor: colors.trend, pointBorderWidth: 2 });
-      }
+      const series=[model,...(model.right?[model.right]:[])], palettes=analysisSeriesColors(theme,model);
+      const axisGroups=groupChartAxes(series.map((item,index)=>({id:String(index),name:item.yLabel,unit:item.yUnit,
+        quantity:item.yQuantity,quantityLabel:item.yQuantityLabel})));
+      const shared=Boolean(model.right && axisGroups.length===1);
+      const selected=new Set(selectedIds);
+      chart.data.datasets=series.flatMap((item,index)=>{
+        const colors=palettes[index], yAxisID=index&&!shared?'yRight':'y';
+        const common={yAxisID,seriesModel:item}, prefix=model.right?item.yLabel+' · ':'';
+        const color=c=>selected.has(c.raw?.sampleId)?colors.focused:colors.point;
+        /** @type {any[]} Chart.js accepts both point and line datasets. */
+        const datasets=[
+          {...common,label:prefix+'분석 포함',legendSeries:true,data:item.type==='line'?item.line:item.points,showLine:item.type==='line',spanGaps:false,
+            borderColor:colors.point,pointBackgroundColor:color,pointBorderColor:color,pointRadius:c=>selected.has(c.raw?.sampleId)?5:3},
+          {...common,label:prefix+'제외',data:item.excludedPoints,pointStyle:'circle',pointRadius:4,pointBorderWidth:1.5,
+            pointBackgroundColor:'#ffffffcc',pointBorderColor:c=>selected.has(c.raw?.sampleId)?colors.focused:colors.excluded},
+        ];
+        const line=(label,data,dashed=false)=>({...common,label:prefix+label,data,showLine:true,pointRadius:0,pointHitRadius:0,
+          borderColor:colors.trend,borderWidth:1.8,borderDash:dashed?[6,4]:[],order:1});
+        if(item.trend?.measured.length){
+          datasets.push(line('추세선',item.trend.measured),line('연장선',item.trend.extension,true));
+          if(item.trend.intercept.length)datasets.push({...common,label:prefix+'x절편',isIntercept:true,data:item.trend.intercept,
+            pointStyle:'cross',pointRadius:6,pointHitRadius:7,pointBorderColor:colors.trend,pointBorderWidth:2});
+        }
+        return datasets;
+      });
+      chart.options.plugins.legend={display:Boolean(model.right),position:'top',onClick:()=>{},labels:{usePointStyle:true,boxWidth:8,
+        color:theme?.text??'#53657d',font:{family:theme?.font,size:12},filter:(_item,data)=>data.datasets[_item.datasetIndex].legendSeries===true}};
+      if(model.right&&!shared){
+        chart.options.scales.yRight={type:'linear',position:'right',title:{display:true,text:model.right.yLabel,color:palettes[1].pointText??palettes[1].point,
+          font:{family:theme?.font,size:13}},ticks:{color:theme?.text??'#53657d',maxTicksLimit:6,font:{family:theme?.font,size:12}},grid:{drawOnChartArea:false}};
+      }else delete chart.options.scales.yRight;
       chart.options.scales.x.title.text = model.xLabel;
-      chart.options.scales.y.title.text = model.yLabel;
+      chart.options.scales.y.title.text = shared ? axisGroups[0].label : model.yLabel;
+      chart.options.scales.y.title.color = shared?theme?.text??'#53657d':palettes[0].pointText??palettes[0].point;
       chart.options.scales.x.ticks.callback = model.xColumnId === 'receivedAt' ? clock : value => formatCalculated(value);
       if (!resize()) chart.update('none');
     },
@@ -160,7 +179,7 @@ export function exportAnalysisPng(model, { name = '', selectedIds = [], theme = 
     view.render(model, selectedIds);
     const output = document.createElement('canvas'), ctx = output.getContext('2d');
     const font = theme?.font || '"Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
-    const summary = trendSummary(model);
+    const series = [model,...(model.right?[model.right]:[])];
     const wrap = (text, size, weight = '') => {
       ctx.font = `${weight} ${size}px ${font}`.trim();
       const lines = []; let line = '';
@@ -172,14 +191,16 @@ export function exportAnalysisPng(model, { name = '', selectedIds = [], theme = 
       return lines;
     };
     const title = wrap(name || '센서 실험 분석', 22, 'bold');
-    const caption = [summary.equation, summary.detail].filter(Boolean).flatMap(t => wrap(t, 17));
-    const plotTop = 24 + title.length * 30 + 36;
+    const caption = series.flatMap(item => { const summary=trendSummary(item); return [model.right ? item.yLabel + ': ' + summary.equation : summary.equation, summary.detail]; }).filter(Boolean).flatMap(t => wrap(t, 17));
+    const counts = series.map(item => (model.right ? item.yLabel + ' ' : '') + '그래프 ' + item.points.length + '개' + (item.invalidCount ? ' · 값 없음 ' + item.invalidCount + '개' : '') + ' · ' + (item.view === 'extended' ? '추세선 연장' : '측정 범위')).join(' / ');
+    const metadata = wrap('분석 포함 ' + (model.includedCount ?? model.points.length) + '개 · 제외 ' + (model.excludedCount ?? model.excludedPoints.length) + '개 · ' + counts + '   ● 분석 포함   ○ 제외', 16);
+    const plotTop = 24 + title.length * 30 + metadata.length * 24 + 12;
     output.width = 1200; output.height = plotTop + 640 + caption.length * 26 + 28;
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, output.width, output.height);
     ctx.textBaseline = 'top'; ctx.fillStyle = theme?.text ?? '#263b40'; ctx.font = `bold 22px ${font}`;
     title.forEach((text, i) => ctx.fillText(text, 24, 20 + i * 30));
     ctx.font = `16px ${font}`;
-    ctx.fillText(`분석 포함 ${model.includedCount ?? model.points.length}개 · 제외 ${model.excludedCount ?? model.excludedPoints.length}개 · 그래프 ${model.points.length}개${model.invalidCount ? ` · 값 없음 ${model.invalidCount}개` : ''} · ${model.view === 'extended' ? '추세선 연장' : '측정 범위'}   ● 분석 포함   ○ 제외`, 24, plotTop - 28);
+    metadata.forEach((text,i) => ctx.fillText(text,24,24 + title.length * 30 + i * 24));
     ctx.drawImage(plot, 0, plotTop); ctx.font = `17px ${font}`;
     caption.forEach((text, i) => ctx.fillText(text, 24, plotTop + 648 + i * 26));
     return output.toDataURL('image/png');
@@ -192,9 +213,13 @@ export function createChartView(canvas, { context, channels, inspect = false, le
   const sourceChannels = getSourceColumns(channels ?? context).filter(c => !['sampleId', 'receivedAt'].includes(c.id) && c.supported !== false);
   const colors = ['#d67b40', '#197f88', '#8d65b1', '#43854d'];
   const channelColor = (c, i) => theme ? resolveChannelColor(theme,c,i) : c.color ?? colors[i % colors.length];
-  const scales = Object.fromEntries(sourceChannels.map((c, i) => ['channel' + i, {
+  const axisGroups = groupChartAxes(sourceChannels);
+  const axisIds = new Map(axisGroups.flatMap(group=>group.channels.map(channel=>[channel.id,group.id])));
+  const scales = Object.fromEntries(axisGroups.map((group, i) => [group.id, {
     type: 'linear', position: i % 2 ? 'right' : 'left',
-    title: { display: true, text: columnLabel(c), color: channelColor(c, i), ...(theme ? {font:{family:theme.font,size:12}} : {}) },
+    title: { display: true, text: group.label,
+      color: group.channels.length>1 ? theme?.text ?? '#53657d' : channelTextColor(theme,group.channels[0],sourceChannels.indexOf(group.channels[0])),
+      ...(theme ? {font:{family:theme.font,size:12}} : {}) },
     ticks: theme ? {color:theme.text,font:{family:theme.font,size:11},maxTicksLimit:6} : {},
     border: theme ? {color:theme.grid} : {},
     grid: { drawOnChartArea: i === 0, color: theme?.grid ?? '#edf1f2' },
@@ -220,7 +245,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
         onLayout();
       },
     }] : [{id:'measurement-layout',afterDraw:()=>onLayout()}],
-    data: { datasets: sourceChannels.map((c, i) => ({ label: columnLabel(c), yAxisID: 'channel' + i, borderColor: channelColor(c, i), backgroundColor: channelColor(c, i), data: [] })) },
+    data: { datasets: sourceChannels.map((c, i) => ({ label: columnLabel(c), yAxisID: axisIds.get(c.id), borderColor: channelColor(c, i), backgroundColor: channelColor(c, i), data: [] })) },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       layout: {padding: {top: !eventMarkers ? 52 : 0}},
@@ -277,7 +302,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
         chart.data.datasets[index].data = data;
       }
       // User actions share the time axis. Null points keep discontinuities visible.
-      if (eventMarkers) chart.data.datasets[sourceChannels.length] = { type: 'scatter', label: '조작 기록', yAxisID: 'channel0',
+      if (eventMarkers) chart.data.datasets[sourceChannels.length] = { type: 'scatter', label: '조작 기록', yAxisID: axisIds.get(sourceChannels[0]?.id),
         pointStyle: 'triangle', pointRadius: 6, backgroundColor: theme?.colors[0] ?? '#87632f',
         data: events.filter((e) => hasTime && Number.isFinite(e.receivedAt) && e.source === 'user').flatMap((e) => {
           const nearest = currentPoints.find((p) => p.receivedAt >= e.receivedAt && !readCell(p, sourceChannels[0]?.id).reason);

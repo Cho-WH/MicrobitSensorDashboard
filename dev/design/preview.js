@@ -5,8 +5,9 @@ import { createTransport } from '../../src/device/transport.js';
 import { createMockBleClient } from '../../src/device/mock-client.js';
 import { createRepository } from '../../src/data/repository.js';
 import { getExperiment } from '../../src/catalog/index.js';
-import { prepareLuminousPreview } from '../../src/ui/luminous-preview.js';
+import { prepareLuminousShell } from '../../src/ui/luminous-shell.js';
 import { loadLabDocument } from './load-lab.js';
+import { applyReviewEnvironment } from './review-environment.js';
 
 const params = new URL(location.href).searchParams;
 const sensor = params.get('sensor') ?? 'bmp280', state = params.get('state') ?? 'recording';
@@ -37,7 +38,8 @@ async function until(predicate) {
   while (!predicate()) { if (realNow()>deadline) throw new Error('검토 화면 준비 시간 초과'); await new Promise(resolve=>setTimeout(resolve,50)); }
 }
 await loadLabDocument();
-if (!legacy) await prepareLuminousPreview(document);
+if (!legacy) await prepareLuminousShell(document);
+await applyReviewEnvironment(params);
 Date.now = () => epoch+time;
 Object.defineProperty(performance,'now',{value:()=>time,configurable:true});
 const databaseName = 'microbit.sensor-lab.design-review.'+crypto.randomUUID();
@@ -47,7 +49,7 @@ const commit = repository.commitBatch;
 repository.commitBatch = batch => failSave ? Promise.reject(new Error('디자인 검토용 저장 실패')) : commit(batch);
 const transport = createTransport({ble:createMockBleClient(()=>context,{timers,now:()=>time}),timers,clock:{utc:()=>epoch+time,mono:()=>time}});
 const app = createController(document,{repository,deviceTransport:transport,historyEnabled:false,
-  initialUrl:new URL(`sensors/${sensor}/?view=measure&mock=1${legacy?'':'&visual=luminous'}`,document.baseURI).href});
+  initialUrl:new URL(`sensors/${sensor}/?view=measure&mock=1`,document.baseURI).href});
 const $ = selector=>document.querySelector(selector);
 async function click(selector) { await until(()=>!app.getState().busy&&!$(selector).disabled); $(selector).click(); await new Promise(resolve=>setTimeout(resolve,250)); }
 await until(()=>!app.getState().busy);
@@ -80,14 +82,19 @@ if (['overview','relationship','interpretation','saved','home'].includes(view)) 
   }
 }
 const review = document.createElement('footer');
-review.style.cssText='margin:36px 0 0;padding:16px;border-top:1px solid #b9c6d8;font:13px system-ui;display:flex;gap:10px;flex-wrap:wrap;align-items:center';
-review.append(document.createTextNode(`개발 검토 · ${sensor} 모의 자료 · 고정 시각 · ${legacy?'기존':'Luminous'} 화면`));
+// Development controls must not add page scroll to the layout being reviewed.
+review.style.cssText='position:fixed;bottom:2px;left:12px;z-index:30;margin:0;padding:0;font:12px system-ui';
+const reviewMenu=document.createElement('details'),reviewToggle=document.createElement('summary'),reviewPanel=document.createElement('div');
+reviewToggle.textContent='개발 검토 도구';reviewToggle.style.cssText='cursor:pointer;padding:2px 8px;background:#eef3fa;color:#53657d';
+reviewPanel.style.cssText='position:absolute;bottom:100%;left:0;width:320px;max-width:calc(100vw - 24px);padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:white;border:1px solid #75859a;border-radius:8px;box-shadow:0 8px 24px #0b1f3b22';
+reviewPanel.append(document.createTextNode(`개발 검토 · ${sensor} 모의 자료 · 고정 시각 · ${legacy?'기존':'Luminous'} 화면`));
+reviewMenu.append(reviewToggle,reviewPanel);review.append(reviewMenu);
 for(const [label,action] of [
   ['10초 수신',()=>advance(10000)],['수신 끊기',()=>click('#disconnect')],
   ['저장 실패 시험',async()=>{failSave=true;await advance(1000);}],
   ['저장 정상화',async()=>{failSave=false;if(!$('#retry-save').hidden)await click('#retry-save');}],
   ['검토 자료 정리',async()=>{failSave=false;await app.dispose();await globalThis.idb.deleteDB(databaseName);review.textContent='검토용 자료를 정리했습니다.';}],
-]) { const button=document.createElement('button');button.textContent=label;button.onclick=()=>Promise.resolve(action()).catch(error=>review.append(error.message));review.append(button); }
+]) { const button=document.createElement('button');button.textContent=label;button.onclick=()=>Promise.resolve(action()).catch(error=>review.append(error.message));reviewPanel.append(button); }
 document.body.append(review);
 await document.fonts.ready;
 await until(()=>!app.getState().busy);

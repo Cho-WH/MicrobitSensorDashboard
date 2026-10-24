@@ -16,6 +16,7 @@ import { formatElapsedTime } from '../analysis/clock-time.js';
 import { exportAnalysisPng, createChartView } from './chart-view.js';
 import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 import { readVisualTheme } from './visual-theme.js';
+import { createAnalysisLayout } from './analysis-layout.js';
 
 export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) => {} }) {
   let copy = getLabCopy(null);
@@ -23,6 +24,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   let theme = null;
   applyLabCopy(root, copy);
   const $ = id => root.querySelector('#' + id), events = new AbortController(), { signal } = events;
+  const fittedLayout = createAnalysisLayout(root, {signal});
   let store = null, workspace = null, task = 'overview', tableOpen = false, allColumns = false, focusedId = null;
   let relationshipMode = 'split', overviewTableOpen = false, revealedColumnId = null;
   let overview = null, overviewKey = null, range = null, toastRevision = null, toastTimer = null, currentModel = null;
@@ -68,6 +70,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   let layoutTimer = null;
   function finishLayoutTransition() {
     clearTimeout(layoutTimer); layoutTimer = null; graph.endLayoutTransition();
+    fittedLayout.schedule();
   }
   $('analysis-layout').addEventListener('transitionend', event => {
     if (event.target === $('analysis-layout') && event.propertyName === 'grid-template-columns') finishLayoutTransition();
@@ -81,7 +84,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   function changeTask(next) {
     if (!reflection.flush()) return;
     finishLayoutTransition();
-    if (next === 'interpretation' && workspace?.isWritable() && !workspace.getState().reflection.evidence && workspace.getGraphData().points.length) {
+    if (next === 'interpretation' && workspace?.isWritable() && !workspace.getState().reflection.evidence && (workspace.getGraphData().points.length||workspace.getGraphData().right?.points.length)) {
       if (!act(() => workspace.captureReflection())) return;
     }
     closeExclusion(); filters.close(); calculations.close(); focusedId = null; task = next;
@@ -185,9 +188,14 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     $('point-time').textContent = Number.isFinite(sample.receivedAt) ? new Date(sample.receivedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }) : '시각 정보 없음';
     const sourceChannels = state.sourceColumns.filter(c => !['sampleId', 'receivedAt'].includes(c.id));
     const values = sourceChannels.map(c => { const cell = readCell(sample, c.id); return [c.name, cell.reason ?? formatCalculated(cell.value) + (c.unit ? ' ' + c.unit : '')]; });
-    const point = [...(currentModel?.points ?? []), ...(currentModel?.excludedPoints ?? [])].find(p => p.sampleId === focusedId);
-    if (point) for (const axis of ['x', 'y'])
-      if (!['receivedAt', ...sourceChannels.map(c => c.id)].includes(currentModel[axis + 'ColumnId'])) values.push([currentModel[axis + 'Label'], formatCalculated(point[axis])]);
+    const shown = new Set(['receivedAt', ...sourceChannels.map(c => c.id)]);
+    for (const model of [currentModel, currentModel?.right].filter(Boolean)) {
+      const point = [...model.points, ...model.excludedPoints].find(p => p.sampleId === focusedId);
+      if (point) for (const axis of ['x', 'y']) {
+        const id = model[axis + 'ColumnId'];
+        if (!shown.has(id)) { values.push([model[axis + 'Label'], formatCalculated(point[axis])]); shown.add(id); }
+      }
+    }
     const reason = state.exclusions.find(e => e.sampleId === focusedId)?.reason;
     if (reason) values.push(['제외 사유', reason]);
     $('point-values').replaceChildren(...values.map(([name, value]) => {
@@ -205,7 +213,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     root.querySelectorAll('[data-workspace-action]').forEach(el => { el.disabled = !writable; });
     const state = workspace?.getState(), summary = workspace?.getSummary(), rows = workspace?.getRows() ?? [], samples = workspace?.getSamples() ?? [];
     currentModel = workspace?.getGraphData() ?? null;
-    const importedColumns = workspace?.getImportedColumns() ?? [], axisIds = task !== 'overview' && !allColumns && currentModel ? [currentModel.xColumnId, currentModel.yColumnId, ...(revealedColumnId ? [revealedColumnId] : [])] : null;
+    const importedColumns = workspace?.getImportedColumns() ?? [], axisIds = task !== 'overview' && !allColumns && currentModel ? [currentModel.xColumnId, currentModel.yColumnId, ...(currentModel.right?[currentModel.right.yColumnId]:[]), ...(revealedColumnId ? [revealedColumnId] : [])] : null;
     root.dataset.task = task; $('analysis-layout').dataset.tableOpen = String(tableOpen);
     $('analysis-layout').dataset.tableOnly = String(task === 'relationship' && allColumns);
     root.querySelector('.analysis-tabs').style.setProperty('--active-tab', ['overview', 'relationship', 'interpretation'].indexOf(task));
@@ -252,7 +260,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
       focusedSampleId: focusedId, calculatedColumns: state?.calculatedColumns ?? [], importedColumns, axisIds,
       filter: state?.table.filter, sort: state?.table.sort ?? { columnId: 'sampleId', direction: 'asc' }, canEdit: writable, resetScroll, context: state?.context });
     graph.render(state, currentModel, task === 'relationship' && !allColumns, writable, focusedId);
-    $('use-graph-for-reflection').disabled = !writable || !currentModel?.points.length;
+    $('use-graph-for-reflection').disabled = !writable || !(currentModel?.points.length||currentModel?.right?.points.length);
     reflection.render(task === 'interpretation');
     if (task === 'overview' && workspace) {
       overview ??= createChartView($('overview-chart'), { inspect: true, theme, context: state.context, onLayout: () => range.layout(), onCursor(sample, elapsedSeconds) {
@@ -276,6 +284,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     for (const button of root.querySelectorAll('[data-export]'))
       button.disabled = !workspace || (button.dataset.export === 'analysis-csv' && !summary?.includedCount) || (button.dataset.export === 'png' && !currentModel);
     updateStatus();
+    fittedLayout.schedule();
   }
   function updateStatus() {
     reflection.updateStatus();

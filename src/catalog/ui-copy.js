@@ -34,7 +34,7 @@ export const labDefaults = {
     useAll: '전체 자료로 관계 보기', chooseRange: '구간 골라 분석하기', start: '시작', end: '끝', seconds: '초', rangeHint: '선택 중 · 아직 분석에 적용하지 않음', allRange: '전체 구간', applyRange: '이 구간으로 분석',
     showTable: '측정값 표 보기', tableTitle: '측정값 표', addColumn: '+ 계산 열 추가', column: '+ 계산 열', analyzeSelection: '선택 자료로 분석', exclude: '분석에서 제외', restore: '다시 포함', clearSelection: '선택 해제',
     pointHint: '점이나 행을 선택하면 여기에서 자료를 살펴볼 수 있어요.', restorePoint: '분석에 다시 포함', graphTitle: '두 물리량의 관계', x: '가로축', y: '세로축', included: '● 분석 포함', excluded: '○ 제외',
-    tools: '분석 도구', trend: '추세선', extend: '추세선 연장', calculate: '계산 열 추가', display: '표시 설정', graphType: '그래프 종류', scatter: '산점도', line: '시간 변화선', gaps: '시간 공백 연결',
+    tools: '분석 도구', trend: '추세선', extend: '추세선 연장', calculate: '계산 열 추가', display: '표시 설정', graphType: '그래프 종류', scatter: '산점도', line: '꺾은선 그래프', gaps: '시간 공백 연결',
     graphPointHint: '그래프의 점을 선택하면 여기에서 자료를 살펴볼 수 있어요.', trendEmpty: '추세선을 켜면 두 물리량의 관계를 수치로 살펴볼 수 있어요.', details: '상세 보기',
     slopeHelp: '기울기는 가로축 값이 1단위 늘어날 때 세로축 값이 얼마나 달라지는지 나타냅니다. y절편은 가로축 값이 0일 때 이 직선이 가리키는 값입니다.',
     interceptHelp: 'x절편은 직선의 세로축 값이 0이 되는 지점입니다. 측정 범위 밖으로 연장했다면 실제 측정값과 구분해서 해석하세요.',

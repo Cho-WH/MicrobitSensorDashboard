@@ -219,7 +219,7 @@ test('invalid axes, read-only graph edits and graph save failures leave state an
   const f = fixture(), w = f.workspace, before = w.getState();
   const graph = { xColumnId: 'temperatureC', yColumnId: 'pressureHpa', type: 'scatter' };
   assert.throws(() => w.setGraph({ ...graph, xColumnId: 'missing' }), /X축/);
-  assert.throws(() => w.setGraph({ ...graph, type: 'line' }), /시간/);
+  assert.throws(() => w.setGraph({ ...graph, type: 'line' }), /가로축이 수신 시각/);
   assert.deepEqual(w.getState(), before);
   const reader = fixture({ snapshot: f.store.getSnapshot(), writable: false }).workspace;
   assert.throws(() => reader.setGraph(graph), /읽기 전용/);
@@ -613,4 +613,49 @@ test('clock-only filters match the table time across dates, retain milliseconds 
   assert.equal(w.getSummary().includedCount, 4);
   assert.equal(w.getState().analysisInputRevision, 0);
   assert.deepEqual(f.store.getSnapshot().samples, raw);
+});
+
+
+test('optional right Y owns one independent fit, shares scope, and survives history/evidence/reopening without changing source samples', () => {
+  const raw = samples(4); raw[0].values.pressureHpa = null; raw[0].validity.pressureHpa = 'missing';
+  const f = fixture({snapshot:{run:{id:'dual-axis'},samples:raw,workspace:null}}), w = f.workspace;
+  w.setGraph({...graphAxes,xColumnId:'sampleId'}); w.saveColumn(calc('right'));
+  w.setRightAxis({yColumnId:'calc-right',trendEnabled:true,view:'extended'});
+  assert.equal(w.getGraphData().regression.enabled,false);
+  let model = w.getGraphData();
+  assert.equal(model.points.length,3); assert.equal(model.right.points.length,4);
+  assert.equal(model.right.xColumnId,model.xColumnId);
+  assert.ok(Math.abs(model.right.regression.result.slope - .1) < 1e-10);
+  assert.equal(model.right.view,'extended');
+  assert.throws(() => w.deleteColumn('calc-right'), /그래프 축/);
+  w.exclude([2]); model = w.getGraphData();
+  assert.deepEqual(model.points.map(p=>p.sampleId),[3,4]);
+  assert.deepEqual(model.right.points.map(p=>p.sampleId),[1,3,4]);
+  w.captureReflection(); const evidence = w.getReflectionModel();
+  assert.deepEqual(w.getState().reflection.evidence.calculatedColumns.map(c=>c.id),['calc-right']);
+  w.setRightAxis(null); assert.equal(w.getGraphData().right,undefined);
+  w.undo(); assert.equal(w.getGraphData().right.yColumnId,'calc-right');
+  w.redo(); assert.equal(w.getGraphData().right,undefined);
+  assert.deepEqual(w.getReflectionModel(),evidence);
+  const reopened = fixture({snapshot:f.store.getSnapshot()}).workspace;
+  assert.deepEqual(reopened.getReflectionModel(),evidence);
+  assert.deepEqual(f.store.getSnapshot().samples,raw);
+});
+
+test('right Y validation and failed saves are atomic; toggles do not change input revision and invalid extensions reset', () => {
+  const f=fixture(),w=f.workspace; w.setGraph({...graphAxes,xColumnId:'sampleId'});
+  const before=w.getState();
+  for(const right of [{yColumnId:'pressureHpa'},{yColumnId:'gone'},{yColumnId:'sampleId'},
+    {yColumnId:'temperatureC',right:{yColumnId:'pressureHpa'}},{yColumnId:'temperatureC',trendEnabled:'yes'}])
+    assert.throws(()=>w.setRightAxis(right),/오른쪽 세로축/);
+  assert.deepEqual(w.getState(),before);
+  w.setRightAxis({yColumnId:'temperatureC',trendEnabled:false});
+  const revision=w.getState().analysisInputRevision;
+  w.setRightAxis({yColumnId:'temperatureC',trendEnabled:true,view:'extended'});
+  assert.equal(w.getState().analysisInputRevision,revision);
+  w.setSelection([1]); w.applyScope('selection');
+  assert.equal(w.getState().graph.right.view,'measured');
+  const saved=w.getState(); f.store.saveWorkspace=()=>{throw Error('저장 실패');};
+  assert.throws(()=>w.setRightAxis(null),/저장 실패/); assert.deepEqual(w.getState(),saved);
+  assert.throws(()=>fixture({snapshot:f.store.getSnapshot(),writable:false}).workspace.setRightAxis(null),/읽기 전용/);
 });

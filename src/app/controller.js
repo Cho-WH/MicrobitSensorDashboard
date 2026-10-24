@@ -31,7 +31,6 @@ export function createController(root = document, { repository = null, deviceTra
   let leaving = false;
   let renderRequested = true, renderedEvents = -1, renderedContext = null, exportedRevision = -1;
   const mock = new URL(initialUrl).searchParams.get('mock') === '1';
-  const visual = new URL(initialUrl).searchParams.get('visual');
   const repo = repository ?? createRepository({ onUnavailable: message => showError(message) });
   const transport = deviceTransport ?? createTransport(mock ? {ble:createMockBleClient(()=>context)} : {});
   let targetContext = null, runtime = null, programmer = null, programmerState = {}, installed = false;
@@ -206,7 +205,7 @@ export function createController(root = document, { repository = null, deviceTra
     if(prepared)guide.showPrepared();
   }
   function restoreLocation() {
-    if (historyEnabled) history.replaceState(null, '', routeUrl(screen === 'preview' ? targetContext : context, screen, {mock,visual}));
+    if (historyEnabled) history.replaceState(null, '', routeUrl(screen === 'preview' ? targetContext : context, screen, {mock}));
   }
   async function applyLocation(url = location.href) {
     try {
@@ -305,7 +304,7 @@ export function createController(root = document, { repository = null, deviceTra
     if (['prepare','measure','analysis'].includes(next) && !context) return;
     if (next === 'preview' && !targetContext) return;
     screen = next;
-    if (historyEnabled && push) history.pushState(null, '', routeUrl(next === 'preview' ? targetContext : context, next, {mock,visual}));
+    if (historyEnabled && push) history.pushState(null, '', routeUrl(next === 'preview' ? targetContext : context, next, {mock}));
     findElement(root,'a','.skip-link').href = location.pathname + location.search + '#main';
     if (next === 'prepare' && !mock) programmer?.prepare().catch(showError);
     for (const section of /** @type {NodeListOf<HTMLElement>} */ (root.querySelectorAll('[data-screen]'))) section.hidden = section.dataset.screen !== next;
@@ -422,7 +421,7 @@ export function createController(root = document, { repository = null, deviceTra
   ];
   for (const item of cards) {
       const next = item.next;
-      const link = document.createElement('a'); link.className='experiment-card'; link.href=routeUrl(next,'preview',{mock,visual}).href;
+      const link = document.createElement('a'); link.className='experiment-card'; link.href=routeUrl(next,'preview',{mock}).href;
       const title=document.createElement('strong'),description=document.createElement('span');title.textContent=item.name;
       description.textContent=item.description;
       link.append(title,description);link.addEventListener('click',event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();void act(()=>browse(next));},{signal});$(item.target).append(link);
@@ -430,7 +429,7 @@ export function createController(root = document, { repository = null, deviceTra
   listen('export-json',()=>exportFile('json'));listen('export-csv',()=>exportFile('csv'));
   $('open-file').addEventListener('click',()=>input('file-input').click(),{signal});
   input('file-input').addEventListener('change',()=>{const file=input('file-input').files[0];input('file-input').value='';act(()=>readFile(file));},{signal});
-  $('mock-link').addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) location.assign(routeUrl(context,'prepare',{mock:true,visual}).href);});},{signal});
+  $('mock-link').addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) location.assign(routeUrl(context,'prepare',{mock:true}).href);});},{signal});
   window.addEventListener('beforeunload',event=>{const draftsSaved=analysis.flush(),saved=store?.getState();if(!draftsSaved || session?.getState().recording || (saved?.writable && saved.status!=='clean') || (saved?.temporary && exportedRevision!==saved.runRevision)) {event.preventDefault();event.returnValue='';}},{signal});
   document.addEventListener('visibilitychange',()=>{if(document.hidden && store?.getState().writable){analysis.flush();store.flush().catch(showError);}},{signal});
   const interval = setInterval(()=>{

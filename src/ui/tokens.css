@@ -1,5 +1,5 @@
-/* Luminous V2. Runtime values adopted from the reviewed measurement screen and
-   preparation B. Scope stays opt-in; scene gradients and layout stay local. */
+/* Luminous: shared runtime values for the adopted measurement and preparation B
+   design. Scene gradients and layout stay local. */
 @font-face {
   font-family:'Pretendard Variable'; font-weight:100 900; font-style:normal; font-display:swap;
   src:url('../../public/vendor/pretendard/PretendardVariable.woff2') format('woff2');
@@ -8,18 +8,19 @@
   /* Surfaces and reading. A divider is not an input boundary. */
   --sl-bg:#f6f8fc; --sl-surface:#fff; --sl-surface-soft:#eef3fa;
   --sl-navy:#0b1f3b; --sl-text:#1f2937; --sl-muted:#53657d; --sl-line:#e1e8f2;
-  --sl-input-border:#c1cde0;
+  --sl-input-border:#75859a;
 
   /* Actions, selection and focus have separate roles, even when colors match. */
   --sl-action-bg:#ff7a45; --sl-action-text:var(--sl-navy);
   --sl-action-hover:#ff915f; --sl-action-pressed:#ef6b35;
   --sl-primary-bg:var(--sl-navy); --sl-primary-text:var(--sl-surface);
   --sl-primary-hover:#17365c; --sl-primary-pressed:#081829;
-  --sl-control-hover:var(--sl-surface-soft); --sl-control-hover-line:#b5c5df;
+  --sl-control-hover:var(--sl-surface-soft); --sl-control-hover-line:var(--sl-input-border);
   --sl-control-pressed:#e3ebf8; --sl-disabled-bg:#edf1f6; --sl-disabled-text:#65758a; --sl-disabled-line:transparent;
   --sl-selection:#246bfd; --sl-focus:var(--sl-selection);
+  --sl-selection-text:#1c55cf;
   --sl-nav-marker:#e36225;
-  --sl-tab-text:var(--sl-navy); --sl-tab-selected:var(--sl-selection);
+  --sl-tab-text:var(--sl-navy); --sl-tab-selected:var(--sl-selection-text);
   --sl-tab-line:var(--sl-selection); --sl-tab-idle-line:var(--sl-line); --sl-tab-hover:var(--sl-surface-soft);
 
   /* Functional status and event annotations. Never infer state from color. */
@@ -34,7 +35,10 @@
   --sl-chart-grid:#e5ebf4; --sl-chart-axis:var(--sl-muted);
   --sl-channel-1:#e36225; --sl-channel-2:#246bfd;
   --sl-channel-3:#7c5cff; --sl-channel-4:#137d55;
+  --sl-channel-text-1:#b54416; --sl-channel-text-2:var(--sl-selection-text);
+  --sl-channel-text-3:#6240d8; --sl-channel-text-4:#137d55;
   --sl-analysis-point:var(--sl-selection); --sl-analysis-excluded:#65758a;
+  --sl-analysis-point-text:var(--sl-selection-text);
   --sl-analysis-focused:var(--sl-navy); --sl-analysis-trend:#b54416;
   --sl-selected-bg:#edf3ff; --sl-inspected-bg:#fff0e8;
 
@@ -47,7 +51,7 @@
   --sl-space-1:4px; --sl-space-2:8px; --sl-space-3:12px;
   --sl-space-4:16px; --sl-space-6:24px; --sl-space-8:32px;
   --sl-font:'Pretendard Variable',system-ui,'Malgun Gothic',sans-serif;
-  --sl-type-control:14px; --sl-type-label:13px; --sl-type-small:12px; --sl-type-caption:11px;
+  --sl-type-control:0.875rem; --sl-type-label:0.8125rem; --sl-type-small:0.75rem; --sl-type-caption:0.6875rem;
   --sl-shadow-panel:0 8px 28px #0b1f3b06;
   --sl-shadow-menu:0 12px 36px #0b1f3b22; --sl-shadow-dialog:0 24px 80px #0b1f3b30;
   --sl-backdrop:#0b1f3b50;

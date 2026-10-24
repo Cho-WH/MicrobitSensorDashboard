@@ -2,9 +2,33 @@ import {createMeasurementView} from '../../src/ui/measurement-view.js';
 import {createRepository} from '../../src/data/repository.js';
 import {openRunStore} from '../../src/data/run-store.js';
 import {getExperiment} from '../../src/catalog/index.js';
+import {createChartView} from '../../src/ui/chart-view.js';
 
 const check=(value,message)=>{if(!value)throw new Error(message);};
 export async function runMeasurementTests(report=()=>{}) {
+  for(const sensor of ['magnetometer','accelerometer']) {
+    const context=getExperiment(sensor), box=document.createElement('div'),canvas=document.createElement('canvas');
+    box.style.cssText='width:600px;height:300px';box.append(canvas);document.body.append(box);
+    try {
+      for(const inspect of [false,true]) {
+        const view=createChartView(canvas,{context,inspect});
+        try {
+          const values=Object.fromEntries(context.channels.map((c,i)=>[c.id,[-120,25,25,300][i]]));
+          const samples=[{sampleId:1,receivedAt:1000,values}], before=JSON.stringify(samples);
+          view.render(samples,0,{range:'all',events:[{source:'user',receivedAt:1000,type:'note'}]});
+          const chart=Chart.getChart(canvas), datasets=chart.data.datasets.slice(0,4);
+          check(new Set(datasets.map(d=>d.yAxisID)).size===1,sensor+': 같은 물리량이 서로 다른 축을 사용합니다.');
+          const axis=chart.scales[datasets[0].yAxisID];
+          check(Object.values(chart.scales).filter(scale=>scale.axis==='y').length===1,sensor+': 중복 세로축');
+          check(axis.min<=-120&&axis.max>=300,sensor+': 음수 성분 또는 크기가 축 범위에서 누락되었습니다.');
+          check(chart.getDatasetMeta(1).data[0].y===chart.getDatasetMeta(2).data[0].y,sensor+': 동일 값의 화면 높이가 다릅니다.');
+          check(chart.data.datasets[4].yAxisID===datasets[0].yAxisID,'사건 표시의 축 연결이 끊겼습니다.');
+          check(JSON.stringify(samples)===before,'공통 축이 원자료를 변경했습니다.');
+        } finally {view.dispose();}
+      }
+    } finally {box.remove();}
+  }
+  report('자기장·가속도 측정/원자료 그래프 · 공통 세로축·음수/크기 범위·동일 값 높이·사건·원자료 보존');
   const parsed=new DOMParser().parseFromString(await (await fetch(new URL('../../lab.html',import.meta.url))).text(),'text/html');
   const host=document.importNode(parsed.querySelector('[data-screen="measure"]'),true);host.hidden=false;document.body.append(host);
   const context=getExperiment('magnetometer'), databaseName='microbit.sensor-lab.measurement-tests.'+crypto.randomUUID();

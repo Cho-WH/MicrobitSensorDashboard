@@ -1,4 +1,4 @@
-/** @typedef {{id:string,name:string,unit?:string|null,calculable?:boolean,supported?:boolean,min?:number,max?:number,digits?:number,color?:string}} Channel */
+/** @typedef {{id:string,name:string,unit?:string|null,quantity?:string,quantityLabel?:string,calculable?:boolean,supported?:boolean,min?:number,max?:number,digits?:number,color?:string}} Channel */
 /** @param {any} context @returns {Channel[]} */
 export function getSourceColumns(context) {
   const channels = Array.isArray(context) ? context : context?.channels ?? context?.sensor?.channels ?? [];

@@ -3,14 +3,14 @@
 :root[data-visual-theme=luminous] {
   /* Bridge unmigrated UI only. New rules use semantic --sl-* roles directly. */
   --ink:var(--sl-navy); --muted:var(--sl-muted); --line:var(--sl-line);
-  --teal:var(--sl-selection); --pale:var(--sl-surface-soft);
+  --teal:var(--sl-selection-text); --pale:var(--sl-surface-soft);
   font-family:var(--sl-font); color:var(--sl-text); background:var(--sl-bg);
 }
 [data-visual-theme=luminous] :is(button,select,input,textarea) {
   font-family:var(--sl-font); font-size:var(--sl-type-control); border-radius:var(--sl-radius-control);
 }
 [data-visual-theme=luminous] button {
-  min-height:var(--sl-target); border-color:var(--sl-button-line,var(--sl-line));
+  min-height:var(--sl-target); border-color:var(--sl-button-line,var(--sl-input-border));
   color:var(--sl-button-text,var(--sl-navy)); background:var(--sl-button-bg,var(--sl-surface)); font-weight:550;
   transition:background var(--sl-motion-control),border-color var(--sl-motion-control);
 }
@@ -70,7 +70,7 @@
    replaces legacy component colors without changing their commands or geometry. */
 [data-visual-theme=luminous] :is(.analysis-screen,.experiment-preview,[data-screen=saved],dialog) button {
   color:var(--sl-button-text,var(--sl-navy)); background:var(--sl-button-bg,var(--sl-surface));
-  border-color:var(--sl-button-line,var(--sl-line)); box-shadow:none;
+  border-color:var(--sl-button-line,var(--sl-input-border)); box-shadow:none;
 }
 [data-visual-theme=luminous] :is(.analysis-screen,.experiment-preview,[data-screen=saved],dialog) button:hover:not(:disabled) {
   background:var(--sl-button-hover,var(--sl-control-hover)); border-color:var(--sl-button-hover-line,var(--sl-control-hover-line));

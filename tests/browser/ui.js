@@ -33,7 +33,7 @@ export async function runUiTests(report = (_message) => {}) {
   const previousTheme = document.documentElement.dataset.visualTheme;
   let style;
   if (luminous) {
-    style = document.createElement('link'); style.rel = 'stylesheet'; style.href = '../../src/ui/luminous-preview.css';
+    style = document.createElement('link'); style.rel = 'stylesheet'; style.href = '../../src/ui/luminous.css';
     await new Promise((resolve,reject) => { style.onload = resolve; style.onerror = reject; document.head.append(style); });
     document.documentElement.dataset.visualTheme = 'luminous';
     await document.fonts.ready;
@@ -116,7 +116,7 @@ export async function runUiTests(report = (_message) => {}) {
     await click('#trend-enabled');
     await click('#trend-extended');
     check(view.getWorkspace().getGraphData().trend.extension.length>0, '추세선 연장 자료를 만들지 못했습니다.');
-    stableText(root,'.trend-metrics strong','.trend-metrics > div,.trend-result', ['0','-9,999.123 mg/초','-1.23456789e+100 mg/초'], '분석 통계 칸');
+    stableText(root,'#trend-metrics strong','#trend-metrics > div,#trend-result', ['0','-9,999.123 mg/초','-1.23456789e+100 mg/초'], '분석 통계 칸');
     await click('#use-graph-for-reflection');
     const text = '가로축 값이 증가할수록 크기도 증가했다.';
     $('#reflection-observation').value = text;
@@ -169,6 +169,41 @@ export async function runUiTests(report = (_message) => {}) {
     view.reset(); view.open(first.store); await settle();
     check(view.getWorkspace().getState().reflection.answers.observation === text && same(view.getWorkspace().getReflectionModel(), evidence), '분석 화면 재생성에서 글 또는 보관 근거가 달라졌습니다.');
     report('실제 DOM · 명시적 자료 반영과 전체/지정 범위 차이·근거/글 재열기 보존');
+
+    const dual=fixture({count:10});
+    view.reset(); view.open(dual.store); await settle(); await click('#tab-relationship');
+    check($('#right-axis-controls').hidden && !view.getWorkspace().getState().graph?.right,'초기 화면에 오른쪽 축이 미리 추가되었습니다.');
+    await click('#add-right-axis');
+    check(!$('#right-axis-controls').hidden && $('#add-right-axis').hidden && document.activeElement===$('#graph-y-right'),'추가 축의 개수 제한 또는 초점 이동이 잘못되었습니다.');
+    const dualChart=globalThis.Chart.getChart($('#analysis-chart'));
+    check(dualChart.scales.yRight && dualChart.data.datasets.filter(d=>d.legendSeries).length===2,'오른쪽 축에 별도 자료가 그려지지 않았습니다.');
+    const pick=async(selector,value)=>{const input=$(selector);input.value=value;input.dispatchEvent(new Event('change',{bubbles:true}));await settle();};
+    await pick('#graph-y-right','b');
+    await click('#right-trend-enabled'); await click('#right-trend-extended');
+    check(!$('#trend-enabled').checked && view.getWorkspace().getGraphData().right.trend.intercept.length===1,'오른쪽 추세선이 왼쪽 상태를 변경하거나 연장되지 않았습니다.');
+    await click('#trend-enabled');
+    const menu=$('#graph-shape-menu'); await click('#graph-shape-menu summary');
+    await click('[data-graph-type="scatter"]');
+    check(!menu.open && document.activeElement===menu.querySelector('summary') && view.getWorkspace().getState().graph.type==='scatter','그래프 모양 선택 후 적용·메뉴 닫힘·초점 복귀가 잘못되었습니다.');
+    await click('#graph-shape-menu summary');
+    menu.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    check(!menu.open,'Escape로 그래프 모양 메뉴를 닫지 못했습니다.');
+    const dualPresentation=presentation(dualChart); view.exportPng('두 세로축');
+    check(same(exported,dualPresentation),'두 세로축 PNG가 화면 자료·추세선과 다릅니다.');
+    await click('#use-graph-for-reflection');
+    check($('#reflection-equation').textContent.includes('세로 성분') && $('#reflection-equation').textContent.includes('크기'),'해석 근거에서 한 축의 추세선이 누락되었습니다.');
+    await click('#reflection-back'); await click('#remove-right-axis');
+    check($('#right-axis-controls').hidden && !dualChart.scales.yRight && !view.getWorkspace().getState().graph.right && document.activeElement===$('#add-right-axis'),'오른쪽 축 제거 후 차트·선택 UI·초점이 복원되지 않았습니다.');
+    await click('#undo-analysis');
+    check(view.getWorkspace().getState().graph.right.yColumnId==='b' && !$('#right-axis-controls').hidden,'되돌리기로 오른쪽 축 설정을 복원하지 못했습니다.');
+    view.reset(); view.open(dual.store); await settle(); await click('#tab-relationship');
+    check($('#graph-y-right').value==='b' && $('#right-trend-enabled').checked && $('#right-trend-extended').checked,'다시 열었을 때 오른쪽 축과 추세선 설정이 사라졌습니다.');
+    check(dual.data.samples.every((sample,index)=>sample.values.b===index+2),'축 조작이 원자료 값을 변경했습니다.');
+    for(const channel of dual.data.run.context.channels) { channel.quantity='magnetic-flux-density'; channel.quantityLabel='자기장'; }
+    view.reset(); view.open(dual.store); await settle(); await click('#tab-relationship');
+    const shared=globalThis.Chart.getChart($('#analysis-chart'));
+    check(!shared.scales.yRight && shared.data.datasets.every(d=>d.yAxisID==='y') && shared.scales.y.options.title.text==='자기장 (µT)','동일 물리량·단위의 두 방향/크기가 서로 다른 스케일로 표시됩니다.');
+    report('실제 DOM/Canvas · 오른쪽 축 추가·제거·독립 추세선·메뉴·되돌리기·재열기·출력·동일 물리량 공유 스케일');
 
     const undated = fixture({ count: 3, dated: false, temporary: true });
     view.reset(); view.open(undated.store); await settle();

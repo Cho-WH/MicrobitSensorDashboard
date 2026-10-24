@@ -13,7 +13,8 @@ const number = value => Number.isFinite(value) ? value.toFixed(2) : '—';
 
 // Reuses the M2 virtual table: full scroll range, only nearby rows in the DOM.
 export function createDataTable({ body, scroller, status, onToggle, onSort, onInspect = (_sampleId) => {} }) {
-  const rowHeight = 32, overscan = 8, table = body.closest('table');
+  let rowHeight = 32;
+  const overscan = 8, table = body.closest('table');
   table.style.setProperty('--raw-row-height', `${rowHeight}px`);
   const events = new AbortController(), { signal } = events;
   let rows = [], selected = new Set(), exclusions = new Map(), writable = false, columns = [], compact = false;
@@ -28,6 +29,14 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
   }
   function paint() {
     frame = null;
+    // Match virtual spacers to enlarged text, preserving the current row when
+    // the user changes font size. Samples and table selection are untouched.
+    const nextHeight = Math.max(32, Math.ceil(parseFloat(getComputedStyle(table).fontSize) * 2.4));
+    if (nextHeight !== rowHeight) {
+      const first = scroller.scrollTop / rowHeight;
+      rowHeight = nextHeight; table.style.setProperty('--raw-row-height', `${rowHeight}px`);
+      scroller.scrollTop = first * rowHeight; renderedStart = renderedEnd = -1;
+    }
     const first = Math.min(Math.floor(scroller.scrollTop / rowHeight), Math.max(0, rows.length - 1));
     const visibleCount = Math.max(1, Math.ceil(((scroller.clientHeight || 520) - rowHeight) / rowHeight));
     const start = Math.max(0, first - overscan), end = Math.min(rows.length, first + visibleCount + overscan + 1);
@@ -102,7 +111,7 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
   body.addEventListener('keydown', event => {
     if (event.key === 'Enter' && event.target.matches('[data-sample-id]')) { event.preventDefault(); onInspect(Number(event.target.dataset.sampleId)); }
   }, { signal });
-  const observer = new ResizeObserver(schedule); observer.observe(scroller);
+  const observer = new ResizeObserver(schedule); observer.observe(scroller); observer.observe(table.tHead);
   return {
     render({ samples, selectedIds, excluded, appliedIds = null, focusedSampleId = null, sort, filter = {}, calculatedColumns = [], importedColumns = [], axisIds = null, canEdit, resetScroll = false, context: nextContext }) {
       context = nextContext;

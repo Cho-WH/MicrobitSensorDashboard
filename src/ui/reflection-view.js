@@ -25,7 +25,7 @@ export function createReflectionPrint({ name, model, evidence, answers, origin, 
   const sheet = node('article', null, 'reflection-print'); sheet.id = 'reflection-print';
   sheet.append(node('p', '센서 실험 · 탐구 기록', 'print-eyebrow'), node('h1', name));
   if (model) {
-    sheet.append(node('p', `${model.xLabel} → ${model.yLabel}`), node('p', evidenceDescription(evidence, model, origin), 'print-meta'));
+    sheet.append(node('p', `${model.xLabel} → ${[model, model.right].filter(Boolean).map(item => item.yLabel).join(" · ")}`), node('p', evidenceDescription(evidence, model, origin), 'print-meta'));
     const image = document.createElement('img'); image.alt = '설명의 근거로 가져온 그래프'; image.src = exportAnalysisPng(model, { name, theme });
     sheet.append(image);
   } else sheet.append(node('p', '아직 근거 그래프를 가져오지 않았습니다.'));
@@ -131,20 +131,23 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
       $('reflection-print-button').disabled = !workspace || printing;
       $('reflection-empty').hidden = Boolean(model); $('reflection-evidence-body').hidden = !model;
       $('reflection-stale').hidden = !workspace?.reflectionChanged();
-      $('reflection-refresh').disabled = !workspace?.isWritable() || !workspace.getGraphData().points.length;
+      const current = workspace?.getGraphData();
+      $('reflection-refresh').disabled = !workspace?.isWritable() || !(current?.points.length || current?.right?.points.length);
       $('reflection-run-name').textContent = getStoreState()?.name ?? '나의 실험';
-      $('reflection-evidence-caption').textContent = model ? `${model.xLabel} → ${model.yLabel}` : '관계 그래프에서 근거를 가져와 주세요.';
+      $('reflection-evidence-caption').textContent = model ? `${model.xLabel} → ${[model, model.right].filter(Boolean).map(item => item.yLabel).join(" · ")}` : '관계 그래프에서 근거를 가져와 주세요.';
       $('reflection-scope').textContent = evidenceDescription(evidence, model, origin);
       const key = evidenceKey(evidence);
       if (visible && model && key !== chartKey) {
         chart ??= createAnalysisChart($('reflection-chart'), {theme:getTheme()});
         chart.render(model); chartKey = key;
-        $('reflection-chart').setAttribute('aria-label', `보관한 근거 그래프. ${model.xLabel} 대 ${model.yLabel}. 분석 포함 ${model.includedCount}개, 제외 ${model.excludedCount}개.`);
+        $('reflection-chart').setAttribute('aria-label', `보관한 근거 그래프. ${model.xLabel} 대 ${[model, model.right].filter(Boolean).map(item => item.yLabel).join(" 및 ")}. 분석 포함 ${model.includedCount}개, 제외 ${model.excludedCount}개.`);
       } else if (!visible) chartKey = null;
-      const summary = trendSummary(model);
-      $('reflection-statistics').hidden = !model?.regression?.enabled;
-      $('reflection-equation').textContent = summary.equation; $('reflection-stat-detail').textContent = summary.detail;
-      $('reflection-no-trend').hidden = Boolean(model?.regression?.enabled);
+      const series = [model, model?.right].filter(Boolean), fitted = series.filter(item => item.regression?.enabled);
+      const summaries = fitted.map(item => ({...trendSummary(item), label:model.right ? item.yLabel + ': ' : ''}));
+      $('reflection-statistics').hidden = !fitted.length;
+      $('reflection-equation').textContent = summaries.map(s => s.label + s.equation).join('\n');
+      $('reflection-stat-detail').textContent = summaries.map(s => s.label + s.detail).join('\n');
+      $('reflection-no-trend').hidden = Boolean(fitted.length);
       const columns = graphColumns(evidence?.calculatedColumns ?? [], workspace?.getImportedColumns() ?? [], state?.context);
       const operand = o => o.kind === 'constant' ? formatCalculated(o.value) : columnLabel(columns.find(c => c.id === o.columnId));
       $('reflection-calculations').hidden = !evidence?.calculatedColumns.length;
@@ -152,10 +155,10 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
       const exclusions = evidence?.exclusions ?? [], reasons = [...new Set(exclusions.map(e => e.reason).filter(Boolean))];
       $('reflection-exclusions').hidden = !exclusions.length;
       $('reflection-reasons').replaceChildren(...(reasons.length ? reasons : ['작성한 제외 사유가 없습니다.']).map(reason => node('li', reason)));
-      $('reflection-extension-hint').hidden = model?.view !== 'extended';
-      $('reflection-zero-meaning').hidden = !(model?.regression?.enabled && model.regression.result?.xIntercept != null);
-      $('reflection-invalid').hidden = !model?.invalidCount;
-      $('reflection-invalid').textContent = `축의 값이 없는 ${model?.invalidCount ?? 0}개는 그래프·회귀에서 빠져 있어요.`;
+      $('reflection-extension-hint').hidden = !series.some(item => item.view === 'extended');
+      $('reflection-zero-meaning').hidden = !fitted.some(item => item.regression.result?.xIntercept != null);
+      $('reflection-invalid').hidden = !series.some(item => item.invalidCount);
+      $('reflection-invalid').textContent = series.filter(item => item.invalidCount).map(item => item.yLabel + ' 값이 없는 ' + item.invalidCount + '개는 해당 그래프·회귀에서 빠져 있어요.').join(' ');
       updateStatus();
     },
     reset() {

@@ -39,8 +39,14 @@ export function validateGraph(graph, calculated = [], imported = [], context = u
   if (graph == null) return null;
   const ids = new Set(graphColumns(calculated, imported, context).map(c => c.id));
   if (!ids.has(graph.xColumnId) || !ids.has(graph.yColumnId) || ['receivedAt','sampleId'].includes(graph.yColumnId)) throw new Error('그래프에 사용할 X축과 Y축을 선택하세요.');
-  if (!['scatter', 'line'].includes(graph.type) || (graph.type === 'line' && graph.xColumnId !== 'receivedAt')) throw new Error('시간 변화선은 X축이 수신 시각일 때 사용할 수 있어요.');
-  return { xColumnId: graph.xColumnId, yColumnId: graph.yColumnId, type: graph.type, connectGaps: graph.connectGaps === true, view: graph.view === 'extended' ? 'extended' : 'measured' };
+  if (!['scatter', 'line'].includes(graph.type) || (graph.type === 'line' && graph.xColumnId !== 'receivedAt')) throw new Error('꺾은선 그래프는 가로축이 수신 시각일 때 사용할 수 있어요.');
+  const right = graph.right;
+  if (right != null && (typeof right !== 'object' || Array.isArray(right) || !ids.has(right.yColumnId)
+    || ['receivedAt','sampleId',graph.yColumnId].includes(right.yColumnId) || right.right != null
+    || (right.trendEnabled != null && typeof right.trendEnabled !== 'boolean')
+    || (right.view != null && !['measured','extended'].includes(right.view)))) throw new Error('오른쪽 세로축에는 다른 측정 항목 하나를 선택하세요.');
+  return { xColumnId: graph.xColumnId, yColumnId: graph.yColumnId, type: graph.type, connectGaps: graph.connectGaps === true, view: graph.view === 'extended' ? 'extended' : 'measured',
+    ...(right == null ? {} : {right:{yColumnId:right.yColumnId,trendEnabled:right.trendEnabled===true,view:right.trendEnabled&&right.view==='extended'?'extended':'measured'}}) };
 }
 export function validateCalculatedColumns(definitions, imported = [], context = undefined) {
   if (!Array.isArray(definitions) || definitions.length > LIMITS.calculatedColumns) throw new Error('계산 열은 32개까지 만들 수 있어요.');

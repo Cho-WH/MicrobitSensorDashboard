@@ -3,7 +3,7 @@ import { validateCalculatedColumns, validateGraph } from '../domain/contracts.js
 import { validateAnalysisRange } from './scope.js';
 import { createCalculator } from './calculations.js';
 import { graphData } from './graph-data.js';
-import { fitGraph, trendGeometry } from './regression.js';
+import { fitGraph, graphWithTrends } from './regression.js';
 
 export const ANSWER_LIMIT = 1200;
 export const REFLECTION_QUESTIONS = Object.freeze([
@@ -23,7 +23,7 @@ export function axisCalculations(graph, columns) {
     needed.add(id);
     for (const operand of [byId.get(id).lhs, byId.get(id).rhs]) if (operand.kind === 'column') visit(operand.columnId);
   }
-  [graph.xColumnId, graph.yColumnId].forEach(visit);
+  [graph.xColumnId, graph.yColumnId, graph.right?.yColumnId].forEach(visit);
   return columns.filter(c => needed.has(c.id));
 }
 
@@ -85,6 +85,5 @@ export function evidenceGraph(samples, evidence, imported = [], context) {
   const rows = samples.filter(s => ids.has(s.sampleId)).map(s => ({ ...s, calculations: calculate(s) }));
   const model = graphData(rows, evidence, imported, context);
   const regression = evidence.regression.enabled ? fitGraph(model, 0) : { enabled: false };
-  const trend = trendGeometry(regression, model.view === 'extended');
-  return { ...model, regression, trend, view: model.view === 'extended' && !trend.intercept.length ? 'measured' : model.view };
+  return graphWithTrends(model,regression);
 }

@@ -17,8 +17,9 @@ const expected = JSON.parse(await fixture('gay-lussac-expected.json'));
 const options = { id: 'csv-test', now: 1700000000000, filename: '가져온 실험.csv' };
 const open = snapshot => createWorkspace({ store: { getSnapshot: () => structuredClone(snapshot),
   getState: () => ({ writable: false }) } });
-// Channel wording belongs to the new catalog; the original numeric models remain exact.
-const withoutLabels = ({ xLabel, yLabel, ...model }) => model;
+// Channel wording and quantity metadata belong to the catalog; the original
+// numeric models (points, scope, regression and extension) remain exact.
+const withoutLabels = ({ xLabel, yLabel, yQuantity, yQuantityLabel, ...model }) => model;
 
 test('original-generated JSON v1/v2 preserve every raw field, time, event and workspace; numerical results match original', () => {
   const one = parseExperimentJson(legacy1), two = parseExperimentJson(legacy2);
@@ -207,4 +208,22 @@ test('CSV without time remains explicitly undated through JSON and CSV roundtrip
   assert.doesNotMatch(csv, /1970-01-01/);
   assert.deepEqual(restored.samples.map(s => s.receivedAt), [null, null]);
   assert.deepEqual(parseExperimentJson(buildExperimentJson(imported)), imported);
+});
+
+
+test('JSON roundtrip preserves optional right Y and fixed evidence while recomputing its fit from source', () => {
+  const snapshot=parseExperimentJson(legacy2);
+  const store={getSnapshot:()=>structuredClone(snapshot),getState:()=>({writable:true}),saveWorkspace:value=>{snapshot.workspace=structuredClone(value);}};
+  const w=createWorkspace({store});
+  w.setRightAxis({yColumnId:'calc-kelvin',trendEnabled:true,view:'extended'}); w.captureReflection();
+  const expectedModel=w.getGraphData(), expectedEvidence=w.getReflectionModel();
+  const restored=parseExperimentJson(buildExperimentJson(snapshot)), reopened=open(restored);
+  assert.deepEqual(restored.workspace.graph.right,snapshot.workspace.graph.right);
+  assert.deepEqual(reopened.getGraphData(),expectedModel);
+  assert.deepEqual(reopened.getReflectionModel(),expectedEvidence);
+  assert.deepEqual(restored.samples,snapshot.samples);
+  const bad=structuredClone(restored);bad.workspace.graph.right.yColumnId='gone';
+  assert.throws(()=>validateExperimentSnapshot(bad),/오른쪽 세로축/);
+  const badEvidence=structuredClone(restored);badEvidence.workspace.reflection.evidence.graph.right.yColumnId='gone';
+  assert.throws(()=>validateExperimentSnapshot(badEvidence),/오른쪽 세로축/);
 });

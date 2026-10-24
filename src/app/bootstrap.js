@@ -1,9 +1,7 @@
 import { createController } from './controller.js';
+import { prepareLuminousShell } from '../ui/luminous-shell.js';
 try {
-  if (new URL(location.href).searchParams.get('visual') === 'luminous') {
-    const { prepareLuminousPreview } = await import('../ui/luminous-preview.js');
-    await prepareLuminousPreview(document);
-  }
+  await prepareLuminousShell(document);
   createController();
 } catch(error) {
   const message = document.getElementById('lab-error'); message.hidden = false;

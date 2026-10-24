@@ -4,7 +4,7 @@ import { validateCalculatedColumns, validateGraph, validateImportedColumns } fro
 import { rangeSampleIds, validateAnalysisRange, timeBounds } from './scope.js';
 import { createCalculator, presetColumns } from './calculations.js';
 import { graphData } from './graph-data.js';
-import { fitGraph, trendGeometry } from './regression.js';
+import { fitGraph, trendGeometry, graphWithTrends } from './regression.js';
 import { captureEvidence, evidenceKey, evidenceGraph, validateAnswers, validateReflection, REFLECTION_QUESTIONS } from './reflection.js';
 
 import { getSourceColumns, readCell } from '../domain/columns.js';
@@ -22,8 +22,8 @@ const inputState = state => {
     needed.add(id);
     for (const operand of [byId.get(id).lhs, byId.get(id).rhs]) if (operand.kind === 'column') visit(operand.columnId);
   }
-  (state.graph ? [state.graph.xColumnId, state.graph.yColumnId] : [...byId.keys()]).forEach(visit);
-  return { axes: state.graph ? [state.graph.xColumnId, state.graph.yColumnId] : null,
+  (state.graph ? [state.graph.xColumnId, state.graph.yColumnId, state.graph.right?.yColumnId] : [...byId.keys()]).forEach(visit);
+  return { axes: state.graph ? [state.graph.xColumnId, state.graph.yColumnId, state.graph.right?.yColumnId] : null,
     calculations: state.calculatedColumns.filter(c => needed.has(c.id)).map(({ id, lhs, op, rhs }) => ({ id, lhs, op, rhs })),
     appliedIds: state.appliedIds, excludedIds: state.exclusions.filter(e => applied.has(e.sampleId)).map(e => e.sampleId) };
 };
@@ -79,6 +79,10 @@ export function createWorkspace({ store, context: suppliedContext }) {
   const rowsFor = (next = state) => tableRows(projected(next), next, context);
   function assertWriter() { if (!writable) throw new Error('다른 탭에서 작성 중인 실험은 읽기 전용이에요.'); }
   function updateRegression(next, source = samples, force = false) {
+    if (next.graph?.right?.view === 'extended') {
+      const right = graphData(projected(next, source), next, imported, context).right;
+      if (!right.trendEnabled || !trendGeometry(fitGraph(right, next.analysisInputRevision), true).intercept.length) next.graph.right.view = 'measured';
+    }
     if (!next.graph || !next.regression?.enabled) {
       next.regression = { enabled: false };
       if (next.graph) next.graph.view = 'measured';
@@ -221,7 +225,7 @@ export function createWorkspace({ store, context: suppliedContext }) {
   }
   function columnUsers(id) {
     const users = state.calculatedColumns.filter(c => [c.lhs, c.rhs].some(o => o.kind === 'column' && o.columnId === id)).map(c => c.name);
-    if ([state.graph?.xColumnId, state.graph?.yColumnId].includes(id)) users.push('그래프 축');
+    if ([state.graph?.xColumnId, state.graph?.yColumnId, state.graph?.right?.yColumnId].includes(id)) users.push('그래프 축');
     const range = columnRanges(state.table.filter)[id];
     if (range && (range.min != null || range.max != null)) users.push('이 열의 필터');
     if (state.table.sort.columnId === id) users.push('이 열의 정렬');
@@ -271,9 +275,7 @@ export function createWorkspace({ store, context: suppliedContext }) {
   function getGraphData() {
     const graph = state.graph ?? defaultGraph;
     const model = graphData(projected(), { ...state, graph }, imported, context), regression = state.regression;
-    const trend = trendGeometry(regression, graph.view === 'extended');
-    return { ...model, view: graph.view === 'extended' && !trend.intercept.length ? 'measured' : graph.view,
-      regression: copy(regression), trend };
+    return graphWithTrends(model,copy(regression));
   }
   function getReflectionModel() {
     const evidence = state.reflection.evidence, key = evidenceKey(evidence);
@@ -283,7 +285,8 @@ export function createWorkspace({ store, context: suppliedContext }) {
   }
   function captureReflection() {
     assertWriter();
-    if (!getGraphData().points.length) throw new Error('그래프에 표시할 자료를 먼저 확인해 주세요.');
+    const model=getGraphData();
+    if (!model.points.length&&!model.right?.points.length) throw new Error('그래프에 표시할 자료를 먼저 확인해 주세요.');
     return commit({ ...copy(state), reflection: { ...copy(state.reflection), evidence: captureEvidence(state, defaultGraph) } });
   }
 
@@ -304,6 +307,10 @@ export function createWorkspace({ store, context: suppliedContext }) {
     setSelection, selectRange, toggleSelection, applyScope, applyTimeRange, exclude, restore, setFilter, setSort, showNewData,
     saveColumn, deleteColumn, columnUsers, previewColumn,
     setGraph(graph) { return commit({ ...copy(state), graph: validateGraph({ ...graph, view: state.graph?.view }, state.calculatedColumns, imported, context) }, state.graph ? '그래프 변경' : '그래프 만들기'); },
+    setRightAxis(right) {
+      const graph=validateGraph({...copy(state.graph??defaultGraph),right},state.calculatedColumns,imported,context);
+      return commit({...copy(state),graph},right?'오른쪽 세로축 변경':'오른쪽 세로축 제거');
+    },
     setTrendEnabled(enabled) {
       if (typeof enabled !== 'boolean') throw new Error('추세선 표시 상태를 확인하세요.');
       return commit({ ...copy(state), graph: copy(state.graph ?? defaultGraph), regression: enabled === state.regression.enabled ? copy(state.regression) : { enabled } }, '추세선 표시 변경');

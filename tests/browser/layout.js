@@ -98,7 +98,7 @@ export async function runLayoutTests(report=()=>{}) {
         stableText(doc,'.lab-card strong','.lab-card,.lab-chart',['-123,456,789.123456','—'],label+' 긴 가져온 값');
         if(sensor==='magnetometer'){
           // Shared status/readout text has no sensor-specific layout.
-          stableText(doc,'.lab-status strong','.lab-identity,.lab-status > span,.lab-toolbar',['준비','기록 마감 중','기록 시작 전'],label+' 상태');
+          stableText(doc,'.luminous-record-state strong','.luminous-overview,.luminous-record',['준비','기록 마감 중','기록 시작 전'],label+' 상태');
           doc.querySelector('[data-view="analysis"]').click();await settle();
           stableText(doc,'#overview-readout','.overview-readout,.overview-actions',[
             '00:00 · 값 0 mg','00:12 · X 성분 -1,024 mg · Y 성분 999 mg · Z 성분 -9,999 mg · 가속도 크기 1,234 mg',

@@ -19,12 +19,42 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
     const click=async selector=>{const button=$(selector);check(button&&!button.disabled,'조작할 수 없습니다: '+selector);button.click();await settle();};
     const points=()=>JSON.stringify(win.Chart.getChart($('#analysis-chart')).data.datasets[0].data);
     const original=points();
-    for (const width of [1366,1024,390,320]) {
-      frame.style.width=width+'px'; await settle();
+    await click('#add-right-axis'); await click('#trend-enabled'); await click('#right-trend-enabled');
+    for (const [width,height] of [[2560,1440],[1920,1080],[1366,768],[1280,1039],[1024,768],[390,844],[320,700]]) {
+      frame.style.width=width+'px'; frame.style.height=height+'px'; await settle();
       for (const mode of ['table','graph','split']) {
         await click(`[data-relationship-mode="${mode}"]`);
         check(doc.documentElement.scrollWidth<=width+1,`${width}px ${mode} 분석 화면이 페이지 밖으로 넘칩니다.`);
+        if(mode!=='table') {
+          const pane=$('#analysis-graph-pane');
+          check(pane.getBoundingClientRect().width<=1041,'넓은 화면에서 그래프 폭 제한이 적용되지 않았습니다.');
+          if(width>=1366) {
+            const bottom=$('[data-screen=analysis]').getBoundingClientRect().bottom+win.scrollY+parseFloat(win.getComputedStyle(doc.body).paddingBottom);
+            check(bottom<=height+2,width+'×'+height+' '+mode+': 기본 분석 화면이 '+Math.round(bottom-height)+'px 넘칩니다.');
+            check($('.graph-stage').clientHeight>=240,'자료 그래프가 읽기 어려운 높이로 축소되었습니다.');
+          }
+          check($('#right-axis-controls').scrollWidth<=$('#right-axis-controls').clientWidth+1,'추가 축 조작이 가로로 넘칩니다.');
+        }
       }
+      if(width===1366) {
+        const chart=win.Chart.getChart($('#analysis-chart')), savedPoints=points();
+        await click('#trend-details summary');
+        const detail=$('#trend-detail').getBoundingClientRect(),pane=$('#analysis-graph-pane').getBoundingClientRect();
+        check(detail.height>0&&detail.bottom<=pane.bottom,'펼친 통계 설명이 그래프 패널 밖에서 잘립니다.');
+        check($('.graph-stage').clientHeight>=240,'상세 설명을 펼치자 그래프가 최소 높이보다 작아졌습니다.');
+        await click('#trend-details summary');
+        doc.documentElement.style.fontSize='200%'; await settle();
+        check(doc.documentElement.scrollWidth<=width+1,'확대한 분석 조작이 가로로 넘칩니다.');
+        check($('#use-graph-for-reflection').getBoundingClientRect().height>0&&$('.graph-stage').clientHeight>=240,'확대 상태에서 하단 조작이나 그래프가 사라졌습니다.');
+        doc.documentElement.style.removeProperty('font-size'); await settle();
+        check(points()===savedPoints&&chart===win.Chart.getChart($('#analysis-chart')),'높이 조절이 자료나 차트 인스턴스를 교체했습니다.');
+      }
+      await click('#tab-overview');
+      if(width>=1280) {
+        check(doc.documentElement.scrollHeight<=height+2,`${width}×${height}: 원 자료 보기에서 불필요한 페이지 스크롤이 생겼습니다.`);
+        check($('#overview-stage').clientHeight>=240,'원 자료 그래프가 읽기 어려운 높이로 축소되었습니다.');
+      }
+      await click('#tab-relationship');
       await click('#use-graph-for-reflection');
       const answer=$('#reflection-observation');
       answer.value='조건을 일정하게 두고 관찰한 결과입니다. '.repeat(20);
@@ -51,7 +81,7 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
     await click('#tab-interpretation');
     check($('#reflection-observation').value===answer,'저장 목록에서 다시 연 실험의 해석 글이 달라졌습니다.');
     check(win.Chart.getChart($('#reflection-chart')).data.datasets[0].data.length===600,'저장한 근거 그래프의 자료가 누락되었습니다.');
-    report('새 분석 화면 · 1366→1024→390→320px 표/그래프·해석 재배치와 자료 보존');
+    report('새 분석 화면 · 가로형 1366/1920/2560에서 두 추세선·표/그래프 높이 맞춤, 작은 화면 재배치와 자료 보존');
     report('새 홈·저장 목록 · 센서/활동 탐색·미리보기·저장 실험의 근거/글 재열기');
   } finally {
     const cleanup=[...(frame.contentDocument?.querySelectorAll('footer button')??[])].find(button=>button.textContent==='검토 자료 정리');

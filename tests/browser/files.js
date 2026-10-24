@@ -16,7 +16,9 @@ const expectFailure = async (action, message) => {
   check(failed, message);
 };
 const withoutRunId = ({ runId, ...record }) => record;
-const withoutLabels = ({ xLabel, yLabel, ...model }) => model;
+// Catalog labels and quantity metadata are new; legacy points, scope and fits
+// must still match the original numerical model exactly.
+const withoutLabels = ({ xLabel, yLabel, yQuantity, yQuantityLabel, ...model }) => model;
 async function fixture(name) {
   const response = await fetch(new URL(`../fixtures/${name}`, import.meta.url));
   check(response.ok, `호환성 픽스처를 읽지 못했어요: ${name}`);

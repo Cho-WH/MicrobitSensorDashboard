@@ -1,10 +1,12 @@
 import { loadLabDocument } from './load-lab.js';
-import { prepareLuminousPreview } from '../../src/ui/luminous-preview.js';
+import { prepareLuminousShell } from '../../src/ui/luminous-shell.js';
+import { applyReviewEnvironment } from './review-environment.js';
 import { createController } from '../../src/app/controller.js';
 import { createRepository } from '../../src/data/repository.js';
 
 await loadLabDocument();
-await prepareLuminousPreview(document);
+await prepareLuminousShell(document);
+await applyReviewEnvironment(new URL(location.href).searchParams);
 const archivedA = document.documentElement.dataset.preparationArchive === 'a';
 const style = document.createElement('link');
 style.rel = 'stylesheet'; style.href = new URL(archivedA ? './archive/preparation-a.css' : './preparation.css', import.meta.url).href;
@@ -15,7 +17,7 @@ const sensor = params.get('sensor') ?? 'bmp280';
 const entry = params.get('activity') === 'gay-lussac' ? 'activities/gay-lussac/' : `sensors/${encodeURIComponent(sensor)}/`;
 const databaseName = 'microbit.sensor-lab.preparation-review.' + crypto.randomUUID();
 const app = createController(document, { repository:createRepository({databaseName}), historyEnabled:false,
-  initialUrl:new URL(`${entry}?mock=1&visual=luminous`,document.baseURI).href });
+  initialUrl:new URL(`${entry}?mock=1`,document.baseURI).href });
 const shell = document.querySelector('.guide');
 shell.dataset.stageStyle = archivedA ? 'light' : 'dark';
 if (archivedA) {

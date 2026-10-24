@@ -70,3 +70,12 @@ export function trendGeometry(regression, extended = false) {
   }
   return { measured, extension, intercept };
 }
+
+// The same two-series display model feeds the workspace, captured evidence and
+// exports. Each series fits its own valid points in the shared analysis scope.
+export function graphWithTrends(model, regression) {
+  const trend = trendGeometry(regression, model.view === 'extended');
+  return {...model, regression, trend,
+    view:model.view==='extended'&&!trend.intercept.length?'measured':model.view,
+    ...(model.right ? {right:graphWithTrends(model.right,model.right.trendEnabled?fitGraph(model.right,0):{enabled:false})} : {})};
+}
