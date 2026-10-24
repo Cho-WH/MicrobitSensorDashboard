@@ -421,9 +421,11 @@ export function createController(root = document, { repository = null, deviceTra
   ];
   for (const item of cards) {
       const next = item.next;
+      const cardCopy = getLabCopy(next);
       const link = document.createElement('a'); link.className='experiment-card'; link.href=routeUrl(next,'preview',{mock}).href;
-      const title=document.createElement('strong'),description=document.createElement('span');title.textContent=item.name;
-      description.textContent=item.description;
+      const title=document.createElement('strong'),description=document.createElement('span');
+      title.textContent=next.activity ? item.name : cardCopy.home.sensorTitle || item.name;
+      description.textContent=(next.activity ? cardCopy.preview.description : cardCopy.home.sensorDescription) || item.description;
       link.append(title,description);link.addEventListener('click',event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();void act(()=>browse(next));},{signal});$(item.target).append(link);
   } listen('retry-save',()=>store.flush());
   listen('export-json',()=>exportFile('json'));listen('export-csv',()=>exportFile('csv'));

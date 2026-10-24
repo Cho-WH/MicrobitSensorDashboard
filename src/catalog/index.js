@@ -38,7 +38,9 @@ export function resolveExperiment(route, classConfig = null, registry = defaultD
   const sensor = registry.sensors.find(s => s.id === sensorRef.id && s.version === sensorRef.version);
   const activity = activityRef ? registry.activities.find(a => a.id === activityRef.id && a.version === activityRef.version) : null;
   if (!sensor || (activityRef && !activity)) throw new Error('센서 또는 활동의 지정 버전을 찾을 수 없습니다.');
-  const channels = validateChannels(sensor.channels);
+  // Activity names describe the same sensor channels; IDs, units and limits stay intact.
+  const channels = validateChannels(sensor.channels.map(channel => ({ ...channel,
+    name: activity?.channelNames?.[channel.id] ?? channel.name })));
   if (activity && (!activity.sensorIds.includes(sensor.id) || activity.requiredChannels.some(id => !channels.some(c => c.id === id && c.supported !== false)))) throw new Error('활동에 필요한 센서 항목이 없습니다.');
   if (classConfig) {
     const allowed = ['v','sensor','activity','title','instructions','presentation'];

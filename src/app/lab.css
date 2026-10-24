@@ -71,6 +71,9 @@
 .lab-card small { display:block; min-height:18px; line-height:18px; font-size:0.75rem; color:var(--muted); text-align:right; }
 #sample-count, #live-chart-summary { font-variant-numeric:tabular-nums; }
 #preview-transition-note:empty, #device-detail:empty { display:none; }
+#preview-question:empty, #preview-description:empty { display:none; }
+.preview-question { font-weight:600; line-height:1.6; }
+#preview-description { line-height:1.7; }
 .lab-chart { height: 300px; position: relative; }
 .lab-saved { list-style: none; padding: 0; }
 .lab-saved li { padding: 10px 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); }

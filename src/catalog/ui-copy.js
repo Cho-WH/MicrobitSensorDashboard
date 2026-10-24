@@ -1,6 +1,7 @@
 import { registry } from './modules.js';
 
 // Plain display text only. Sensor data, preparation rules and saved answers live elsewhere.
+const recordingPreviewNote = '지금 보이는 값은 미리보기입니다. 기록 시작을 누른 뒤부터 저장됩니다.';
 export const labDefaults = {
   common: {
     appName: '센서 실험실', skip: '본문으로 이동', cancel: '취소', undo: '되돌리기', redo: '다시 실행',
@@ -15,20 +16,20 @@ export const labDefaults = {
   },
   navigation: { home: '실험 선택', prepare: '장비 준비', measure: '측정·기록', analysis: '자료 분석', saved: '저장된 실험', returnCurrent: '현재 실험으로 돌아가기' },
   files: { open: '실험 파일 열기', json: '실험 저장 · JSON', csv: '원자료 CSV', retry: '다시 저장', newExperiment: '새 실험 준비' },
-  home: { title: '무엇을 탐구할까요?', description: '센서로 자유롭게 측정하거나, 실험 활동의 안내를 따라 시작하세요.', sensors: '센서로 측정하기', activities: '실험 활동 시작하기', activityDescription: '준비 안내와 활동 기록, 분석 질문을 함께 사용합니다.' },
-  preview: { eyebrow: '미리보기', equipmentHeading: '준비할 것', start: '처음부터 준비하기', prepared: '준비된 장치 확인', browse: '다른 실험 보기', transitionNote: '새 실험을 시작하면 현재 기록을 마치고 저장합니다.' },
+  home: { title: '무엇을 탐구할까요?', description: '센서로 자유롭게 측정하거나, 실험 활동의 안내를 따라 시작하세요.', sensors: '센서로 측정하기', sensorTitle: '', sensorDescription: '', activities: '실험 활동 시작하기', activityDescription: '준비 안내와 활동 기록, 분석 질문을 함께 사용합니다.' },
+  preview: { eyebrow: '미리보기', question: '', description: '', equipmentHeading: '준비할 것', start: '처음부터 준비하기', prepared: '준비된 장치 확인하기', browse: '다른 실험 보기', transitionNote: '새 실험을 시작하면 현재 기록을 마치고 저장합니다.' },
   prepare: { title: '{name} · 장비 준비', measure: '측정 화면으로' },
   measurement: {
     current: '현재 실험', name: '실험 이름', namePlaceholder: '나의 센서 실험', prepare: '장비 준비 확인',
     review: '준비 내용 다시 보기', channels: '그래프에 표시할 항목', channelsNote: '표시를 꺼도 모든 측정 항목은 기록돼요.', mock: '장치 없이 모의 측정하기',
-    start: '기록 시작', pause: '일시정지', resume: '재개', finish: '기록 마치기', additional: '추가 측정', guide: '실험 방법 보기',
-    previewNote: '기록 시작 전 수신값은 미리보기입니다.', count: '원자료 {count}개', stored: '보관한 자료', storedValues: '보관한 측정값', waiting: '수신 대기',
+    start: '기록 시작', pause: '기록 일시정지', resume: '기록 재개', finish: '기록 마치기', additional: '추가 측정', guide: '실험 방법 보기',
+    previewNote: recordingPreviewNote, count: '원자료 {count}개', stored: '보관한 자료', storedValues: '보관한 측정값', waiting: '수신 대기',
     chartTitle: '시간에 따른 변화', range: '표시 구간', recent: '최근 60초', all: '전체', allRecords: '전체 기록', allPreview: '전체 미리보기', chartSummary: '{range} · {count}개 표시',
     note: '조작 메모', notePlaceholder: '실험 조건이나 관찰을 적으세요', addNote: '메모 기록',
   },
   saved: { title: '저장된 실험 이어하기', description: '이 브라우저에 저장된 기록입니다. 전체 실험 JSON을 따로 보관하면 다른 기기에서도 이어서 분석할 수 있습니다.', empty: '저장된 실험이 없습니다.', open: '실험 열기' },
   analysis: {
-    title: '자료 분석', finish: '측정 마치기', overview: '원 자료 보기', relationship: '관계 그래프', interpretation: '결과 해석',
+    title: '자료 분석', finish: '기록 마치기', overview: '원 자료 보기', relationship: '관계 그래프', interpretation: '결과 해석',
     table: '표', split: '표 & 그래프', graph: '그래프', editRange: '구간 수정', timeTitle: '시간에 따른 변화', orderTitle: '자료 순서에 따른 변화', axes: '측정 항목별 축', empty: '아직 불러온 자료가 없어요.',
     readout: '그래프 위에서 같은 시점의 측정값을 확인할 수 있어요.', cursorHint: '그래프 위에서 측정값을 확인할 수 있어요.', untimed: '시각 정보가 없어 자료 번호 순서로 표시합니다.', untimedCount: '시각 정보 없는 {count}개는 시간 그래프에 표시하지 않습니다. 표에서 원자료를 확인할 수 있어요.',
     useAll: '전체 자료로 관계 보기', chooseRange: '구간 골라 분석하기', start: '시작', end: '끝', seconds: '초', rangeHint: '선택 중 · 아직 분석에 적용하지 않음', allRange: '전체 구간', applyRange: '이 구간으로 분석',
@@ -39,7 +40,7 @@ export const labDefaults = {
     slopeHelp: '기울기는 가로축 값이 1단위 늘어날 때 세로축 값이 얼마나 달라지는지 나타냅니다. y절편은 가로축 값이 0일 때 이 직선이 가리키는 값입니다.',
     interceptHelp: 'x절편은 직선의 세로축 값이 0이 되는 지점입니다. 측정 범위 밖으로 연장했다면 실제 측정값과 구분해서 해석하세요.',
     fitHelp: 'R²는 선형 모형이 자료의 변화를 얼마나 설명하는지 나타냅니다. 높은 값만으로 비례 관계나 측정의 정확성이 입증되지는 않습니다.',
-    explain: '발견한 관계를 내 말로 정리해 볼까요?', useGraph: '이 그래프로 결과 해석하기', png: '그래프 이미지 저장', csv: '분석 자료 CSV 저장', exclusionReason: '제외 사유 (선택)', reasonPlaceholder: '비워 두어도 괜찮아요', applyExclusion: '제외하기',
+    explain: '발견한 관계를 내 말로 정리해 볼까요?', useGraph: '이 그래프로 해석하기', png: '그래프 이미지 저장', csv: '분석 자료 CSV 저장', exclusionReason: '제외 사유 (선택)', reasonPlaceholder: '비워 두어도 괜찮아요', applyExclusion: '제외하기',
     noRun: '저장된 실험을 열거나 먼저 측정해 주세요.', loaded: '자료 {count}개', newData: '새 자료 {count}개 반영', dataSummary: '실험 전체 원자료 {total}개 · 분석에 불러온 자료 {loaded}개',
     includedCount: '분석 포함 {count}개', excludedCount: '제외 {count}개', selectedCount: '{count}개 선택', allData: '전체 자료', previousData: '이전에 지정한 자료 {count}개', hiddenFilters: '표 필터 {count}개 적용 중 · 상단의 ‘표’ 보기에서 확인',
   },
@@ -65,11 +66,11 @@ export const labDefaults = {
     receptionTitle: '새 측정값을 확인해요', receptionDescription: '선택한 센서의 유효한 측정값이 계속 들어오는지 확인합니다. 값이 같더라도 새 수신이면 정상입니다.',
   },
   guide: {
-    quick: '이미 장치가 준비되어 있나요?', restart: '처음부터 준비하기', large: '크게 보기 ↗', wireRole: '역할', wiringNote: '보드의 단자 이름을 비교하세요. 전원을 분리한 상태에서 배선합니다.', incoming: '지금 들어오는 값', lastCheck: '기록 전 마지막 확인', summaryTitle: '준비 상태를 한눈에 확인해요', quickNote: '실제로 준비한 항목만 확인해 주세요. 연결·수신·보정은 이어서 검사합니다.', program: '프로그램 설치',
+    quick: '준비된 장치 확인하기', restart: '처음부터 준비하기', large: '크게 보기 ↗', wireRole: '역할', wiringNote: '보드의 단자 이름을 비교하세요. 전원을 분리한 상태에서 배선합니다.', incoming: '지금 들어오는 값', lastCheck: '기록 전 마지막 확인', summaryTitle: '준비 상태를 한눈에 확인해요', quickNote: '실제로 준비한 항목만 확인해 주세요. 연결·수신·보정은 이어서 검사합니다.', program: '프로그램 설치',
     previous: '← 이전', confirm: '확인했어요', next: '다음 단계 →', measure: '측정 화면으로 →', quickConfirm: '확인하고 연결하기 →', install: 'USB로 프로그램 설치', programConfirm: '이미 올바른 프로그램이 있어요', battery: 'USB를 분리했어요 · 수신 검사',
     model: '3D 보기', table: '배선표 보기', retryModel: '3D 다시 열기', cableLeft: '수–암', cableRight: '암–암', detail: '단자 자세히', whole: '전체 보기', restore: '↺ 시점 복귀', modelUnavailable: '3D를 열지 못했어요. 배선표로 계속 준비할 수 있어요.', modelLoading: '3D 안내를 불러오는 중…',
     deviceEquipment: '측정 장치', activityEquipment: '실험 도구', currentStep: '현재 단계', installed: '이 센서에 맞는 프로그램이 설치되어 있어요',
-    quickTitle: '준비된 장치를 확인해요', readyTitle: '이제 측정을 시작해 볼까요?', receptionTitle: '연결과 수신을 확인해요', quickDescription: '현재 장치의 준비 상태를 확인하고 연결하세요.', summaryDescription: '측정 화면에서 기록 시작을 눌러야 실험 자료가 저장됩니다.', quickCounter: '준비된 장치', summaryCounter: '준비 결과',
+    quickTitle: '준비된 장치를 확인해요', readyTitle: '이제 측정을 시작해 볼까요?', receptionTitle: '연결과 수신을 확인해요', quickDescription: '현재 장치의 준비 상태를 확인하고 연결하세요.', summaryDescription: recordingPreviewNote, quickCounter: '준비된 장치', summaryCounter: '준비 결과',
     ready: '준비 완료', canMeasure: '수신 확인 · 측정 가능', progress: '준비 확인 {count} / {total}', mockPrefix: '모의 장치 · ',
     userConfirmed: '직접 확인했어요', deviceObserved: '장치에서 확인했어요', deviceReported: '장치가 보정 완료를 알렸어요', simulated: '모의 수신으로 확인했어요',
     usbLabel: 'USB 연결', programLabel: '설치', connectionLabel: '연결', receptionLabel: '수신 확인', calibrationLabel: '보정 확인',
