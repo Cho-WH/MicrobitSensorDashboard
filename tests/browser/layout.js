@@ -22,8 +22,13 @@ export async function runLayoutTests(report=()=>{}) {
   const frame=document.createElement('iframe');frame.title='준비 화면 크기 검증';frame.style.cssText='display:block;border:0;max-width:none';document.body.append(frame);
   const open=async(path,width,height)=>{
     frame.style.width=width+'px';frame.style.height=height+'px';
-    const loaded=new Promise(resolve=>frame.addEventListener('load',resolve,{once:true}));
-    frame.src=new URL('../../'+path+'?mock=1',import.meta.url).href;await loaded;
+    const url=new URL('../../'+path+'?mock=1',import.meta.url).href;
+    await new Promise((resolve,reject)=>{
+      const done=()=>{clearTimeout(timer);frame.removeEventListener('load',onLoad);};
+      const onLoad=()=>{if(frame.contentDocument?.URL!==url)return;done();resolve();};
+      const timer=setTimeout(()=>{done();reject(new Error(`${path} ${width}×${height}: 프레임 로딩 시간 초과 (${frame.contentDocument?.URL ?? '문서 없음'})`));},10000);
+      frame.addEventListener('load',onLoad);frame.src=url;
+    });
     const doc=frame.contentDocument, deadline=performance.now()+10000, marker=path==='lab.html'?'#sensor-cards a':'.guide';
     while(!doc.querySelector(marker)&&performance.now()<deadline)await settle();
     check(doc.querySelector(marker),'홈·준비 화면 로드 실패');await settle();return doc;

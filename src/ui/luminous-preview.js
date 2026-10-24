@@ -22,6 +22,19 @@ export async function prepareLuminousPreview(root = document) {
   rail.append(logo, $('.lab-nav'), atmosphere, element('small', 'luminous-signature', 'micro:bit · 센서로 만나는 과학'));
   $('.lab-identity').before(rail);
   $('.lab-identity').append($('#file-tools'));
+  const exports = element('details', 'luminous-export');
+  const exportToggle = element('summary', '', '파일 저장');
+  const exportOptions = element('div', 'luminous-export-options');
+  exportOptions.id = 'file-save-options'; exportToggle.setAttribute('aria-controls', exportOptions.id);
+  for (const [id, description] of [['export-json', '측정값·사건·분석을 함께 보관'], ['export-csv', '측정값을 표 계산 프로그램에서 열기']]) {
+    const option = element('div'); option.append($('#'+id), element('small', '', description)); exportOptions.append(option);
+  }
+  exports.append(exportToggle, exportOptions); $('#file-tools').append(exports);
+  exportOptions.addEventListener('click', event => {
+    if (event.target instanceof Element && event.target.closest('button:not(:disabled)')) { exports.open = false; exportToggle.focus(); }
+  });
+  exports.addEventListener('keydown', event => { if (event.key === 'Escape' && exports.open) { event.preventDefault(); exports.open = false; exportToggle.focus(); } });
+  doc.addEventListener('click', event => { if (event.target instanceof Node && !exports.contains(event.target)) exports.open = false; });
   $('.lab-toolbar').remove();
 
   const measure = $('[data-screen="measure"]');

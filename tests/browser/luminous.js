@@ -9,12 +9,17 @@ async function until(predicate,label) {
 // Real app + real IndexedDB, fixed simulated input. No duplicate UI or run model.
 export async function runLuminousTests(report=()=>{}) {
   let frame;
+  const cases = [['bmp280',1366,768],['bmp280',1024,768],['bmp280',390,844],['magnetometer',1366,768],['light-level',390,844]];
+  const requested = new URL(location.href).searchParams.get('case');
+  const selected = requested ? cases.filter(([sensor,width])=>`${sensor}-${width}`===requested) : cases;
+  check(selected.length,'알 수 없는 새 화면 검사 조건입니다.');
   try {
-    for(const [sensor,width,height] of [['bmp280',1366,768],['bmp280',1024,768],['bmp280',390,844],['magnetometer',1366,768],['light-level',390,844]]) {
-      frame=document.createElement('iframe');frame.title='새 측정 화면 검증';frame.style.cssText='display:block;border:0;max-width:none';document.body.append(frame);
+    for(const [sensor,width,height] of selected) {
+      frame=document.createElement('iframe');frame.title='새 측정 화면 검증';frame.style.cssText='display:block;border:0;max-width:none';
       frame.style.width=width+'px';frame.style.height=height+'px';
       frame.src=new URL(`../../dev/design/?sensor=${sensor}&state=recording`,import.meta.url).href;
-      await until(()=>frame.contentDocument?.documentElement.dataset.reviewReady==='recording','모의 측정 검토 화면을 열지 못했습니다.');
+      document.body.append(frame);frame.scrollIntoView({block:'start'});
+      await until(()=>frame.contentDocument?.documentElement.dataset.reviewReady==='recording',`${sensor} ${width}px 모의 측정 검토 화면을 열지 못했습니다.`);
       const doc=frame.contentDocument, $=selector=>doc.querySelector(selector), win=frame.contentWindow;
       try {
         check(doc.documentElement.scrollWidth<=width+1,`${sensor} ${width}px 페이지가 가로로 넘칩니다.`);
@@ -24,12 +29,39 @@ export async function runLuminousTests(report=()=>{}) {
         const checked=[...doc.querySelectorAll('#display-channels input:checked')];
         const cardColors=checked.map(input=>doc.querySelector(`.lab-card[data-channel="${input.value}"]`).style.getPropertyValue('--channel-color'));
         check(cardColors.every((color,index)=>color===colors[index]),`계기와 그래프의 채널색이 다릅니다: ${cardColors} / ${colors}`);
+        const menu=$('.luminous-export'), toggle=menu.querySelector('summary');
+        toggle.click();check(menu.open&&!$('#export-json').disabled&&!$('#export-csv').disabled,'기록 자료의 저장 형식 메뉴를 열 수 없습니다.');
+        const menuBox=$('.luminous-export-options').getBoundingClientRect();
+        check(menuBox.left>=0&&menuBox.right<=width,`${width}px에서 저장 메뉴가 화면 밖으로 나갑니다.`);
+        toggle.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+        check(!menu.open&&doc.activeElement===toggle,'저장 메뉴의 Escape 닫기·초점 복귀 실패');
         if(width===1366&&sensor==='bmp280') {
           // Pausing may add a display-only null gap; actual sample identities/values stay fixed.
           const samples=()=>JSON.stringify(chart().data.datasets[0].data.filter(point=>point.sampleId));
           const original=samples();
-          $('#pause-recording').focus();$('#pause-recording').click();await settle();
-          check(doc.activeElement===$('#resume-recording'),'일시정지 뒤 키보드 초점이 재개로 이어지지 않습니다.');
+          for (const text of ['같은 시각의 첫 메모','두 번째 메모 · '+ '긴 관찰 내용 '.repeat(25)+'<img src=x>']) {
+            $('#event-note').value=text;$('#add-note').click();await settle();
+          }
+          check($('#lab-events').children.length===3&&!$('#lab-events img'),'조작 메모가 누락되거나 메모를 HTML로 해석했습니다.');
+          check($('.measurement-system-events').textContent.includes('기록 시작'),'기록·수신 상태를 보조 목록에 보존하지 않았습니다.');
+          const grouped=[...doc.querySelectorAll('.measurement-event-marker button')].find(button=>button.textContent.includes('외 1건'));
+          check(grouped,'같은 시각의 사건을 묶지 않았습니다.');grouped.click();
+          check($('.measurement-event-dialog').open&&$('.measurement-event-dialog ol').children.length===2,'묶인 사건의 개별 내용·시간을 열지 못했습니다.');
+          check($('.measurement-event-dialog').textContent.includes('긴 관찰 내용'),'긴 메모의 상세 내용이 잘렸습니다.');
+          $('.measurement-event-dialog > button').click();
+          await until(()=>doc.activeElement===grouped,'사건 상세를 닫은 뒤 선택한 표찰로 초점이 돌아오지 않았습니다.');
+          check(samples()===original,'사건 추가·상세 조회가 원자료를 바꿨습니다.');
+          const eventLine=()=>parseFloat($('.measurement-event-marker i').style.left);
+          const expectedRecent=chart().scales.x.getPixelForValue(-36);
+          check(Math.abs(eventLine()-expectedRecent)<1,'최근 구간의 사건 표찰이 저장 시각과 다른 위치에 있습니다.');
+          $('#live-range').value='all';$('#live-range').dispatchEvent(new win.Event('change'));await settle();
+          const firstPoint=chart().data.datasets[0].data.find(point=>point.sampleId);
+          const expectedAll=chart().scales.x.getPixelForValue(firstPoint.x+23.9);
+          check(Math.abs(eventLine()-expectedAll)<1,'전체 기록의 사건 표찰이 첫 수신 기준과 다릅니다.');
+          $('#live-range').value='recent';$('#live-range').dispatchEvent(new win.Event('change'));await settle();
+          report('새 화면 · 저장 메뉴 키보드 조작·동시 사건 묶기·긴 메모 상세·시스템 이력과 원자료 보존');
+          $('#pause-recording').focus();$('#pause-recording').click();
+          await until(()=>doc.activeElement===$('#resume-recording'),'일시정지 뒤 키보드 초점이 재개로 이어지지 않습니다.');
           check(!$('#resume-recording').disabled,'일시정지 뒤 재개할 수 없습니다.');
           $('.luminous-settings').click();check($('#measurement-settings').open,'설정 대화상자를 열 수 없습니다.');
           $('#prepare-device').click();await settle();

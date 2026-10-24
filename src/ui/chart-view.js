@@ -183,7 +183,7 @@ export function exportAnalysisPng(model, { name = '', selectedIds = [] } = {}) {
 }
 
 /** @param {HTMLCanvasElement} canvas @param {any} options */
-export function createChartView(canvas, { context, channels, inspect = false, legendToggle = true, theme = null, onCursor = () => {}, onLayout = () => {} } = {}) {
+export function createChartView(canvas, { context, channels, inspect = false, legendToggle = true, theme = null, eventMarkers = true, onCursor = () => {}, onLayout = () => {} } = {}) {
   if (!globalThis.Chart) throw new Error('그래프 도구를 불러오지 못했어요. 화면을 새로 열어 주세요.');
   const sourceChannels = getSourceColumns(channels ?? context).filter(c => !['sampleId', 'receivedAt'].includes(c.id) && c.supported !== false);
   const colors = ['#d67b40', '#197f88', '#8d65b1', '#43854d'];
@@ -215,10 +215,11 @@ export function createChartView(canvas, { context, channels, inspect = false, le
         }
         onLayout();
       },
-    }] : [],
+    }] : [{id:'measurement-layout',afterDraw:()=>onLayout()}],
     data: { datasets: sourceChannels.map((c, i) => ({ label: columnLabel(c), yAxisID: 'channel' + i, borderColor: channelColor(c, i), backgroundColor: channelColor(c, i), data: [] })) },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
+      layout: {padding: {top: !eventMarkers ? 52 : 0}},
       parsing: false, spanGaps: false,
       elements: { point: { radius: 0, hitRadius: 8 }, line: { borderWidth: 2 } },
       plugins: { tooltip: { enabled: !inspect, callbacks: {
@@ -239,8 +240,10 @@ export function createChartView(canvas, { context, channels, inspect = false, le
       const relative = point => Number.isFinite(point.monotonicAt) ? (point.monotonicAt - now) / 1000 : (point.receivedAt - nowUtc) / 1000;
       const timedPoints = points.filter(p => Number.isFinite(p.receivedAt));
       hasTime = timedPoints.length > 0; currentPoints = hasTime ? timedPoints : points;
-      origin = Number.isFinite(origin) ? origin : timedPoints[0]?.receivedAt ?? 0; timeOrigin = origin;
+      origin = Number.isFinite(origin) ? origin : timedPoints[0]?.receivedAt ?? 0;
       const whole = range === 'all' || !hasTime;
+      const lastTimed = timedPoints.at(-1);
+      timeOrigin = whole ? origin : lastTimed ? lastTimed.receivedAt - relative(lastTimed) * 1000 : nowUtc;
       // Events retain short pauses and reconnects which the five-second gap
       // threshold alone cannot show. They never modify the source samples.
       const breakTimes = events.filter(event => ['discontinuity','recording-paused','recording-resumed','additional-measurement','interrupted'].includes(event.type)
@@ -270,7 +273,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
         chart.data.datasets[index].data = data;
       }
       // User actions share the time axis. Null points keep discontinuities visible.
-      chart.data.datasets[sourceChannels.length] = { type: 'scatter', label: '조작 기록', yAxisID: 'channel0',
+      if (eventMarkers) chart.data.datasets[sourceChannels.length] = { type: 'scatter', label: '조작 기록', yAxisID: 'channel0',
         pointStyle: 'triangle', pointRadius: 6, backgroundColor: theme?.colors[0] ?? '#87632f',
         data: events.filter((e) => hasTime && Number.isFinite(e.receivedAt) && e.source === 'user').flatMap((e) => {
           const nearest = currentPoints.find((p) => p.receivedAt >= e.receivedAt && !readCell(p, sourceChannels[0]?.id).reason);

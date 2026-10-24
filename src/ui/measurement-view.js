@@ -5,6 +5,7 @@ import { element, findElement } from './dom.js';
 import { setText } from './text.js';
 import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 import { readMeasurementTheme, channelColor } from './visual-theme.js';
+import { createMeasurementEvents } from './measurement-events.js';
 
 /** @param {ParentNode} root @param {()=>void} onChange */
 export function createMeasurementView(root,onChange) {
@@ -17,6 +18,7 @@ export function createMeasurementView(root,onChange) {
   let context=null, selected=new Set(), chart=null, chartKey='', runId=null, rows=[], events=[], eventCount=-1;
   let copy = getLabCopy(null);
   let theme = null;
+  const eventView = root.querySelector('.luminous-overview') ? createMeasurementEvents(root.querySelector('#lab-events'), root.querySelector('.lab-chart')) : null;
   range.addEventListener('change',onChange,{signal:abort.signal});
   function configure(next) {
     if(context===next)return;
@@ -40,7 +42,11 @@ export function createMeasurementView(root,onChange) {
     cards.replaceChildren(...next.channels.map(channel=>{
       const card=element('div','lab-card');card.dataset.channel=channel.id;
       card.style.setProperty('--channel-color',channelColor(theme,channel,next.channels.indexOf(channel)));
-      card.append(element('span','',channel.name),element('strong','','—'),element('small','',channel.unit??''));return card;
+      const value = element('strong','','—'), unit = element('small','',channel.unit??'');
+      card.append(element('span','',channel.name));
+      if (theme) { const readout=element('div','measurement-readout'); readout.append(value,unit); card.append(readout); }
+      else card.append(value,unit);
+      return card;
     }));
   }
   return {
@@ -65,8 +71,10 @@ export function createMeasurementView(root,onChange) {
       const source=stored?rows:previewPoints, end=recording||!stored?Date.now():source.at(-1)?.receivedAt??Date.now();
       const points=range.value==='all'?source:source.filter(point=>!Number.isFinite(point.receivedAt)||point.receivedAt>=end-60000);
       const channels=next.channels.filter(channel=>selected.has(channel.id)), key=channels.map(channel=>channel.id).join('|');
-      if(chartKey!==key||!chart){chart?.dispose();chart=createChartView(findElement(root,'canvas','#live-chart'),{context:next,channels,legendToggle:false,theme});chartKey=key;}
+      eventView?.render(events,next);
+      if(chartKey!==key||!chart){chart?.dispose();chart=createChartView(findElement(root,'canvas','#live-chart'),{context:next,channels,legendToggle:false,theme,eventMarkers:!eventView,onLayout:()=>eventView?.layout(chart?.timeGeometry())});chartKey=key;}
       chart.render(points,performance.now(),{range:range.value,events,origin:source[0]?.receivedAt,nowUtc:end});
+      eventView?.layout(chart.timeGeometry());
       chartSummary.textContent=formatCopy(copy.measurement.chartSummary,{range:range.value==='all'?copy.measurement.all:copy.measurement.recent,count:points.length.toLocaleString('ko-KR')});
       range.querySelector('option[value="all"]').textContent=stored?copy.measurement.allRecords:copy.measurement.allPreview;
     },
@@ -74,7 +82,8 @@ export function createMeasurementView(root,onChange) {
       contentAbort.abort();chart?.dispose();chart=null;context=null;chartKey='';runId=null;
       rows=[];events=[];eventCount=-1;selected.clear();fields.replaceChildren();cards.replaceChildren();
       chartSummary.textContent='';receptionState.textContent='';receptionTime.textContent='';
+      eventView?.render([],null);eventView?.layout(null);
     },
-    dispose(){abort.abort();contentAbort.abort();chart?.dispose();},
+    dispose(){abort.abort();contentAbort.abort();chart?.dispose();eventView?.dispose();},
   };
 }

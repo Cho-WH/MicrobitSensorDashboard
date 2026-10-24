@@ -11,7 +11,7 @@ import { runDeviceTests } from './devices.js';
 import { runLuminousTests } from './luminous.js';
 const button = document.getElementById('run'), status = document.getElementById('status'), list = document.getElementById('results');
 button.addEventListener('click', async () => {
-  button.disabled = true; list.replaceChildren(); status.textContent = '검사 중';
+  button.disabled = true; list.replaceChildren(); status.textContent = '검사 중'; delete status.dataset.result;
   let count = 0;
   const report = message => { count++; const li = document.createElement('li'); li.textContent = '통과 · ' + message; list.append(li); };
   try {

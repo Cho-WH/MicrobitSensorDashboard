@@ -49,9 +49,21 @@ export function createController(root = document, { repository = null, deviceTra
   function clearError() { $('lab-error').hidden = true; $('lab-error').textContent = ''; }
   async function act(work) {
     if (busy || programmerState.busy) return;
+    // Async saving can disable (and blur) the pressed record control before the
+    // final render. Remember its focus until the action has settled.
+    const recordFocus = root.querySelector('.luminous-overview') && document.activeElement instanceof HTMLButtonElement
+      && ['start-recording','pause-recording','resume-recording','finish-recording'].includes(document.activeElement.id) ? document.activeElement : null;
     busy = true; clearError(); renderRequested = true;
     try { await work(); } catch(error) { showError(error); }
-    finally { busy = false; renderRequested = false; render(); }
+    finally {
+      busy = false; renderRequested = false; render();
+      if (recordFocus && screen === 'measure' && !recordFocus.getClientRects().length
+        && [recordFocus, document.body, $('recording-status')].some(element => element === document.activeElement)) {
+        const next = ({recording:'pause-recording',paused:'resume-recording',ended:'additional-recording'})[session?.getState().state];
+        if (next && !button(next).disabled) button(next).focus({preventScroll:true});
+        else { $('recording-status').tabIndex=-1; $('recording-status').focus({preventScroll:true}); }
+      }
+    }
   }
   function listen(id, work) { $(id).addEventListener('click', () => act(work), { signal }); }
   function accept(input) {
@@ -356,6 +368,8 @@ export function createController(root = document, { repository = null, deviceTra
     button('export-json').disabled = !saved; button('export-csv').disabled = !saved?.sampleCount;
     $('retry-save').hidden = saved?.status !== 'error';
     $('export-json').hidden=!saved; $('export-csv').hidden=!saved;
+    const exportMenu = root.querySelector('.luminous-export');
+    if (exportMenu instanceof HTMLDetailsElement) { exportMenu.hidden=!saved; if (!saved) exportMenu.open=false; }
     if (root.querySelector('.luminous-overview') && focusedRecordControl && previousRecordingState !== measurementScreen.dataset.recordingState) {
       const nextControl = ({recording:'pause-recording',paused:'resume-recording',ended:'additional-recording'})[measurementScreen.dataset.recordingState];
       if (nextControl && !button(nextControl).disabled && !button(nextControl).hidden) button(nextControl).focus({preventScroll:true});
@@ -381,7 +395,7 @@ export function createController(root = document, { repository = null, deviceTra
       renderedEvents = saved?.eventCount;
       const labels={'recording-start':'기록 시작','recording-paused':'일시정지','recording-resumed':'기록 재개','measurement-end':'기록 마침',note:'메모','additional-measurement':'추가 측정',discontinuity:'측정 공백','reception-change':'수신 상태 변경',interrupted:'중단 후 복원',...Object.fromEntries((context?.activity?.events ?? []).map(event=>[event.type,event.label]))};
       const records = store?.getEvents(100) ?? [];
-      for (const id of ['lab-events','analysis-events']) $(id).replaceChildren(...records.slice(-100).map(e=>{const li=document.createElement('li');li.textContent=new Date(e.receivedAt).toLocaleTimeString('ko-KR')+' · '+(labels[e.type] ?? e.type)+(e.payload.note ? ' · '+e.payload.note : '');return li;}));
+      for (const id of root.querySelector('.luminous-overview') ? ['analysis-events'] : ['lab-events','analysis-events']) $(id).replaceChildren(...records.slice(-100).map(e=>{const li=document.createElement('li');li.textContent=new Date(e.receivedAt).toLocaleTimeString('ko-KR')+' · '+(labels[e.type] ?? e.type)+(e.payload.note ? ' · '+e.payload.note : '');return li;}));
     }
     analysis.updateStatus();
   }
