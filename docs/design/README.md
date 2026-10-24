@@ -5,6 +5,7 @@
 - [시각 디자인 문법](visual-language.md): 색·표면·빛·타이포그래피·상태 표현의 출발 규칙과 조정 원칙
 - [단계별 적용 설계](visual-rollout-plan.md): V0–V5, 실제 측정 화면 시안 우선 검토, 구현 시작 지시문 (§12)
 - [명도 대비 기록](contrast-check.md): 후보 색상 조합의 정적 대비 기록
+- [시작용 CSS 토큰](design-starter/tokens.css): 실제 시안 검증 전의 잠정 색·표면·간격 값
 
 ## 시안 이미지
 
