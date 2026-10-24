@@ -12,14 +12,15 @@ export function parseRoute(input, base = appBaseUrl, modules = registry) {
   const entry = modules.entryRoutes.find(route => route.path === path || route.path.slice(0, -1) === path);
   if (!entry && !['', 'lab.html'].includes(path)) throw new Error('이 센서·활동 경로를 찾을 수 없습니다. 홈에서 다시 선택하세요.');
   const requestedView = url.searchParams.get('view');
-  if (requestedView && !['home', 'prepare', 'measure', 'analysis', 'saved'].includes(requestedView)) throw new Error('알 수 없는 실험 화면입니다.');
+  if (requestedView && !['home', 'preview', 'prepare', 'measure', 'analysis', 'saved'].includes(requestedView)) throw new Error('알 수 없는 실험 화면입니다.');
+  if (requestedView === 'preview' && !entry) throw new Error('미리 볼 실험을 선택하세요.');
   return { context: entry ? getExperiment(entry.sensorId, entry.activityId, modules) : null,
     screen: requestedView ?? (entry ? 'prepare' : 'home') };
 }
 export function routeUrl(context, screen, { base = appBaseUrl, mock = false, modules = registry } = {}) {
   const entry = context && modules.entryRoutes.find(route => route.sensorId === context.sensor.id && route.activityId === (context.activity?.id ?? null));
   const url = new URL(['home', 'saved'].includes(screen) || !entry ? 'lab.html' : entry.path, base);
-  if (!['home', 'prepare', 'preview'].includes(screen)) url.searchParams.set('view', screen);
+  if (!['home', 'prepare'].includes(screen)) url.searchParams.set('view', screen);
   if (mock) url.searchParams.set('mock', '1');
   return url;
 }

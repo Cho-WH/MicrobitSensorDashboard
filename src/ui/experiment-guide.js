@@ -69,6 +69,7 @@ export function createExperimentGuide(host) {
       showPage(0,false);dialog.showModal();preferences.markSeen();findElement(dialog,'h2','h2').focus({preventScroll:true});return true;
     },
     setRecording(active){recording=active;if(guide)findElement(dialog,'p','[data-guide-recording]').hidden=!active;},
+    close(){returnFocus=null;recording=false;if(dialog.open)dialog.close();},
     dispose(){returnFocus=null;controller.abort();if(dialog.open)dialog.close();dialog.remove();},
   };
 }

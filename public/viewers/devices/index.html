@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>micro:bit V2 · 장치 살펴보기</title><link rel="stylesheet" href="./viewer.css"></head>
+<body>
+<header><a href="../../../lab.html">센서 실험실</a><span>장치 살펴보기</span><span class="edition">MICRO:BIT V2</span></header>
+<main>
+  <div class="intro"><div><p class="eyebrow">장치를 자세히 살펴보세요</p><h1>작은 보드, 여러 가지 실험.</h1></div><p>앞면부터 회로와 연결 단자까지.<br>돌려 보고, 가까이 보고, 연결해 보세요.</p></div>
+  <nav class="scenes" aria-label="장치 장면"><button data-scene="board" aria-pressed="true"><span>01</span> micro:bit 본체</button><button data-scene="usb" aria-pressed="false"><span>02</span> USB 연결</button><button data-scene="battery" aria-pressed="false"><span>03</span> 배터리 연결</button></nav>
+  <section class="workspace">
+    <div class="stage-wrap"><div class="stage-heading"><span id="view-label">뒷면 · 주요 부품</span><span class="scale">51.6 × 42 mm</span></div>
+      <div id="stage" aria-label="장치 3D 보기"><p id="loading" role="status">3D 장치를 준비하고 있습니다…</p></div>
+      <p id="error" role="alert" hidden>이 환경에서는 3D를 표시할 수 없습니다. 아래 장치 설명을 확인해 주세요.</p>
+      <div class="view-controls" aria-label="시점"><button data-view="front">앞면</button><button data-view="back" aria-pressed="true">뒷면</button><button data-view="ports">단자 가까이</button><button data-view="iso">전체 모습</button><span></span><button id="zoom-in" aria-label="확대">＋</button><button id="zoom-out" aria-label="축소">−</button><button id="reset">시점 초기화</button></div>
+      <p class="gesture">드래그로 회전 · 휠로 확대 · 방향키로 회전 · Home으로 시점 초기화</p>
+    </div>
+    <aside><p class="eyebrow" id="chapter">01 / 본체</p><h2 id="scene-title">micro:bit V2</h2><p id="scene-description">작은 보드 뒷면에 소리, 움직임, 자기장을 다루는 부품들이 모여 있어요.</p>
+      <div id="parts"><h3>주요 부품</h3><button data-part="processor"><i>01</i><span>프로세서<small>프로그램 실행 · 보드 온도</small></span></button><button data-part="motion"><i>02</i><span>가속도·자기장 센서<small>움직임과 자기장 측정</small></span></button><button data-part="speaker"><i>03</i><span>스피커<small>소리 출력</small></span></button><button data-part="microphone"><i>04</i><span>마이크<small>소리 감지</small></span></button></div>
+      <div id="connection" hidden><h3>연결 부위 살펴보기</h3><label for="separation">연결됨 <span>분리해서 보기</span></label><input id="separation" type="range" min="0" max="20" value="0" aria-label="커넥터 분리 거리"><p id="connection-note"></p></div>
+      <label id="cells-control" hidden><input id="cells" type="checkbox" checked> AAA 전지 2개 보기</label>
+      <div class="fact"><strong id="fact-title">V2의 앞면과 뒷면</strong><p id="fact-description">앞면에는 버튼과 LED, 뒷면에는 주요 회로와 USB·배터리 단자가 있어요.</p></div>
+    </aside>
+  </section>
+  <footer><span>장치의 모양과 연결 위치를 확인해 보세요.</span><button id="save-image">장치 그림 저장</button></footer>
+</main><script type="module" src="./viewer.js"></script>
+</body></html>

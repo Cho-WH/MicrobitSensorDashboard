@@ -4,9 +4,11 @@
  * kind:string,action?:string,required:boolean,model?:{view:string,wire:string|null,explosion:number},
  * quickConfirm?:boolean,complete?:boolean,evidence?:string|null}} GuideStep
  * @typedef {{id:string,name:string,help:string}} Equipment
+ * @typedef {{src:string,alt:string}} GuideImage
+ * @typedef {{equipment:Record<string,GuideImage>,usb:GuideImage,battery:GuideImage}} DeviceIllustrations
  * @typedef {{id:string,board:string,sensor:string,role:string,description:string}} Wire
  * @typedef {{equipment:Equipment[],equipmentDescription:string,beforeProgram?:GuideStep[],afterConnect?:GuideStep[],
- * wiring?:Wire[],cableHelp?:string,calibrationInstructions?:string[],
+ * wiring?:Wire[],cableHelp?:string,calibrationInstructions?:string[],illustrations?:DeviceIllustrations,
  * viewer?:{url:string,title:string,tableCaption:string,boardLabel:string,sensorLabel:string,noteTitle:string,note:string}}} SensorGuide
  * @typedef {{equipment:Equipment[],afterReception:GuideStep[],
  * setupImage?:{src:string,alt:string,caption:string},

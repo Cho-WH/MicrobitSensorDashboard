@@ -9,6 +9,7 @@ import { getExperiment, getSensorRuntime, getActivityPolicy, resolveExperiment }
 import { composeGuideSteps, getGuideContent } from '../../src/guide/steps.js';
 import { createGuideProgress } from '../../src/guide/progress.js';
 import { parseRoute, routeUrl } from '../../src/app/routes.js';
+import { getPreviewCopy, previewDefaults, getLabCopy, labDefaults, formatCopy } from '../../src/ui/lab-copy.js';
 
 // Test-only single-channel module: it never appears in the production catalog or firmware allowlist.
 function extraSensor(version = 1) {
@@ -22,6 +23,39 @@ function extraSensor(version = 1) {
     guide: { equipment: [{ id: 'board', name: '내장 센서 보드', help: '외부 배선 없이 준비합니다.' }], equipmentDescription: '내장 센서 보드를 준비하세요.' } };
 }
 const base = new URL('https://example.test/project/');
+
+test('screen copy inherits defaults and only registered sensor/activity overrides', () => {
+  const sensor = { ...bmp, uiCopy: { preview: { eyebrow: '센서 안내', start: '센서 준비' }, measurement:{start:'측정값 보관'}, guideSteps:{usbTitle:'케이블 준비'}, analysis:{title:'측정값 분석'} } };
+  const activity = { ...gas, uiCopy: { preview: { eyebrow: '활동 안내' }, measurement:{start:'활동 기록'}, reflection:{title:'나의 설명'} } };
+  const modules = createRegistry({ sensors: [sensor], activities: [activity] });
+  const context = getExperiment('bmp280', 'gay-lussac', modules);
+  assert.deepEqual(getPreviewCopy(context, modules), { ...previewDefaults, eyebrow: '활동 안내', start: '센서 준비' });
+  assert.equal(getPreviewCopy({ ...context, activity: null }, modules).eyebrow, '센서 안내');
+  context.sensor.uiCopy = { preview: { browse: '외부 문구' } };
+  assert.equal(getPreviewCopy(context, modules).browse, previewDefaults.browse);
+  const copy = getPreviewCopy(context, modules); copy.start = '변경';
+  assert.equal(getPreviewCopy(context, modules).start, '센서 준비');
+  const all = getLabCopy(context, modules);
+  assert.equal(all.measurement.start, '활동 기록');
+  assert.equal(all.measurement.finish, labDefaults.measurement.finish);
+  assert.equal(all.analysis.title, '측정값 분석');
+  assert.equal(all.reflection.title, '나의 설명');
+  all.measurement.start = '사본 수정';
+  assert.equal(getLabCopy(context, modules).measurement.start, '활동 기록');
+  const originalSteps = composeGuideSteps(getExperiment('bmp280', 'gay-lussac'));
+  const steps = composeGuideSteps(context, modules);
+  assert.equal(steps.find(step => step.id === 'usb').title, '케이블 준비');
+  const rules = steps => steps.map(({id,kind,scope,required,quickConfirm})=>({id,kind,scope,required,quickConfirm}));
+  assert.deepEqual(rules(steps), rules(originalSteps));
+  assert.equal(formatCopy(all.prepare.title, {name:'온도 센서'}), '온도 센서 · 장비 준비');
+  for (const sensor of registry.catalog.sensors) {
+    assert.deepEqual(getLabCopy({ sensor }), labDefaults);
+  }
+  context.activity.version++;
+  assert.equal(getLabCopy(context, modules).measurement.start, '측정값 보관');
+  context.sensor.version++;
+  assert.deepEqual(getLabCopy(context, modules), labDefaults);
+});
 
 test('one additional module supplies catalog, route, decoder and preparation without changing common code', () => {
   const extra = extraSensor(), modules = createRegistry({ sensors: [bmp, magnetic, extra], activities: [gas] });

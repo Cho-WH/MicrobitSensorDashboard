@@ -14,8 +14,12 @@ import { scopeMembership, statusLabels, timeBounds } from '../analysis/scope.js'
 import { formatCalculated } from '../analysis/calculations.js';
 import { formatElapsedTime } from '../analysis/clock-time.js';
 import { exportAnalysisPng, createChartView } from './chart-view.js';
+import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 
 export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) => {} }) {
+  let copy = getLabCopy(null);
+  let copyContext = null;
+  applyLabCopy(root, copy);
   const $ = id => root.querySelector('#' + id), events = new AbortController(), { signal } = events;
   let store = null, workspace = null, task = 'overview', tableOpen = false, allColumns = false, focusedId = null;
   let relationshipMode = 'split', overviewTableOpen = false, revealedColumnId = null;
@@ -67,7 +71,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     if (event.target === $('analysis-layout') && event.propertyName === 'grid-template-columns') finishLayoutTransition();
   }, { signal });
   const reflection = createReflectionView(root, { getWorkspace: () => workspace, getStoreState: () => store?.getState(), act,
-    onBack: () => changeTask('relationship'), signal });
+    getContext: () => copyContext, onBack: () => changeTask('relationship'), signal });
   range = createRangeSelector(root, { getChart: () => overview, signal,
     onApply(draft) { if (act(() => workspace.applyTimeRange(draft))) { range.close(); changeTask('relationship'); } },
     onClose() { $('choose-range').focus({ preventScroll: true }); } });
@@ -88,7 +92,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     if (reflection.flush() && act(() => workspace.captureReflection())) {
       changeTask('interpretation');
       $('reflection-notice').textContent = Object.values(workspace.getState().reflection.answers).some(text => text.trim())
-        ? '가져온 그래프와 작성한 설명이 잘 연결되는지 확인해 보세요.' : '';
+        ? copy.reflection.checkAnswers : '';
       root.querySelector('.analysis-tabs').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
       $('reflection-title').focus({ preventScroll: true });
     }
@@ -220,25 +224,25 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     $('overview-table-toggle').setAttribute('aria-expanded', String(tableOpen));
     const shown = new Set(tableColumns(state?.calculatedColumns ?? [], axisIds, importedColumns, state?.context).map(c => c.id));
     const hiddenFilters = tableColumns(state?.calculatedColumns ?? [], null, importedColumns, state?.context).filter(c => (axisIds !== null || !shown.has(c.id)) && columnFilterActive(state?.table.filter ?? {}, c.id)).length;
-    $('hidden-column-filters').hidden = !hiddenFilters; $('hidden-column-filters').textContent = '표 필터 ' + hiddenFilters + '개 적용 중 · 상단의 ‘표’ 보기에서 확인';
-    $('scope-count').textContent = '분석 포함 ' + number(summary?.includedCount ?? 0) + '개';
-    $('scope-detail').textContent = '제외 ' + number(summary?.excludedCount ?? 0) + '개';
+    $('hidden-column-filters').hidden = !hiddenFilters; $('hidden-column-filters').textContent = formatCopy(copy.analysis.hiddenFilters,{count:hiddenFilters});
+    $('scope-count').textContent = formatCopy(copy.analysis.includedCount,{count:number(summary?.includedCount ?? 0)});
+    $('scope-detail').textContent = formatCopy(copy.analysis.excludedCount,{count:number(summary?.excludedCount ?? 0)});
     const bounds = timeBounds(samples), elapsed = at => formatCalculated((at - bounds.origin) / 1000);
-    $('overview-title').textContent = samples.length && !bounds ? '자료 순서에 따른 변화' : '시간에 따른 변화';
-    $('overview-chart').setAttribute('aria-label', bounds ? '측정 항목의 시간 변화' : '자료 번호에 따른 측정값');
-    $('scope-time').textContent = state?.appliedScope === 'all' ? '전체 자료' : state?.analysisRange && bounds
-      ? elapsed(state.analysisRange.startAt) + '–' + elapsed(state.analysisRange.endAt) + '초' : '이전에 지정한 자료 ' + (summary?.candidateCount ?? 0) + '개';
+    $('overview-title').textContent = samples.length && !bounds ? copy.analysis.orderTitle : copy.analysis.timeTitle;
+    $('overview-chart').setAttribute('aria-label', bounds ? copy.accessibility.timeChart : copy.accessibility.orderChart);
+    $('scope-time').textContent = state?.appliedScope === 'all' ? copy.analysis.allData : state?.analysisRange && bounds
+      ? elapsed(state.analysisRange.startAt) + '–' + elapsed(state.analysisRange.endAt) + copy.analysis.seconds : formatCopy(copy.analysis.previousData,{count:summary?.candidateCount ?? 0});
     $('edit-analysis-range').disabled = !writable || !bounds;
     $('choose-range').disabled = !writable || !bounds;
     $('use-all-data').disabled = !writable || !samples.length;
     $('selection-toolbar').dataset.active = String(Boolean(summary?.selectedCount));
     $('selection-toolbar').inert = !summary?.selectedCount;
     if (!writable || (exclusionAnchor === $('exclude-selection') && !summary?.selectedCount)) closeExclusion();
-    $('selection-count').textContent = number(summary?.selectedCount ?? 0) + '개 선택';
+    $('selection-count').textContent = formatCopy(copy.analysis.selectedCount,{count:number(summary?.selectedCount ?? 0)});
     for (const id of ['exclude-selection', 'restore-selection', 'clear-selection']) $(id).disabled = !writable || !summary?.selectedCount;
     if ($('analyze-selection')) $('analyze-selection').disabled = !writable || !summary?.selectedCount;
     for (const [id, label] of [['undo-analysis', summary?.undoLabel], ['redo-analysis', summary?.redoLabel]]) {
-      $(id).disabled = !writable || !label; $(id).title = (id === 'undo-analysis' ? '되돌리기' : '다시 실행') + (label ? ': ' + label : '');
+      $(id).disabled = !writable || !label; $(id).title = (id === 'undo-analysis' ? copy.common.undo : copy.common.redo) + (label ? ': ' + label : '');
     }
     const all = $('select-all'), count = summary?.visibleSelectedCount ?? 0;
     all.checked = rows.length > 0 && count === rows.length; all.indeterminate = count > 0 && count < rows.length; all.disabled = !writable || !rows.length;
@@ -252,14 +256,14 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
       overview ??= createChartView($('overview-chart'), { inspect: true, context: state.context, onLayout: () => range.layout(), onCursor(sample, elapsedSeconds) {
         $('overview-readout').textContent = sample ? (Number.isFinite(elapsedSeconds) ? formatElapsedTime(elapsedSeconds) : '자료 ' + sample.sampleId + ' · 시각 정보 없음')
           + state.sourceColumns.filter(c => !['sampleId', 'receivedAt'].includes(c.id)).map(c => { const cell = readCell(sample, c.id); return ' · ' + c.name + ' ' + (cell.reason ?? formatCalculated(cell.value) + (c.unit ? ' ' + c.unit : '')); }).join('')
-          : '그래프 위에서 측정값을 확인할 수 있어요.';
+          : copy.analysis.cursorHint;
       } });
       const key = state.runId + ':' + state.tableLastSampleId;
       if (overviewKey !== key) {
         const untimed = samples.filter(sample => !Number.isFinite(sample.receivedAt)).length;
-        $('overview-readout').textContent = !bounds && samples.length ? '시각 정보가 없어 자료 번호 순서로 표시합니다.'
-          : untimed ? `시각 정보 없는 ${untimed}개는 시간 그래프에 표시하지 않습니다. 표에서 원자료를 확인할 수 있어요.`
-          : '그래프 위에서 같은 시점의 측정값을 확인할 수 있어요.';
+        $('overview-readout').textContent = !bounds && samples.length ? copy.analysis.untimed
+          : untimed ? formatCopy(copy.analysis.untimedCount,{count:untimed})
+          : copy.analysis.readout;
         overview.render(samples, 0, { range: 'all' }); overviewKey = key;
       }
       overview.resize(); range.layout();
@@ -273,11 +277,11 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   }
   function updateStatus() {
     reflection.updateStatus();
-    if (!workspace || !store) { $('analysis-message').textContent = '저장된 실험을 열거나 먼저 측정해 주세요.'; $('apply-new-data').hidden = true; return; }
+    if (!workspace || !store) { $('analysis-message').textContent = copy.analysis.noRun; $('apply-new-data').hidden = true; return; }
     const saved = store.getState(), loaded = workspace.getLoadedCount(), added = Math.max(0, saved.sampleCount - loaded);
-    $('analysis-message').textContent = '자료 ' + number(loaded) + '개' + (!saved.writable ? ' · 읽기 전용' : '');
-    $('analysis-message').title = '실험 전체 원자료 ' + number(saved.sampleCount) + '개 · 분석에 불러온 자료 ' + number(loaded) + '개';
-    $('apply-new-data').textContent = '새 자료 ' + number(added) + '개 반영'; $('apply-new-data').hidden = !added; $('apply-new-data').disabled = !saved.writable || !added;
+    $('analysis-message').textContent = formatCopy(copy.analysis.loaded,{count:number(loaded)}) + (!saved.writable ? ' · '+copy.common.readOnly : '');
+    $('analysis-message').title = formatCopy(copy.analysis.dataSummary,{total:number(saved.sampleCount),loaded:number(loaded)});
+    $('apply-new-data').textContent = formatCopy(copy.analysis.newData,{count:number(added)}); $('apply-new-data').hidden = !added; $('apply-new-data').disabled = !saved.writable || !added;
   }
   function reset() {
     clearTimeout(layoutTimer); layoutTimer = null;
@@ -285,10 +289,15 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     closeExclusion(); filters.close(); calculations.close(); graph.reset(); reflection.reset(); overview?.dispose(); overview = null; overviewKey = null; range.reset(); dismissToast();
   }
   return {
-    open(nextStore) {
+    open(nextStore, context = null) {
+      if (!nextStore && copyContext !== context) {
+        copyContext = context; copy = getLabCopy(context); applyLabCopy(root, copy);
+      }
       if (nextStore !== store) {
         reset(); store = nextStore; $('analysis-feedback').textContent = ''; $('exclusion-reason').value = '';
         try { if (store) workspace = createWorkspace({ store }); } catch (error) { onError('분석 작업을 열지 못했어요. ' + error.message); }
+        copyContext = workspace?.getState().context ?? context;
+        copy = getLabCopy(copyContext); applyLabCopy(root, copy);
         render({ resetScroll: true });
       } else render();
     },

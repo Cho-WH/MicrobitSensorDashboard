@@ -12,6 +12,10 @@ test('home has no selected context; sensor/activity links resolve independently 
     const actual=parseRoute(url,base);
     assert.ok(sameExperiment(expected,actual.context)); assert.equal(actual.screen,'prepare');
     assert.equal(parseRoute(new URL('index.html',url),base).context.sensor.id,entry.sensorId);
+    const preview=routeUrl(expected,'preview',{base});
+    assert.equal(preview.searchParams.get('view'),'preview');
+    assert.equal(parseRoute(preview,base).screen,'preview');
+    assert.ok(sameExperiment(parseRoute(preview,base).context,expected));
     const shell=renderEntry('<html><head></head></html>',entry);
     const relative=shell.match(/base href="([^"]+)"/)[1];
     assert.equal(new URL(relative,url).href,base.href);
@@ -22,6 +26,6 @@ test('navigation preserves trusted sensor/activity only and rejects unsupported 
   const analysis=routeUrl(context,'analysis',{base,mock:true});
   assert.equal(parseRoute(analysis,base).screen,'analysis'); assert.equal(analysis.searchParams.get('mock'),'1');
   assert.equal(parseRoute(routeUrl(context,'home',{base}),base).context,null);
-  for(const path of ['sensors/unknown/','lab.html?cfg=arbitrary','lab.html?view=unknown','../outside/','https://other.test/lab/']) assert.throws(()=>parseRoute(path,base));
+  for(const path of ['sensors/unknown/','lab.html?cfg=arbitrary','lab.html?view=preview','lab.html?view=unknown','../outside/','https://other.test/lab/']) assert.throws(()=>parseRoute(path,base));
   assert.ok(!sameExperiment(context,getExperiment('bmp280')));
 });

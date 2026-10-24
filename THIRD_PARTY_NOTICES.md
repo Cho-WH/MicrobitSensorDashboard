@@ -5,6 +5,16 @@ M1 ports code from `Cho-WH/bme280`, fixed commit
 under the user's explicit instruction to reuse the Gay-Lussac implementation.
 This app does not import a remote repository at runtime.
 
+The common device assets in `public/assets/devices/` reuse the pinned BMP280
+viewer's geometry, text and connector helpers. Its bundled Three.js r180 and
+OrbitControls now live in one shared `public/vendor/three-r180.js` ES module;
+the existing BMP280 scene is extracted into `public/viewers/bmp280/scene.js`.
+Three.js notices are preserved in `public/vendor/three-r180-LICENSE.txt`.
+The micro:bit rear details, USB cable and open 2×AAA battery holder are local
+additions/adaptations. Asset versions, source links and the upstream
+application-code license qualification are recorded in
+`public/assets/devices/README.md` and `manifest.json`.
+
 | Original `gay-lussac/` paths | Local paths | Adaptation |
 |---|---|---|
 | `data/contracts.js` | `src/domain/` | Supply channels from saved sensor context; preserve validation of calculations and graphs |

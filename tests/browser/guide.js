@@ -18,7 +18,23 @@ export async function runGuideTests(report = (_message) => {}) {
   const step = id => { const item=view.getProgress().steps.find(item=>item.id===id);check(item,`준비 단계 ${id} 없음`);$(`[data-guide-group="${item.group}"]`).click();const node=$(`[data-guide-step="${id}"]`);if(node.getClientRects().length)node.click(); };
   const click = id => { const node = $(`[data-guide-action="${id}"]`); check(node && !node.hidden && !node.disabled, `${id} 조작을 실행할 수 없음`); node.click(); };
   try {
-    view.open(getExperiment('magnetometer'));
+    let sharedSources;
+    for(const sensor of ['magnetometer','temperature','light-level','accelerometer']){
+      view.open(getExperiment(sensor),{reset:true});
+      const images=[...host.querySelectorAll('.equipment-illustrated img')];
+      check(images.length===3,`${sensor}: 준비물 이미지 누락`);
+      await Promise.all(images.map(image=>image.decode()));
+      check(images.every(image=>image.naturalWidth>0&&image.alt),`${sensor}: 장치 이미지 또는 대체 설명 누락`);
+      const sources=images.map(image=>image.src);
+      if(sharedSources)check(JSON.stringify(sources)===JSON.stringify(sharedSources),'내장 센서가 서로 다른 장치 이미지를 사용합니다.');
+      sharedSources=sources;
+      step('usb');check($('.guide-usb-image')?.src===sources[1],'USB 안내가 준비물 자산을 재사용하지 않습니다.');
+      step('connection');check(!$('.guide-power').hidden&&$('.guide-power img').src===sources[2],'연결 단계의 배터리 안내 누락');
+      $('.guide-power summary').click();check($('.guide-power').open,'배터리 안내를 펼칠 수 없습니다.');
+      check(!$('canvas')&&!$('iframe').getAttribute('src'),'정지 이미지 안내에서 3D가 실행됩니다.');
+    }
+    report('내장 센서 4종 · 준비물/USB/배터리 정지 이미지 재사용과 로딩');
+    view.open(getExperiment('magnetometer'),{reset:true});
     const facts={attemptId:'mag-1',connected:true,canInstall:true,canConnect:true};
     const showPhase=(phase,calibration='unknown',receptionReady=false)=>view.render({...facts,calibration,receptionReady,devicePreparation:{phase,calibration,allowReadings:phase==='receiving'}});
     showPhase('handshake');step('connection');
@@ -58,10 +74,16 @@ export async function runGuideTests(report = (_message) => {}) {
     report('실제 준비 UI · 자기장 보정 근거·새 연결 무효화·연결 취소·응답 시간 초과 안내와 재연결');
 
     view.open(getExperiment('bmp280'), { reset: true });
+    const bmpImages=[...host.querySelectorAll('.equipment-illustrated img')];
+    await Promise.all(bmpImages.map(image=>image.decode()));
+    check(bmpImages.length===5&&bmpImages[0].src===sharedSources[0]&&bmpImages[4].src===sharedSources[1],
+      'BMP280 준비물에 전용 장치 그림이 빠지거나 공통 본체·USB 자산을 재사용하지 않습니다.');
+    check($('.guide-power').hidden&&!$('iframe').getAttribute('src'),'BMP280 준비물에서 연결 안내 또는 3D가 실행됩니다.');
     view.render({ attemptId: 'bmp-1', connected: false, receptionReady: false, canInstall: true,
       programmerState: { status: 'error', message: 'USB 전송을 마치지 못했어요.', progress: null } });
     check(!view.getProgress().observations.programUserConfirmed, '새 준비가 이전 프로그램 확인을 복원했습니다.');
     step('program'); check($('.guide-device-status').textContent.includes('마치지'), 'USB 실패 원인을 표시하지 않았습니다.');
+    check($('.guide-usb-image')?.src===sharedSources[1],'BMP280 프로그램 안내의 공통 USB 그림 누락');
     click('install'); check(installs === 1, 'USB 재시도 콜백이 실행되지 않았습니다.');
     view.render({ attemptId: 'bmp-1', connected: false, busy: true, programmerState: { status: 'flashing', progress: 42, message: '프로그램 설치 중', deviceName: 'micro:bit V2' } });
     check($('.guide-device-status').textContent.includes('42%'), 'USB 진행률을 표시하지 않았습니다.');

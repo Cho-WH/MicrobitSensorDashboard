@@ -26,13 +26,17 @@ Node.js 24.18 이상, 25 미만을 사용합니다.
 ```sh
 npm ci
 npm run dev
-npm run typecheck
-npm test
-npm run build
 ```
 
 `npm run dev`의 기본 주소는 `http://localhost:8080/`입니다.
-브라우저 검사는 `/tests/browser/`에서 실행합니다. 정적 빌드 결과는 `dist/`에 생성됩니다.
+작업 중에는 변경의 영향을 받는 검사만 실행합니다. 예를 들어 경로 처리를 수정하면
+`node --test tests/unit/routes.test.mjs`, 탐색 흐름을 수정하면
+`/tests/browser/?suite=navigation`에서 해당 검사를 실행합니다.
+타입 검사는 타입·의존성 변경 시, 빌드는 빌드 산출물에 영향이 있을 때 실행합니다.
+
+커밋 직전에만 `npm run typecheck`, `npm test`, `npm run build`와
+`/tests/browser/`의 전체 브라우저 검사를 실행합니다.
+정적 빌드 결과는 `dist/`에 생성됩니다. 자세한 검사 원칙은 [AGENTS.md](AGENTS.md)를 따릅니다.
 
 GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위 검사·빌드가 성공한 뒤
 `dist/`를 배포합니다. 저장소 Settings → Pages의 Source는 **GitHub Actions**를 사용합니다.
@@ -44,6 +48,7 @@ GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위
 - [기획](docs/unified-sensor-lab-plan.md) · [기술 설계](docs/unified-sensor-lab-architecture.md)
 - [M2 구현·검증 범위](docs/m2-implementation.md) · [실기기 확인 기록](docs/hardware-acceptance-2026-10-19.md)
 - [센서·활동 모듈 등록](src/catalog/README.md)
+- [공통 장치 3D 자산](public/assets/devices/README.md) · [장치 자산 확인 페이지](public/viewers/devices/index.html)
 - [펌웨어 빌드·프로토콜](dev/firmware/README.md)
 - [저장·파일 계약](docs/m1-implementation.md)
 

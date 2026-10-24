@@ -3,6 +3,7 @@ import { createChartView } from './chart-view.js';
 import { readCell } from '../domain/columns.js';
 import { element, findElement } from './dom.js';
 import { setText } from './text.js';
+import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 
 /** @param {ParentNode} root @param {()=>void} onChange */
 export function createMeasurementView(root,onChange) {
@@ -13,11 +14,14 @@ export function createMeasurementView(root,onChange) {
   reception.replaceChildren(receptionState,receptionTime);
   let contentAbort=new AbortController();
   let context=null, selected=new Set(), chart=null, chartKey='', runId=null, rows=[], events=[], eventCount=-1;
+  let copy = getLabCopy(null);
   range.addEventListener('change',onChange,{signal:abort.signal});
   function configure(next) {
     if(context===next)return;
     contentAbort.abort();contentAbort=new AbortController();
     context=next;chart?.dispose();chart=null;chartKey='';runId=null;rows=[];events=[];eventCount=-1;range.value='recent';
+    copy = getLabCopy(next);
+    applyLabCopy(root.querySelector('[data-screen="measure"]') ?? root, copy);
     const defaults=next.classConfig?.presentation?.visibleChannelIds??next.sensor?.defaultVisibleChannelIds??next.channels.map(channel=>channel.id);
     selected=new Set(defaults.filter(id=>next.channels.some(channel=>channel.id===id)));
     if(!selected.size&&next.channels.length)selected.add(next.channels[0].id);
@@ -48,8 +52,8 @@ export function createMeasurementView(root,onChange) {
       const fresh=device.status==='connected'&&device.confirmed;
       reception.dataset.fresh=String(fresh);
       const received=latest?.receivedAt??store?.getLatestSample()?.receivedAt;
-      setText(receptionState,fresh?'새 값 수신 중':device.status==='connecting'?'연결 중':device.status==='connected'?'수신 확인 필요':stored?'보관한 측정값':'수신 대기');
-      setText(receptionTime,received?'마지막 수신 '+new Date(received).toLocaleTimeString('ko-KR',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}):'');
+      setText(receptionState,fresh?copy.common.fresh:device.status==='connecting'?copy.common.connecting:device.status==='connected'?copy.common.checkReception:stored?copy.measurement.storedValues:copy.measurement.waiting);
+      setText(receptionTime,received?formatCopy(copy.common.lastReceived,{time:new Date(received).toLocaleTimeString('ko-KR',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})}):'');
       const id=saved?.id??null;
       if(id!==runId){runId=id;rows=[];events=[];eventCount=-1;}
       if(stored&&saved.lastSampleId!==(rows.at(-1)?.sampleId??0))rows.push(...store.readSamples({afterId:rows.at(-1)?.sampleId??0}));
@@ -59,8 +63,13 @@ export function createMeasurementView(root,onChange) {
       const channels=next.channels.filter(channel=>selected.has(channel.id)), key=channels.map(channel=>channel.id).join('|');
       if(chartKey!==key||!chart){chart?.dispose();chart=createChartView(findElement(root,'canvas','#live-chart'),{context:next,channels,legendToggle:false});chartKey=key;}
       chart.render(points,performance.now(),{range:range.value,events,origin:source[0]?.receivedAt,nowUtc:end});
-      chartSummary.textContent=`${range.value==='all'?'전체':'최근 60초'} · ${points.length.toLocaleString('ko-KR')}개 표시`;
-      range.querySelector('option[value="all"]').textContent=stored?'전체 기록':'전체 미리보기';
+      chartSummary.textContent=formatCopy(copy.measurement.chartSummary,{range:range.value==='all'?copy.measurement.all:copy.measurement.recent,count:points.length.toLocaleString('ko-KR')});
+      range.querySelector('option[value="all"]').textContent=stored?copy.measurement.allRecords:copy.measurement.allPreview;
+    },
+    reset(){
+      contentAbort.abort();chart?.dispose();chart=null;context=null;chartKey='';runId=null;
+      rows=[];events=[];eventCount=-1;selected.clear();fields.replaceChildren();cards.replaceChildren();
+      chartSummary.textContent='';receptionState.textContent='';receptionTime.textContent='';
     },
     dispose(){abort.abort();contentAbort.abort();chart?.dispose();},
   };

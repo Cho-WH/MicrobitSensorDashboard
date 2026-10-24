@@ -6,10 +6,11 @@ import { createViewerAdapter } from '../guide/viewer-adapter.js';
 import { createGuideLayout } from './guide-layout.js';
 import { createActionHelp } from './action-help.js';
 import { element, findElement } from './dom.js';
+import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 
-const provenance = { 'user-confirmed': '직접 확인했어요', 'device-observed': '장치에서 확인했어요', 'device-reported': '장치가 보정 완료를 알렸어요', simulated: '모의 수신으로 확인했어요' };
 /** @param {HTMLElement} host @param {import('../guide/types.js').GuideCallbacks} callbacks */
 export function createGuideView(host, callbacks = {}) {
+  let labels = getLabCopy(null);
   /** @type {import('../guide/types.js').ExperimentContext} */ let context;
   /** @type {import('../guide/types.js').GuideFacts} */ let facts = {};
   /** @type {ReturnType<typeof createGuideProgress>} */ let progress;
@@ -21,30 +22,31 @@ export function createGuideView(host, callbacks = {}) {
   let content = getGuideContent(null), contentAbort = new AbortController();
   const abort = new AbortController(), shell = element('section', 'guide');
   shell.innerHTML = `
-    <div class="guide-top"><p class="guide-status" role="status"></p><button type="button" class="quiet-button" data-guide-action="quick">이미 장치가 준비되어 있나요?</button></div>
-    <ol class="guide-progress" aria-label="장비 준비 단계"></ol>
+    <div class="guide-top"><p class="guide-status" role="status"></p><button type="button" class="quiet-button" data-guide-action="quick" data-copy="guide.quick"></button></div>
+    <ol class="guide-progress" data-copy-aria-label="accessibility.guideSteps"></ol>
     <div class="guide-layout">
-      <section class="guide-visual" aria-label="현재 단계의 준비 안내">
+      <section class="guide-visual" data-copy-aria-label="accessibility.guideVisual">
         <div class="guide-equipment"></div>
         <div class="guide-model" hidden>
-          <div class="model-toolbar"><div class="viewer-modes" role="group" aria-label="배선 보기 방식"></div><a class="viewer-large" target="_blank" rel="noopener">크게 보기 ↗</a></div>
-          <div class="wiring-view-controls" role="group" aria-label="케이블 종류와 관찰 시점"></div>
+          <div class="model-toolbar"><div class="viewer-modes" role="group" data-copy-aria-label="accessibility.wiringModes"></div><a class="viewer-large" target="_blank" rel="noopener" data-copy="guide.large"></a></div>
+          <div class="wiring-view-controls" role="group" data-copy-aria-label="accessibility.wiringControls"></div>
           <p class="guide-model-status" role="status"></p>
           <iframe class="guide-frame viewer-pending" title="배선 3D 안내" hidden></iframe>
-          <div class="guide-table-panel" hidden><table class="guide-wiring"><caption></caption><thead><tr><th scope="col">역할</th><th scope="col" data-wiring-board></th><th scope="col" data-wiring-sensor></th></tr></thead><tbody></tbody></table><p>보드의 단자 이름을 비교하세요. 전원을 분리한 상태에서 배선합니다.</p></div>
+          <div class="guide-table-panel" hidden><table class="guide-wiring"><caption></caption><thead><tr><th scope="col" data-copy="guide.wireRole"></th><th scope="col" data-wiring-board></th><th scope="col" data-wiring-sensor></th></tr></thead><tbody></tbody></table><p data-copy="guide.wiringNote"></p></div>
         </div>
         <figure class="guide-placement" hidden><img alt=""><figcaption></figcaption></figure>
         <div class="guide-device-visual" hidden></div>
         <div class="guide-sensor-preparation" hidden></div>
-        <div class="guide-reception" hidden><p class="eyebrow">지금 들어오는 값</p><div class="guide-values"></div><p class="guide-last-received"></p><ol class="guide-checks"></ol><ol class="calibration-instructions" hidden></ol></div>
-        <div class="guide-summary" hidden><p class="eyebrow">기록 전 마지막 확인</p><h3>준비 상태를 한눈에 확인해요</h3><ul></ul></div>
+        <div class="guide-reception" hidden><p class="eyebrow" data-copy="guide.incoming"></p><div class="guide-values"></div><p class="guide-last-received"></p><ol class="guide-checks"></ol><ol class="calibration-instructions" hidden></ol></div>
+        <details class="guide-power" hidden><summary data-copy="guide.powerHeading"></summary><figure class="guide-device-image"><img alt="" loading="lazy" decoding="async" width="1440" height="900"><figcaption data-copy="guide.powerNote"></figcaption></figure></details>
+        <div class="guide-summary" hidden><p class="eyebrow" data-copy="guide.lastCheck"></p><h3 data-copy="guide.summaryTitle"></h3><ul></ul></div>
       </section>
-      <section class="step-panel" aria-label="단계 설명과 확인">
-        <ol class="guide-substeps" aria-label="현재 단계의 세부 순서"></ol>
+      <section class="step-panel" data-copy-aria-label="accessibility.guideDescription">
+        <ol class="guide-substeps" data-copy-aria-label="accessibility.guideSubsteps"></ol>
         <div class="step-content"><p class="step-counter"></p><h3 class="step-title" tabindex="-1"></h3><p class="step-description"></p></div>
         <p class="guide-evidence"></p>
-        <div class="guide-quick" hidden><p>실제로 준비한 항목만 확인해 주세요. 연결·수신·보정은 이어서 검사합니다.</p><div></div></div>
-        <div class="guide-program" hidden><strong>프로그램 설치</strong><p class="guide-device-status" role="status"></p><progress max="100" aria-label="프로그램 설치 진행률" hidden></progress><div class="guide-program-actions"></div></div>
+        <div class="guide-quick" hidden><p data-copy="guide.quickNote"></p><div></div></div>
+        <div class="guide-program" hidden><strong data-copy="guide.program"></strong><p class="guide-device-status" role="status"></p><progress max="100" data-copy-aria-label="accessibility.installProgress" hidden></progress><div class="guide-program-actions"></div></div>
         <p class="guide-connection-status" role="status"></p>
         <div class="guide-device-actions"></div><div class="step-actions"></div><p class="guide-note"></p>
         <details class="wiring-note" hidden><summary></summary><p></p></details>
@@ -61,6 +63,7 @@ export function createGuideView(host, callbacks = {}) {
   const placement = findElement(shell,'figure','.guide-placement'), deviceVisual = findElement(shell,'div','.guide-device-visual');
   const preparationHost = findElement(shell,'div','.guide-sensor-preparation');
   const reception = findElement(shell,'div','.guide-reception'), values = findElement(shell,'div','.guide-values');
+  const power = findElement(shell,'details','.guide-power');
   const summary = findElement(shell,'div','.guide-summary'), quickPanel = findElement(shell,'div','.guide-quick');
   const program = findElement(shell,'div','.guide-program'), deviceNotice = findElement(shell,'p','.guide-device-status');
   const connectionNotice = findElement(shell,'p','.guide-connection-status'), bar = findElement(shell,'progress','progress');
@@ -91,35 +94,35 @@ export function createGuideView(host, callbacks = {}) {
     select(steps[index+1]?.id ?? 'summary');
   }
   const actions=findElement(shell,'div','.step-actions'), deviceActions=findElement(shell,'div','.guide-device-actions');
-  button('previous','← 이전',()=>{
+  button('previous',labels.guide.previous,()=>{
     const steps=progress.getState().steps, index=steps.findIndex(step=>step.id===selectedId);
     select(steps[index<0 ? steps.length-1 : Math.max(0,index-1)].id);
   },actions);
-  button('confirm','확인했어요',()=>{ if (!locked() && progress.confirm(selectedId)) {callbacks.onChange?.(progress.getState()); next();} },actions,'primary');
-  button('next','다음 단계 →',next,actions,'primary');
-  button('measure','측정 화면으로 →',()=>callbacks.onMeasure?.(),actions,'primary');
-  button('quick-confirm','확인하고 연결하기 →',()=>{
+  button('confirm',labels.guide.confirm,()=>{ if (!locked() && progress.confirm(selectedId)) {callbacks.onChange?.(progress.getState()); next();} },actions,'primary');
+  button('next',labels.guide.next,next,actions,'primary');
+  button('measure',labels.guide.measure,()=>callbacks.onMeasure?.(),actions,'primary');
+  button('quick-confirm',labels.guide.quickConfirm,()=>{
     if (locked() || [...quickChecks.values()].some(input=>!input.checked)) return;
     for (const id of quickChecks.keys()) progress.confirm(id);
     callbacks.onChange?.(progress.getState()); select('connection');
   },actions,'primary');
   const programActions=findElement(shell,'div','.guide-program-actions');
-  button('install','USB로 프로그램 설치',()=>callbacks.onInstall?.(),programActions,'primary');
-  button('program-confirm','이미 올바른 프로그램이 있어요',()=>{
+  button('install',labels.guide.install,()=>callbacks.onInstall?.(),programActions,'primary');
+  button('program-confirm',labels.guide.programConfirm,()=>{
     if (!locked() && progress.confirm('program')) {callbacks.onChange?.(progress.getState()); next();}
   },programActions,'quiet-button');
-  button('connect','micro:bit 연결',()=>callbacks.onConnect?.({reuseDevice:false}),deviceActions,'primary');
-  button('reconnect','이전 장치에 다시 연결',()=>callbacks.onConnect?.({reuseDevice:true}),deviceActions,'primary');
-  button('disconnect','연결 해제',()=>callbacks.onDisconnect?.(),deviceActions);
-  button('battery','USB를 분리했어요 · 수신 검사',()=>{if (!locked() && progress.beginBatteryCheck()) changed();},deviceActions,'primary');
+  button('connect',labels.common.connect,()=>callbacks.onConnect?.({reuseDevice:false}),deviceActions,'primary');
+  button('reconnect',labels.common.reconnect,()=>callbacks.onConnect?.({reuseDevice:true}),deviceActions,'primary');
+  button('disconnect',labels.common.disconnect,()=>callbacks.onDisconnect?.(),deviceActions);
+  button('battery',labels.guide.battery,()=>{if (!locked() && progress.beginBatteryCheck()) changed();},deviceActions,'primary');
   const modes=findElement(shell,'div','.viewer-modes');
-  button('model','3D 보기',()=>{mode='3d'; loadViewer(); paintViewer();},modes);
-  button('table','배선표 보기',()=>{mode='table'; paintViewer();},modes);
-  button('retry-model','3D 다시 열기',()=>{viewer?.dispose(); viewer=null; frame.removeAttribute('src'); delete frame.dataset.step; mode='3d'; loadViewer(); paintViewer();},modes);
-  button('left','수–암',()=>viewer?.setCableSide('left'),controls);
-  button('right','암–암',()=>viewer?.setCableSide('right'),controls);
-  button('detail','단자 자세히',()=>viewer?.toggleDetail(),controls);
-  button('restore','↺ 시점 복귀',()=>viewer?.restoreStep(),controls);
+  button('model',labels.guide.model,()=>{mode='3d'; loadViewer(); paintViewer();},modes);
+  button('table',labels.guide.table,()=>{mode='table'; paintViewer();},modes);
+  button('retry-model',labels.guide.retryModel,()=>{viewer?.dispose(); viewer=null; frame.removeAttribute('src'); delete frame.dataset.step; mode='3d'; loadViewer(); paintViewer();},modes);
+  button('left',labels.guide.cableLeft,()=>viewer?.setCableSide('left'),controls);
+  button('right',labels.guide.cableRight,()=>viewer?.setCableSide('right'),controls);
+  button('detail',labels.guide.detail,()=>viewer?.toggleDetail(),controls);
+  button('restore',labels.guide.restore,()=>viewer?.restoreStep(),controls);
   const cableHelp=element('button','help-trigger','?'); cableHelp.type='button'; cableHelp.dataset.actionHelp='cable'; cableHelp.setAttribute('aria-label','케이블 끝 모양 도움말'); controls.append(cableHelp);
   const quickButton=findElement(shell,'button','[data-guide-action="quick"]');
   quickButton.addEventListener('click',()=>{if (!locked()) {quick=!quick; selectedId=quick?'quick':'equipment'; paint(); title.focus({preventScroll:true});}},{signal:abort.signal});
@@ -129,7 +132,7 @@ export function createGuideView(host, callbacks = {}) {
       viewerState=state; model.dataset.viewerState=state;
       frame.classList.toggle('viewer-pending',!detail.hasAppliedState);
       buttons.get('detail').setAttribute('aria-pressed',String(detail.detail));
-      buttons.get('detail').textContent=detail.detail?'전체 보기':'단자 자세히';
+      buttons.get('detail').textContent=detail.detail?labels.guide.whole:labels.guide.detail;
       for (const side of ['left','right']) buttons.get(side).setAttribute('aria-pressed',String(detail.side===side));
       if (state==='unavailable') mode='table';
       paintViewer();
@@ -146,12 +149,18 @@ export function createGuideView(host, callbacks = {}) {
     for (const id of ['left','right','detail']) buttons.get(id).hidden=!wire;
     for (const id of ['left','right','detail','restore']) buttons.get(id).disabled=viewerState!=='applied';
     modelStatus.hidden=viewerState==='applied'||viewerState==='idle';
-    setText(modelStatus,viewerState==='unavailable'?'3D를 열지 못했어요. 배선표로 계속 준비할 수 있어요.':'3D 안내를 불러오는 중…');
+    setText(modelStatus,viewerState==='unavailable'?labels.guide.modelUnavailable:labels.guide.modelLoading);
     for (const row of tableBody.querySelectorAll('tr')) {
       row.classList.toggle('is-current',row.dataset.wire===wire); row.querySelector('small').hidden=row.dataset.wire!==wire;
     }
   }
   function buildContent() {
+    applyLabCopy(shell, labels);
+    const buttonLabels = {previous:labels.guide.previous,confirm:labels.guide.confirm,next:labels.guide.next,measure:labels.guide.measure,
+      'quick-confirm':labels.guide.quickConfirm,install:labels.guide.install,'program-confirm':labels.guide.programConfirm,
+      connect:labels.common.connect,reconnect:labels.common.reconnect,disconnect:labels.common.disconnect,battery:labels.guide.battery,
+      model:labels.guide.model,table:labels.guide.table,'retry-model':labels.guide.retryModel,left:labels.guide.cableLeft,right:labels.guide.cableRight,detail:labels.guide.detail,restore:labels.guide.restore};
+    for (const [id, label] of Object.entries(buttonLabels)) setText(buttons.get(id), label);
     preparationView?.dispose(); suggestion=''; preparationHost.hidden=true;
     preparationView=getSensorPreparation(context)?.createView(preparationHost,{onAction:action=>run(()=>callbacks.onDeviceAction?.(action))})??null;
     help?.dispose(); layout?.dispose(); contentAbort.abort(); contentAbort=new AbortController();
@@ -173,7 +182,7 @@ export function createGuideView(host, callbacks = {}) {
         node.addEventListener('click',()=>select(step.id),{signal}); item.append(node); nav.append(item); groupButtons.set(step.group,node);
       }
       const item=element('li'), node=element('button'); node.type='button'; node.dataset.guideStep=step.id;
-      node.textContent=step.model?.wire ? content.wiring.find(wire=>wire.id===step.id)?.role : ({usb:'USB 연결',program:'설치',connection:'연결',reception:'수신 확인',calibration:'보정 확인'}[step.id]??step.groupLabel);
+      node.textContent=step.model?.wire ? content.wiring.find(wire=>wire.id===step.id)?.role : ({usb:labels.guide.usbLabel,program:labels.guide.programLabel,connection:labels.guide.connectionLabel,reception:labels.guide.receptionLabel,calibration:labels.guide.calibrationLabel}[step.id]??step.groupLabel);
       node.addEventListener('click',()=>select(step.id),{signal}); item.append(node); subnav.append(item); stepButtons.set(step.id,node);
     }
     for (const track of [nav,subnav]) track.addEventListener('keydown',event=>{
@@ -183,12 +192,21 @@ export function createGuideView(host, callbacks = {}) {
       if(index===null||current<0)return;event.preventDefault();items[index].click();items[index].focus();items[index].scrollIntoView({block:'nearest',inline:'nearest'});
     },{signal});
     const messages={}; equipment.replaceChildren();
-    for (const {label,items} of [{label:'측정 장치',items:content.equipment},{label:'실험 도구',items:content.activityEquipment}]) {
+    deviceVisual.replaceChildren(); power.open=false;
+    const powerImage=findElement(power,'img','img');
+    if(content.illustrations){powerImage.src=content.illustrations.battery.src;powerImage.alt=content.illustrations.battery.alt;}
+    else {powerImage.removeAttribute('src');powerImage.alt='';}
+    for (const {label,items} of [{label:labels.guide.deviceEquipment,items:content.equipment},{label:labels.guide.activityEquipment,items:content.activityEquipment}]) {
       if (!items.length) continue;
       const section=element('section','equipment-section'); section.append(element('h4','',label));
       const list=element('ul','equipment-list');
       for (const item of items) {
         const li=element('li'), name=element('span','',item.name), helpButton=element('button','help-trigger','?');
+        const illustration=items===content.equipment?content.illustrations?.equipment[item.id]:null;
+        if(illustration){
+          const img=element('img');img.src=illustration.src;img.alt=illustration.alt;img.width=1440;img.height=900;img.decoding='async';
+          li.classList.add('equipment-illustrated');li.append(img);
+        }
         const key='equipment-'+item.id; messages[key]={label:item.name,text:item.help};
         helpButton.type='button'; helpButton.dataset.actionHelp=key; helpButton.setAttribute('aria-label',item.name+' 준비 안내');
         li.append(name,helpButton); list.append(li);
@@ -198,7 +216,7 @@ export function createGuideView(host, callbacks = {}) {
     tableBody.replaceChildren();
     for (const wire of content.wiring) {
       const row=element('tr'); row.dataset.wire=wire.id;
-      const heading=element('th','',wire.role); heading.scope='row'; heading.append(element('small','','현재 단계'));
+      const heading=element('th','',wire.role); heading.scope='row'; heading.append(element('small','',labels.guide.currentStep));
       row.append(heading,element('td','',wire.board),element('td','',wire.sensor)); tableBody.append(row);
     }
     if (content.setupImage) {
@@ -213,7 +231,7 @@ export function createGuideView(host, callbacks = {}) {
     const quickFields=findElement(quickPanel,'div','div'); quickFields.replaceChildren();
     for (const step of steps.filter(item=>item.quickConfirm)) {
       const label=element('label'), input=element('input'); input.type='checkbox'; input.dataset.quickConfirm=step.id; input.checked=step.complete;
-      input.addEventListener('change',paint,{signal}); label.append(input,element('span','',step.id==='program'?'이 센서에 맞는 프로그램이 설치되어 있어요':step.title)); quickFields.append(label); quickChecks.set(step.id,input);
+      input.addEventListener('change',paint,{signal}); label.append(input,element('span','',step.id==='program'?labels.guide.installed:step.title)); quickFields.append(label); quickChecks.set(step.id,input);
     }
     messages.cable={label:'케이블 끝 모양',text:content.cableHelp};
     help=createActionHelp(shell,{messages});
@@ -234,9 +252,9 @@ export function createGuideView(host, callbacks = {}) {
     const leavingPanel=managed&&!presentation.hideValues&&preparationHost.contains(document.activeElement);
     preparationView?.render(facts,managed);
     const index=steps.findIndex(item=>item.id===selectedId), required=steps.filter(item=>item.required), completed=required.filter(item=>item.complete).length;
-    setText(status,`${facts.mock?'모의 장치 · ':''}${state.ready?'준비 완료':state.canMeasure?'수신 확인 · 측정 가능':'준비 확인 '+completed+' / '+required.length}`);
+    setText(status,`${facts.mock?labels.guide.mockPrefix:''}${state.ready?labels.guide.ready:state.canMeasure?labels.guide.canMeasure:formatCopy(labels.guide.progress,{count:completed,total:required.length})}`);
     shell.dataset.mode=quick?'quick':isSummary?'summary':step?.group??'';
-    quickButton.hidden=isSummary; quickButton.disabled=locked(); quickButton.textContent=quick?'처음부터 준비하기':'이미 장치가 준비되어 있나요?';
+    quickButton.hidden=isSummary; quickButton.disabled=locked(); quickButton.textContent=quick?labels.guide.restart:labels.guide.quick;
     for (const [group,node] of groupButtons) {
       const members=steps.filter(item=>item.group===group&&item.required), done=members.every(item=>item.complete);
       node.dataset.complete=String(done); node.classList.toggle('completed',done); node.disabled=Boolean(facts.programmerState?.busy);
@@ -249,19 +267,28 @@ export function createGuideView(host, callbacks = {}) {
       if (item.id===selectedId) node.setAttribute('aria-current','step'); else node.removeAttribute('aria-current');
     }
     subnav.hidden=quick||isSummary||steps.filter(item=>item.group===step?.group).length<2;
-    setText(title,quick?'준비된 장치를 확인해요':isSummary?state.canMeasure?'이제 측정을 시작해 볼까요?':'연결과 수신을 확인해요':(managed?presentation.title:step?.title)??'장비 준비');
-    setText(description,quick?'현재 장치의 준비 상태를 확인하고 연결하세요.':isSummary?'측정 화면에서 기록 시작을 눌러야 실험 자료가 저장됩니다.':(managed?presentation.description:step?.description)??'');
+    setText(title,quick?labels.guide.quickTitle:isSummary?state.canMeasure?labels.guide.readyTitle:labels.guide.receptionTitle:(managed?presentation.title:step?.title)??labels.navigation.prepare);
+    setText(description,quick?labels.guide.quickDescription:isSummary?labels.guide.summaryDescription:(managed?presentation.description:step?.description)??'');
     if(leavingPanel)title.focus({preventScroll:true});
     const groupIndex=[...groupButtons.keys()].indexOf(step?.group);
-    setText(findElement(copy,'p','.step-counter'),quick?'준비된 장치':isSummary?'준비 결과':`${String(groupIndex+1).padStart(2,'0')} / ${String(groupButtons.size).padStart(2,'0')} · ${step?.groupLabel}`);
-    setText(evidence,step?.complete?'✓ '+(provenance[step.evidence]??'확인했어요'):'');
+    setText(findElement(copy,'p','.step-counter'),quick?labels.guide.quickCounter:isSummary?labels.guide.summaryCounter:`${String(groupIndex+1).padStart(2,'0')} / ${String(groupButtons.size).padStart(2,'0')} · ${step?.groupLabel}`);
+    const provenance = { 'user-confirmed': labels.guide.userConfirmed, 'device-observed': labels.guide.deviceObserved, 'device-reported': labels.guide.deviceReported, simulated: labels.guide.simulated };
+    setText(evidence,step?.complete?'✓ '+(provenance[step.evidence]??labels.guide.confirm):'');
     equipment.hidden=!quick&&step?.id!=='equipment';
     model.hidden=quick||isSummary||!content.viewer||!content.wiring.length||step?.group!=='wiring';
     placement.hidden=quick||step?.id!=='placement'||!content.setupImage;
     const connectionStep=!quick&&!isSummary&&['connection','calibration','reception','battery'].includes(step?.kind);
     reception.hidden=!connectionStep||Boolean(managed&&presentation.hideValues);
+    power.hidden=!content.illustrations||quick||isSummary||!['connection','reception','battery'].includes(step?.kind);
     deviceVisual.hidden=quick||isSummary||!model.hidden||!['usb','program'].includes(step?.id);
-    if (!deviceVisual.hidden&&!deviceVisual.childElementCount) deviceVisual.innerHTML='<p class="eyebrow">프로그램을 넣을 때</p>'+'<div class="usb-diagram"><span>컴퓨터</span><span aria-hidden="true">⟷</span><strong>micro:bit V2</strong></div><h4>USB 데이터 케이블로 연결해요</h4><p>충전 전용 케이블로는 설치할 수 없어요.<br>설치가 끝날 때까지 케이블을 꽂아 두세요.</p><small>측정값은 다음 단계에서 Bluetooth로 받습니다.</small>';
+    if (!deviceVisual.hidden&&!deviceVisual.childElementCount) {
+      deviceVisual.innerHTML='<p class="eyebrow" data-copy="guide.usbEyebrow"></p><div class="usb-diagram"><span data-copy="guide.computer"></span><span aria-hidden="true">⟷</span><strong>micro:bit V2</strong></div><h4 data-copy="guide.usbHeading"></h4><p data-copy="guide.usbNote"></p><small data-copy="guide.usbWireless"></small>';
+      applyLabCopy(deviceVisual, labels);
+      if(content.illustrations){
+        const img=element('img','guide-usb-image');img.src=content.illustrations.usb.src;img.alt=content.illustrations.usb.alt;img.width=1440;img.height=900;img.decoding='async';
+        deviceVisual.querySelector('.usb-diagram').replaceWith(img);
+      }
+    }
     if (!model.hidden&&mode==='3d') loadViewer(); paintViewer();
     if (!reception.hidden) {
       for (const channel of context.channels) {
@@ -269,8 +296,8 @@ export function createGuideView(host, callbacks = {}) {
         setText(values.querySelector(`[data-channel="${channel.id}"]`),valid&&Number.isFinite(value)?value.toLocaleString('ko-KR',{maximumFractionDigits:channel.digits??2}):'—');
       }
       reception.dataset.fresh=String(facts.receptionReady===true);
-      setText(findElement(reception,'p','.guide-last-received'),facts.receivedAt?`${facts.receptionReady?'새 값 수신 중':'수신 확인 필요'} · 마지막 수신 ${new Date(facts.receivedAt).toLocaleTimeString('ko-KR',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:'아직 받은 값이 없어요.');
-      const checks=findElement(reception,'ol','.guide-checks'), checksText=[['무선 연결',Boolean(facts.connected)],['새 값 연속 수신',Boolean(facts.receptionReady)],...(content.calibrationInstructions.length?[['보정 직접 확인',state.observations.calibration!=='unknown']]:[]),...(step?.kind==='battery'?[['USB 분리 후 수신',step.complete]]:[])];
+      setText(findElement(reception,'p','.guide-last-received'),facts.receivedAt?`${facts.receptionReady?labels.common.fresh:labels.common.checkReception} · ${formatCopy(labels.common.lastReceived,{time:new Date(facts.receivedAt).toLocaleTimeString('ko-KR',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})})}`:labels.guide.noReading);
+      const checks=findElement(reception,'ol','.guide-checks'), checksText=[[labels.guide.wireless,Boolean(facts.connected)],[labels.guide.continuous,Boolean(facts.receptionReady)],...(content.calibrationInstructions.length?[[labels.guide.calibration,state.observations.calibration!=='unknown']]:[]),...(step?.kind==='battery'?[[labels.guide.batteryCheck,step.complete]]:[])];
       const signature=JSON.stringify(checksText);
       if (checks.dataset.signature!==signature) {checks.dataset.signature=signature; checks.replaceChildren(...checksText.map(([label,done])=>element('li',done?'complete':'',`${done?'✓':'○'} ${label}`)));}
       findElement(reception,'ol','.calibration-instructions').hidden=!['calibration','reception'].includes(step?.kind)||!content.calibrationInstructions.length;
@@ -280,7 +307,7 @@ export function createGuideView(host, callbacks = {}) {
     if (isSummary&&summary.dataset.signature!==summarySignature) {
       summary.dataset.signature=summarySignature;
       findElement(summary,'ul','ul').replaceChildren(...steps.filter(item=>item.required).map(item=>{
-        const li=element('li'), label=element('span','',`${item.complete?'✓':'○'} ${item.title}`), change=element('button','quiet-button',item.complete?'다시 보기':'확인하기');
+        const li=element('li'), label=element('span','',`${item.complete?'✓':'○'} ${item.title}`), change=element('button','quiet-button',item.complete?labels.guide.review:labels.guide.check);
         change.type='button'; change.addEventListener('click',()=>select(item.id),{signal:contentAbort.signal}); li.append(label,change); return li;
       }));
     }
@@ -288,7 +315,7 @@ export function createGuideView(host, callbacks = {}) {
     program.hidden=quick||step?.kind!=='program'; const programmer=facts.programmerState??{};
     setText(deviceNotice,[programmer.message,Number.isFinite(programmer.progress)?`${Math.round(programmer.progress)}%`:'',programmer.deviceName].filter(Boolean).join(' · '));
     bar.hidden=programmer.status!=='flashing'; if (programmer.progress==null) bar.removeAttribute('value'); else bar.value=programmer.progress;
-    const deviceText=connectionStep?(facts.unsupported?'이 브라우저에서는 Bluetooth 연결을 사용할 수 없어요. 지원하는 브라우저에서 연결하거나 실험 파일을 열어 분석할 수 있어요.':facts.deviceMessage??''):'';
+    const deviceText=connectionStep?(facts.unsupported?labels.guide.unsupported:facts.deviceMessage??''):'';
     setText(connectionNotice,deviceText); connectionNotice.hidden=!deviceText||Boolean(managed&&facts.connected&&presentation.hideValues);
     const show=new Set(['previous']);
     if (quick) show.add('quick-confirm'); else if (isSummary) show.add('measure'); else if (!preparationView?.handlesProgression(step?.id)) {
@@ -299,18 +326,18 @@ export function createGuideView(host, callbacks = {}) {
     if (connectionStep) {if (facts.connected||facts.connecting) show.add('disconnect'); else {show.add('connect'); if (facts.canReconnect) show.add('reconnect');} if (step?.kind==='battery') show.add('battery');}
     for (const id of ['previous','confirm','next','measure','quick-confirm','install','program-confirm','connect','reconnect','disconnect','battery']) {const node=buttons.get(id); node.hidden=!show.has(id); node.disabled=locked();}
     buttons.get('previous').disabled=Boolean(facts.programmerState?.busy)||(!quick&&index===0); buttons.get('previous').hidden=quick;
-    buttons.get('confirm').textContent=step?.action??'확인했어요'; buttons.get('confirm').disabled ||= step?.kind==='calibration'&&!facts.connected;
-    buttons.get('next').disabled=locked()||!step?.complete; buttons.get('next').textContent=index===steps.length-1?'준비 결과 보기 →':'확인했어요 · 다음 →';
+    buttons.get('confirm').textContent=step?.action??labels.guide.confirm; buttons.get('confirm').disabled ||= step?.kind==='calibration'&&!facts.connected;
+    buttons.get('next').disabled=locked()||!step?.complete; buttons.get('next').textContent=index===steps.length-1?labels.guide.nextSummary:labels.guide.nextConfirmed;
     buttons.get('next').classList.toggle('primary',!show.has('measure'));
     buttons.get('measure').disabled=locked()||!state.canMeasure;
     buttons.get('quick-confirm').disabled ||= [...quickChecks.values()].some(check=>!check.checked);
     buttons.get('install').disabled ||= facts.canInstall===false||facts.mock===true||programmer.status==='unavailable';
-    buttons.get('install').textContent=programmer.busy?'프로그램 설치 중…':['error','cancelled'].includes(programmer.status)?'USB 설치 다시 시도':programmer.status==='success'?'프로그램 다시 설치':'USB로 프로그램 설치';
-    buttons.get('connect').disabled ||= facts.canConnect===false; buttons.get('connect').textContent=facts.canReconnect?'다른 장치 선택':facts.mock?'모의 장치 연결':'micro:bit 연결';
+    buttons.get('install').textContent=programmer.busy?labels.guide.installing:['error','cancelled'].includes(programmer.status)?labels.guide.retryInstall:programmer.status==='success'?labels.guide.reinstall:labels.guide.install;
+    buttons.get('connect').disabled ||= facts.canConnect===false; buttons.get('connect').textContent=facts.canReconnect?labels.common.chooseDevice:facts.mock?labels.common.mockConnect:labels.common.connect;
     buttons.get('reconnect').disabled ||= facts.canConnect===false;
-    buttons.get('disconnect').textContent=facts.connecting?'연결 취소':'연결 해제'; buttons.get('disconnect').disabled=Boolean(facts.programmerState?.busy);
+    buttons.get('disconnect').textContent=facts.connecting?labels.common.cancelConnection:labels.common.disconnect; buttons.get('disconnect').disabled=Boolean(facts.programmerState?.busy);
     buttons.get('battery').disabled ||= !facts.connected; deviceActions.hidden=!connectionStep; wiringNote.hidden=step?.group!=='wiring'||!content.viewer?.note;
-    const noteText=facts.recording?'다시 연결하려면 기록을 먼저 일시정지하세요.':facts.mock&&step?.kind==='program'?'모의 실험에서는 설치 없이 다음 단계로 넘어가세요.':step?.kind==='program'?'':step?.kind==='battery'&&state.observations.battery.startedAt!==null?step.complete?'USB 분리 후 수신을 확인했어요.':'USB 분리 후 수신을 확인하고 있어요.':step?.kind==='calibration'&&!managed?'숫자가 들어오는 것만으로 보정 완료를 판단하지 않아요.':'';
+    const noteText=facts.recording?labels.guide.reconnectNote:facts.mock&&step?.kind==='program'?labels.guide.mockProgramNote:step?.kind==='program'?'':step?.kind==='battery'&&state.observations.battery.startedAt!==null?step.complete?labels.guide.batterySeen:labels.guide.batteryWaiting:step?.kind==='calibration'&&!managed?labels.guide.calibrationNote:'';
     setText(note,noteText); note.hidden=!noteText;
     copy.dataset.group=step?.group??''; layout?.measure(); layout?.syncProgress();
   }
@@ -318,14 +345,21 @@ export function createGuideView(host, callbacks = {}) {
     /** @param {import('../guide/types.js').ExperimentContext} nextContext */
     open(nextContext,{reset=false,prepared=false}={}) {
       if (disposed) return;
+      shell.hidden=false;
       if (reset||context?.sensor?.id!==nextContext.sensor.id||context?.sensor?.version!==nextContext.sensor.version) {viewer?.dispose(); viewer=null; viewerState='idle'; mode='3d'; frame.removeAttribute('src'); delete frame.dataset.step; delete model.dataset.viewerState;}
-      context=structuredClone(nextContext); content=getGuideContent(context);
+      context=structuredClone(nextContext); content=getGuideContent(context); labels=getLabCopy(context);
       if (!progress||reset) {progress=createGuideProgress(context); facts={}; selectedId='equipment';} else progress.setContext(context);
       quick=prepared; if (quick) selectedId='quick'; else if (!currentStep()) selectedId='equipment'; buildContent(); paint();
     },
     /** @param {import('../guide/types.js').GuideFacts} nextFacts */
     render(nextFacts) {if (!progress||disposed) return; facts={...nextFacts}; progress.setAttempt(facts.attemptId); progress.observe(facts); paint();},
     showPrepared() {if (!locked()) {quick=true; selectedId='quick'; paint();}},
+    close() {
+      preparationView?.dispose(); preparationView=null; viewer?.dispose(); viewer=null;
+      layout?.dispose(); layout=null; help?.dispose(); help=null; contentAbort.abort();
+      progress=null; context=null; facts={}; selectedId=''; quick=false; shell.hidden=true;
+      viewerState='idle'; frame.removeAttribute('src'); delete frame.dataset.step;
+    },
     getProgress() {return progress?.getState()??{ready:false,canMeasure:false,steps:[],setup:{}};},
     dispose() {disposed=true; preparationView?.dispose(); viewer?.dispose(); layout?.dispose(); help?.dispose(); contentAbort.abort(); abort.abort(); host.replaceChildren();},
   };

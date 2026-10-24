@@ -5,6 +5,7 @@ import { columnLabel, formatCalculated } from '../analysis/calculations.js';
 import { createAnalysisChart, exportAnalysisPng } from './chart-view.js';
 import { timeBounds } from '../analysis/scope.js';
 import { trendSummary } from './trend-summary.js';
+import { getLabCopy, formatCopy } from './lab-copy.js';
 
 const number = value => value.toLocaleString('ko-KR');
 const node = (tag, text, className) => {
@@ -34,17 +35,19 @@ export function createReflectionPrint({ name, model, evidence, answers, origin, 
   return sheet;
 }
 
-export function createReflectionView(root, { getWorkspace, getStoreState, act, onBack, signal }) {
+export function createReflectionView(root, { getWorkspace, getStoreState, act, onBack, signal, getContext = () => getWorkspace()?.getState().context }) {
+  let copy = getLabCopy(null);
+  let attachedContext = null;
   const $ = id => root.querySelector('#' + id), inputs = new Map();
   let chart = null, chartKey = null, attachedWorkspace = null, model = null, evidence = null, origin = 0, printSheet = null, printing = false;
   let questions = REFLECTION_QUESTIONS;
   const hints = { analysis: $('reflection-analysis-hints'), extension: $('reflection-extension-hint'), zero: $('reflection-zero-meaning') };
-  const placeholders = {
-    observation: '내가 관찰한 관계를 한두 문장으로 적어 보세요.',
-    reasoning: '관찰한 점의 분포, 구체적인 값, 추세선의 수치 등을 근거로 설명해 보세요.',
-    limitations: '측정 구간, 실험 조건, 측정하지 않은 부분 등을 떠올려 보세요.',
-  };
   function buildQuestions(nextQuestions) {
+    const placeholders = {
+      observation: copy.reflection.observationPlaceholder,
+      reasoning: copy.reflection.reasoningPlaceholder,
+      limitations: copy.reflection.limitationsPlaceholder,
+    };
     questions = nextQuestions; inputs.clear(); $('reflection-questions').replaceChildren();
   for (const [index, q] of questions.entries()) {
     const card = node('section', null, 'reflection-question');
@@ -52,9 +55,9 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
     label.append(node('strong', q.title), node('span', q.question));
     heading.append(node('span', String(index + 1).padStart(2, '0'), 'question-number'), label);
     const input = document.createElement('textarea'); input.id = 'reflection-' + q.id; input.name = q.id;
-    input.rows = 3; input.maxLength = ANSWER_LIMIT; input.placeholder = q.placeholder ?? placeholders[q.id] ?? '자료에서 발견한 내용을 적어 보세요.';
+    input.rows = 3; input.maxLength = ANSWER_LIMIT; input.placeholder = q.placeholder ?? placeholders[q.id] ?? copy.reflection.placeholder;
     input.setAttribute('aria-describedby', 'reflection-' + q.id + '-hint');
-    const footer = node('div', null, 'question-footer'), hint = node('span', '짧은 문장으로 시작해도 괜찮아요.'); hint.id = input.id + '-hint';
+    const footer = node('div', null, 'question-footer'), hint = node('span', copy.reflection.answerHint); hint.id = input.id + '-hint';
     const count = node('span', '0 / ' + number(ANSWER_LIMIT), 'answer-count'); count.setAttribute('aria-hidden', 'true');
     footer.append(hint, count); card.append(heading, input, footer); inputs.set(q.id, { input, count, card });
     input.addEventListener('input', () => { syncCounts(); flush(); }, { signal });
@@ -63,8 +66,8 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
   const lastCard = [...inputs.values()].at(-1)?.card;
   (inputs.get('reasoning')?.card ?? lastCard)?.append(hints.analysis);
   (inputs.get('limitations')?.card ?? lastCard)?.append(hints.extension, hints.zero);
-  hints.zero.replaceChildren(node('summary', 'x절편의 의미 살펴보기'),
-    node('p', 'x절편은 추세선에서 Y값이 0이 되는 X값이에요. 측정 범위를 벗어난 추정은 실제 측정값과 구분해야 해요.'));
+  hints.zero.replaceChildren(node('summary', copy.reflection.zeroTitle),
+    node('p', copy.reflection.zeroHint));
   }
   buildQuestions(questions);
   function syncCounts() {
@@ -73,7 +76,7 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
       count.textContent = number(input.value.length) + ' / ' + number(ANSWER_LIMIT);
       const written = Boolean(input.value.trim()); completed += Number(written); card.dataset.written = String(written);
     }
-    $('reflection-progress').textContent = completed ? `${questions.length}개 질문 중 ${completed}개에 내 생각을 남겼어요` : '편한 질문부터, 나의 말로';
+    $('reflection-progress').textContent = completed ? formatCopy(copy.reflection.completed,{total:questions.length,count:completed}) : copy.reflection.progress;
   }
   function answers() { return Object.fromEntries([...inputs].map(([id, { input }]) => [id, input.value])); }
   function flush() {
@@ -84,18 +87,18 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
   }
   function updateStatus() {
     const saved = getStoreState();
-    const text = !saved ? '실험을 먼저 열어 주세요.'
-      : saved.temporary ? '메모리에만 보관 중 · 창을 닫기 전에 전체 실험 JSON 파일로 저장하세요'
-      : !saved.writable ? '읽기 전용 · 저장한 기록을 보고 있어요'
-      : saved.status === 'error' ? '저장 오류 · 상단 저장 상태를 확인해 주세요'
-      : saved.status === 'clean' ? '이 브라우저에 저장됨' : '작성 내용을 저장하고 있어요';
+    const text = !saved ? copy.reflection.noRun
+      : saved.temporary ? copy.reflection.temporary
+      : !saved.writable ? copy.reflection.readOnly
+      : saved.status === 'error' ? copy.reflection.error
+      : saved.status === 'clean' ? copy.reflection.clean : copy.reflection.saving;
     $('reflection-save-status').textContent = text;
     $('reflection-save-status').dataset.state = saved?.temporary ? 'temporary' : saved?.status ?? 'empty';
   }
   $('reflection-back').addEventListener('click', () => { if (flush()) onBack(); }, { signal });
   $('reflection-empty-back').addEventListener('click', onBack, { signal });
   $('reflection-refresh').addEventListener('click', () => {
-    if (flush() && act(() => getWorkspace().captureReflection())) $('reflection-notice').textContent = '근거 그래프를 바꿨어요. 작성한 설명도 함께 확인해 보세요.';
+    if (flush() && act(() => getWorkspace().captureReflection())) $('reflection-notice').textContent = copy.reflection.refreshed;
   }, { signal });
   function clearPrint() { delete document.body.dataset.printReflection; printSheet?.remove(); printSheet = null; }
   window.addEventListener('afterprint', clearPrint, { signal });
@@ -114,8 +117,10 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
     flush, updateStatus,
     render(visible) {
       const workspace = getWorkspace(), state = workspace?.getState(), reflection = state?.reflection;
-      if (attachedWorkspace !== workspace) {
+      const nextContext = getContext() ?? null;
+      if (attachedWorkspace !== workspace || attachedContext !== nextContext) {
         attachedWorkspace = workspace; chartKey = null;
+        attachedContext = nextContext; copy = getLabCopy(nextContext);
         buildQuestions(state?.questions ?? REFLECTION_QUESTIONS);
         for (const [id, { input }] of inputs) input.value = reflection?.answers[id] ?? '';
         $('reflection-notice').textContent = ''; $('reflection-save-error').textContent = ''; syncCounts();

@@ -62,6 +62,16 @@
 .equipment-list { list-style:none; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; padding:0; margin:0; }
 .equipment-list li { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px; border:1px solid #d7e3df; border-radius:8px; background:#ffffffb8; font-size:13px; }
 .equipment-list .help-trigger { flex:none; }
+.equipment-list .equipment-illustrated { display:grid; grid-template-columns:minmax(0,1fr) auto; align-content:start; }
+.equipment-illustrated img { grid-column:1 / -1; width:100%; height:auto; aspect-ratio:8 / 5; object-fit:contain; }
+.equipment-list .equipment-illustrated:first-child { grid-column:1 / -1; }
+.equipment-illustrated:first-child img { aspect-ratio:12 / 5; max-height:210px; }
+.guide-usb-image { display:block; width:100%; height:auto; max-height:330px; object-fit:contain; margin:12px 0 24px; }
+.guide-power { padding:18px 28px; border-top:1px solid var(--line); }
+.guide-power summary { cursor:pointer; color:var(--teal); font-size:14px; font-weight:600; }
+.guide-device-image { margin:12px 0 0; }
+.guide-device-image img { width:100%; height:auto; max-height:300px; object-fit:contain; }
+.guide-device-image figcaption { color:var(--muted); font-size:13px; line-height:1.8; }
 .guide-placement { margin:0; padding:20px; }
 .guide-placement img { display:block; width:100%; height:clamp(300px,calc(100dvh - 340px),510px); object-fit:contain; }
 .guide-placement figcaption { font-size:12px; line-height:1.7; text-align:center; margin-top:10px; color:var(--muted); }

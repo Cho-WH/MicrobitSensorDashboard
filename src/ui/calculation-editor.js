@@ -1,9 +1,11 @@
 // Adapted from Cho-WH/bme280 gay-lussac/ui/calculation-editor.js at 59c5c149450f970bace2deaa183857c275595853.
 import { calculationInputs, columnLabel, formatCalculated } from '../analysis/calculations.js';
 import { positionPopover } from './anchored-popover.js';
+import { getLabCopy } from './lab-copy.js';
 
 // Drafts and popover state live here. Workspace alone validates and commits definitions.
 export function createCalculationEditor(root, { getWorkspace, render, signal }) {
+  const copy = () => getLabCopy(getWorkspace()?.getState().context);
   const menu = root.querySelector('#calculation-menu'), dialog = root.querySelector('#calculation-dialog');
   const form = dialog.querySelector('form'), error = form.querySelector('[data-error]'), submit = form.querySelector('[type=submit]');
   const name = form.elements.columnName, unit = form.elements.unit, op = form.elements.op;
@@ -41,7 +43,7 @@ export function createCalculationEditor(root, { getWorkspace, render, signal }) 
     return { id: draftId, name: name.value, unit: unit.value, op: op.value, ...operands };
   }
   function expression() {
-    const operands = fields.map(f => f.kind.value === 'column' ? f.column.selectedOptions[0]?.textContent ?? '자료 열' : f.value.value || '숫자');
+    const operands = fields.map(f => f.kind.value === 'column' ? f.column.selectedOptions[0]?.textContent ?? copy().calculation.column : f.value.value || copy().calculation.number);
     const symbol = { '+': '+', '-': '−', '*': '×', '/': '÷', '^': '^' }[op.value];
     return `${operands[0]} ${symbol} ${operands[1]}`;
   }
@@ -76,8 +78,8 @@ export function createCalculationEditor(root, { getWorkspace, render, signal }) 
       const operand = initial?.[f.side] ?? (f.side === 'lhs' ? { kind: 'column', columnId: inputs[0]?.id } : { kind: 'constant', value: null });
       f.kind.value = operand.kind; f.column.value = operand.columnId ?? inputs[0]?.id ?? ''; f.value.value = operand.value ?? '';
     }
-    root.querySelector('#calculation-title').textContent = existing ? '계산 열 편집' : '계산 열 추가';
-    submit.textContent = existing ? '변경 적용' : '열 만들기'; preview(); dialog.showModal();
+    root.querySelector('#calculation-title').textContent = existing ? copy().calculation.edit : copy().calculation.title;
+    submit.textContent = existing ? copy().calculation.apply : copy().calculation.create; preview(); dialog.showModal();
     (existing ? name : fields[0].column).focus();
   }
   root.addEventListener('click', event => {
@@ -86,18 +88,18 @@ export function createCalculationEditor(root, { getWorkspace, render, signal }) 
     if (!button || button.disabled) return;
     if (anchor === button && menu.matches(':popover-open')) { closeMenu(); return; }
     if (add) {
-      openMenu(add, '계산 열 추가');
+      openMenu(add, copy().calculation.title);
       for (const template of getWorkspace().getState().calculationTemplates ?? [])
         menuButton(template.name ?? template.id, () => openEditor(null, template.id));
-      menuButton('직접 만들기', () => openEditor());
+      menuButton(copy().calculation.custom, () => openEditor());
     } else if (edit) {
       const id = edit.dataset.calculationMenu; openMenu(edit, edit.getAttribute('aria-label'));
-      menuButton('계산식 편집', () => openEditor(id));
-      menuButton('열 삭제', () => {
+      menuButton(copy().calculation.editFormula, () => openEditor(id));
+      menuButton(copy().calculation.remove, () => {
         if (perform(() => getWorkspace().deleteColumn(id))) root.querySelector('#add-calculation').focus();
       });
     } else {
-      openMenu(reason, '계산 불가 이유'); const p = document.createElement('p'); p.textContent = reason.dataset.reason; menu.append(p);
+      openMenu(reason, copy().calculation.reason); const p = document.createElement('p'); p.textContent = reason.dataset.reason; menu.append(p);
     }
     showMenu();
   }, { signal });

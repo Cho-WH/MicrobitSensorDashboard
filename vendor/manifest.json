@@ -126,6 +126,38 @@
       "sha256": "2ab1d7eefcf26e4a75d70f33df68abe5404178e912e46c5da2f018b56cc92c6f",
       "modified": false,
       "license": "THIRD_PARTY_NOTICES.md (upstream application license unspecified)"
+    },
+    {
+      "source": "https://github.com/Cho-WH/bme280/tree/59c5c149450f970bace2deaa183857c275595853/bmp280-wiring",
+      "file": "public/vendor/three-r180.js",
+      "sha256": "3edea8a712de5de44591176247240d77ae1f7ef134a781eda52f69028d59d41b",
+      "modified": true,
+      "version": "180",
+      "license": "public/vendor/three-r180-LICENSE.txt"
+    },
+    {
+      "source": "https://github.com/Cho-WH/bme280/tree/59c5c149450f970bace2deaa183857c275595853/bmp280-wiring",
+      "file": "public/viewers/bmp280/scene.js",
+      "sha256": "4b5ba1dd7f216258eb6871d1eba08201a4ced5fc2fe2aacb1bb3d509bcc9772f",
+      "modified": true,
+      "version": "59c5c149",
+      "license": "public/viewers/bmp280/README.md"
+    },
+    {
+      "source": "https://github.com/Cho-WH/bme280/tree/59c5c149450f970bace2deaa183857c275595853/bmp280-wiring",
+      "file": "public/assets/devices/shared/legacy-primitives.js",
+      "sha256": "d3f9bebad78d93872139db61c340be4afcaf8cb1ca98c5fb643afa4d6ba9c7d2",
+      "modified": true,
+      "version": "59c5c149",
+      "license": "public/assets/devices/README.md"
+    },
+    {
+      "source": "https://github.com/Cho-WH/bme280/tree/59c5c149450f970bace2deaa183857c275595853/bmp280-wiring",
+      "file": "public/assets/devices/bmp280/model.js",
+      "sha256": "e69167a4a97a1e831498b85bfe62c43dcb7e04e044966b57f109ad2457b1a8ef",
+      "modified": true,
+      "version": "59c5c149",
+      "license": "public/assets/devices/README.md"
     }
   ],
   "upstreamCommit": "59c5c149450f970bace2deaa183857c275595853"

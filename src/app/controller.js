@@ -13,6 +13,7 @@ import { createAnalysisView } from '../ui/analysis-view.js';
 import { createMeasurementView } from '../ui/measurement-view.js';
 import { createExperimentGuide } from '../ui/experiment-guide.js';
 import { getGuideContent } from '../guide/steps.js';
+import { getLabCopy, applyLabCopy, formatCopy, labDefaults } from '../ui/lab-copy.js';
 import { createActionHelp } from '../ui/action-help.js';
 import { downloadText, downloadUrl } from '../ui/download.js';
 import { LIMITS } from '../domain/limits.js';
@@ -24,8 +25,10 @@ export function createController(root = document, { repository = null, deviceTra
   const input = id => findElement(root, 'input', '#' + id);
   const button = id => findElement(root, 'button', '#' + id);
   const dialogElement = id => findElement(root, 'dialog', '#' + id);
-  let context = getExperiment(), store = null, session = null, screen = 'home';
+  let context = null, store = null, session = null, screen = 'home';
+  let copy = getLabCopy(null), copyContext;
   let preview = null, previewPoints = [], previewSequence = 0, attempt = 0, connected = false, connecting = false, busy = false;
+  let leaving = false;
   let renderRequested = true, renderedEvents = -1, renderedContext = null, exportedRevision = -1;
   const mock = new URL(initialUrl).searchParams.get('mock') === '1';
   const repo = repository ?? createRepository({ onUnavailable: message => showError(message) });
@@ -34,7 +37,7 @@ export function createController(root = document, { repository = null, deviceTra
   let deviceState = transport.getState();
   const guide = createGuideView($('guide-host'), { onInstall: () => act(install), onConnect: options => act(()=>connect(options)),
     onDisconnect: () => disconnect().catch(showError), onChange: () => { renderRequested = true; }, onMeasure:()=>navigate('measure'), onError: showError,
-    onDeviceAction: action => act(async()=>{if(session?.getState().recording) return; await transport.performAction(action);}) });
+    onDeviceAction: action => act(async()=>{if(!context || !runtime || screen !== 'prepare' || session?.getState().recording) return; await transport.performAction(action);}) });
   const measurement = createMeasurementView(root,()=>{renderRequested=true;});
   const experimentGuide = createExperimentGuide(root.querySelector('.lab-shell'));
   const analysis = createAnalysisView(root.querySelector('[data-screen="analysis"]'), { onError: showError, onExport: kind => act(() => exportFile(kind)) });
@@ -47,11 +50,11 @@ export function createController(root = document, { repository = null, deviceTra
     if (busy || programmerState.busy) return;
     busy = true; clearError(); renderRequested = true;
     try { await work(); } catch(error) { showError(error); }
-    finally { busy = false; renderRequested = true; }
+    finally { busy = false; renderRequested = false; render(); }
   }
   function listen(id, work) { $(id).addEventListener('click', () => act(work), { signal }); }
   function accept(input) {
-    if (input.attemptId !== attempt) return;
+    if (!context || !runtime || input.attemptId !== attempt) return;
     if (input.type === 'reading') {
       preview = input; previewPoints.push({ ...input, sampleId: ++previewSequence });
       if (previewPoints.length > 600) previewPoints = previewPoints.slice(-600);
@@ -67,7 +70,7 @@ export function createController(root = document, { repository = null, deviceTra
   }
   function canInstall() {
     const saved = store?.getState(), current = session?.getState();
-    return !!runtime && !mock && !connected && !connecting && saved?.source !== 'import'
+    return !!context && !!runtime && screen === 'prepare' && !mock && !connected && !connecting && saved?.source !== 'import'
       && (!saved || (saved.writable && saved.status === 'clean' && (!current || current.state === 'ended')));
   }
   function resetPreparation() {
@@ -89,7 +92,7 @@ export function createController(root = document, { repository = null, deviceTra
     installed = false; await programmer.install();
   }
   async function connect({reuseDevice=false}={}) {
-    if (!runtime || store?.getState().source === 'import') throw new Error('새 실험을 선택한 뒤 장비를 연결하세요.');
+    if (!context || !runtime || !['prepare','measure'].includes(screen) || store?.getState().source === 'import') throw new Error('새 실험을 선택한 뒤 장비를 연결하세요.');
     if (session?.getState().recording) throw new Error('기록을 일시정지한 뒤 장비를 다시 연결하세요.');
     if (connected || connecting) return;
     connecting = true; renderRequested = true;
@@ -106,11 +109,12 @@ export function createController(root = document, { repository = null, deviceTra
     finally { connecting = false; renderRequested = true; }
   }
   function hasFreshReading() { return connected && transport.getState().confirmed; }
-  function readyToRecord() { return hasFreshReading(); }
+  function readyToRecord() { return !!context && !!runtime && hasFreshReading(); }
   function requireReady() {
     if (!readyToRecord()) throw new Error('장치를 연결하고 새 측정값이 정상적으로 들어오는지 확인하세요.');
   }
   async function start() {
+    if (screen !== 'measure') return;
     requireReady();
     if (store) throw new Error('새 실험 준비를 눌러 다음 실험을 시작하세요.');
     const recordedContext = { ...context, setup: guide.getProgress().setup };
@@ -128,12 +132,12 @@ export function createController(root = document, { repository = null, deviceTra
     if (session && !['ended','preview'].includes(session.getState().state)) await session.finish();
     if (store?.getState().writable) await store.flush();
   }
-  async function confirmTransition() {
+  async function confirmTransition({ask = true} = {}) {
     if (!store) return true;
     if (!analysis.flush()) return false;
-    if (session?.getState().recording || store.getState().status !== 'clean' || (store.getState().temporary && exportedRevision !== store.getState().runRevision)) {
+    if ((ask && (session?.getState().recording || store.getState().status !== 'clean')) || (store.getState().temporary && exportedRevision !== store.getState().runRevision)) {
       const dialog = dialogElement('leave-dialog');
-      $('leave-save').textContent = store.getState().temporary ? '파일로 보관하고 이동' : session?.getState().recording ? '기록을 마치고 이동' : '저장하고 이동';
+      $('leave-save').textContent = store.getState().temporary ? copy.dialogs.exportLeave : session?.getState().recording ? copy.dialogs.finishLeave : copy.dialogs.saveLeave;
       dialog.returnValue = '';
       const answer = await new Promise(resolve => { dialog.addEventListener('close', () => resolve(dialog.returnValue), { once:true }); dialog.showModal(); });
       if (answer !== 'save') return false;
@@ -145,43 +149,63 @@ export function createController(root = document, { repository = null, deviceTra
     await store?.close();
     analysis.reset(); session = null; store = null; exportedRevision = -1; renderedEvents = -1;
   }
-  function browse(next, push = true) {
+  // Selection and cross-lab navigation share this boundary. Save failure keeps the owner and device.
+  async function leaveExperiment() {
+    leaving = true; render();
+    try {
+      if (!await confirmTransition({ask:false})) return false;
+      await programmer?.dispose();
+      await disconnect();
+      await releaseCurrent();
+      transport.forgetDevice?.(); deviceState = transport.getState();
+      programmer = null; programmerState = {}; runtime = null; installed = false;
+      context = null; targetContext = null; renderedContext = null;
+      preview = null; previewPoints = []; previewSequence = 0;
+      input('run-name').value = ''; input('event-note').value = '';
+      guide.close(); experimentGuide.close(); measurement.reset();
+      return true;
+    } finally { leaving = false; renderRequested = true; }
+  }
+  async function exitToHome(push = true) {
+    if (!await leaveExperiment()) return false;
+    navigate('home', push); return true;
+  }
+  async function browse(next, push = true) {
+    if (!await leaveExperiment()) return false;
     targetContext = next;
+    const nextCopy = getLabCopy(next);
+    applyLabCopy(root.querySelector('[data-screen="preview"]'), nextCopy);
     $('preview-title').textContent = next.activity?.name ?? next.sensor.name;
     $('preview-preparation').replaceChildren(...next.preparation.map(text => { const item=document.createElement('li'); item.textContent=text; return item; }));
     $('preview-channels').textContent=next.channels.map(channel=>channel.name+' ('+channel.unit+')').join(' · ');
     const preparation=getGuideContent(next);
     $('preview-equipment').textContent=[...preparation.equipment,...preparation.activityEquipment].map(item=>item.name).join(' · ');
-    $('preview-transition-note').textContent = store ? '새 실험을 시작하면 현재 기록을 마치고 저장합니다.' : '';
+    $('preview-transition-note').textContent = store ? nextCopy.preview.transitionNote : '';
     navigate('preview', push);
+    return true;
   }
   async function activateExperiment(prepared=false) {
     const next = targetContext;
-    if (!next || !await confirmTransition()) return;
-    const keepPreparation = runtime && store?.getState().source !== 'import'
-      && next.sensor.id === context.sensor.id && next.sensor.version === context.sensor.version
-      && next.firmware.id === context.firmware?.id && next.firmware.version === context.firmware?.version
-      && next.firmware.sha256 === context.firmware?.sha256;
-    if (!keepPreparation) await disconnect();
-    await releaseCurrent();
+    if (screen !== 'preview' || !next || context || store) return;
     context = next; targetContext = null; renderedContext = null; input('run-name').value = '';
-    if (keepPreparation) guide.open(context); else resetPreparation();
+    resetPreparation();
     navigate('prepare');
     if(prepared)guide.showPrepared();
   }
-  function applyLocation(url = location.href) {
-    if (programmerState.busy || busy) {
-      if (historyEnabled) history.replaceState(null, '', routeUrl(screen === 'preview' ? targetContext : context, screen, {mock}));
-      return;
-    }
+  function restoreLocation() {
+    if (historyEnabled) history.replaceState(null, '', routeUrl(screen === 'preview' ? targetContext : context, screen, {mock}));
+  }
+  async function applyLocation(url = location.href) {
     try {
       const route = parseRoute(url);
+      if (route.screen === 'home') { if (!await exitToHome(false)) restoreLocation(); return; }
+      if (route.screen === 'preview') { if (!await browse(route.context, false)) restoreLocation(); return; }
       if (route.context && !sameExperiment(route.context, context)) {
-        if (store || connected || connecting) return browse(route.context, false);
+        if (!await leaveExperiment()) { restoreLocation(); return; }
         context = route.context; renderedContext = null; resetPreparation();
       }
       navigate(route.screen === 'analysis' && !store ? 'saved' : route.screen, false);
-    } catch(error) { navigate('home', false); showError(error); }
+    } catch(error) { restoreLocation(); showError(error); }
   }
   async function openRun(id) {
     if (store?.getState().id === id) return navigate('analysis');
@@ -255,52 +279,66 @@ export function createController(root = document, { repository = null, deviceTra
   }
   async function listRuns() {
     const runs = await repo.listRuns(), list = $('saved-runs'); list.replaceChildren();
-    if (!runs.length) { list.textContent = '저장된 실험이 없습니다.'; return; }
+    if (!runs.length) { list.textContent = copy.saved.empty; return; }
     for (const run of runs) {
       const li = document.createElement('li'), text = document.createElement('div'), small = document.createElement('small'), open = document.createElement('button');
       text.textContent = run.name; small.textContent = new Date(run.updatedAt).toLocaleString('ko-KR') + ' · ' + (run.context.activity?.name ?? run.context.sensor.name ?? '가져온 자료');
-      text.append(small); open.textContent = '실험 열기'; open.addEventListener('click', () => act(() => openRun(run.id)), {signal});
+      text.append(small); open.textContent = copy.saved.open; open.addEventListener('click', () => act(() => openRun(run.id)), {signal});
       li.append(text,open); list.append(li);
     }
   }
   function navigate(next, push = true) {
     if (programmerState.busy || !analysis.flush()) return;
+    if (['prepare','measure','analysis'].includes(next) && !context) return;
+    if (next === 'preview' && !targetContext) return;
     screen = next;
     if (historyEnabled && push) history.pushState(null, '', routeUrl(next === 'preview' ? targetContext : context, next, {mock}));
     findElement(root,'a','.skip-link').href = location.pathname + location.search + '#main';
     if (next === 'prepare' && !mock) programmer?.prepare().catch(showError);
     for (const section of /** @type {NodeListOf<HTMLElement>} */ (root.querySelectorAll('[data-screen]'))) section.hidden = section.dataset.screen !== next;
     for (const button of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('[data-view]'))) { if(button.dataset.view === next) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); }
-    if (next === 'analysis') analysis.open(store);
+    if (next === 'analysis') analysis.open(store, context);
     if (next === 'saved') listRuns().catch(showError);
     if (next === 'measure' && store?.getState().source !== 'import') experimentGuide.show(context,{automatic:true,anchor:$('show-experiment-guide')});
     renderRequested = true;
   }
   function render() {
+    for (const section of /** @type {NodeListOf<HTMLElement>} */ (root.querySelectorAll('[data-screen]'))) section.inert = leaving;
+    const displayContext = screen === 'preview' ? targetContext : context;
+    if (copyContext !== displayContext) {
+      copyContext = displayContext; copy = getLabCopy(displayContext);
+      for (const host of root.querySelectorAll('.lab-identity, .lab-toolbar, #current-experiment, [data-screen="measure"], [data-screen="saved"], #leave-dialog, #csv-mapping, #additional-dialog, .preparation-heading')) applyLabCopy(host, copy);
+      applyLabCopy(root.querySelector('[data-screen="home"]'), labDefaults);
+      applyLabCopy(root.querySelector('[data-screen="preview"]'), getLabCopy(targetContext));
+      findElement(root,'a','.skip-link').textContent = copy.common.skip;
+    }
     deviceState=transport.getState();
     const saved = store?.getState(), current = session?.getState(), recording = current?.recording;
-    guide.render({attemptId:attempt,connected,connecting,deviceMessage:deviceState.message,deviceName:deviceState.deviceName,receptionReady:hasFreshReading(),receivedAt:deviceState.lastReceivedAt,latest:preview,
+    if (context) guide.render({attemptId:attempt,connected,connecting,deviceMessage:deviceState.message,deviceName:deviceState.deviceName,receptionReady:hasFreshReading(),receivedAt:deviceState.lastReceivedAt,latest:preview,
       firmwareInstalled:installed ? context.firmware : false,calibration:deviceState.calibration ?? 'unknown',devicePreparation:deviceState.devicePreparation,
       busy:busy || programmerState.busy,recording:recording || current?.state === 'finishing',programmerState,mock,
       canInstall:canInstall(),canReconnect:deviceState.canReconnect,unsupported:!transport.isSupported(),canConnect:!!runtime && !recording && !connected && !connecting && saved?.source !== 'import' && transport.isSupported()});
-    $('current-experiment').hidden = !store || !['home','preview','saved'].includes(screen);
-    $('current-experiment-label').textContent = saved ? saved.name + ' · ' + (recording ? '기록 중' : '보관한 자료') : '';
-    $('prepare-title').textContent = (context.activity?.name ?? context.sensor.name) + ' · 장비 준비';
+    $('current-experiment').hidden = !store || screen !== 'saved';
+    $('current-experiment-label').textContent = saved ? saved.name + ' · ' + (recording ? copy.common.recordingActive : copy.measurement.stored) : '';
+    $('prepare-title').textContent = context ? formatCopy(copy.prepare.title, {name: context.activity?.name ?? context.sensor.name}) : '';
     $('device-detail').textContent = [deviceState.deviceName,deviceState.message].filter(Boolean).join(' · ');
-    button('to-measure').disabled = busy || !!programmerState.busy;
+    button('to-measure').disabled = !context || busy || !!programmerState.busy;
     button('activate-experiment').disabled = busy || !!programmerState.busy;
     button('activate-prepared').disabled = busy || !!programmerState.busy;
-    $('disconnect').textContent = connecting ? '연결 취소' : '연결 해제';
-    $('connect').textContent = mock ? '모의 장치 연결' : 'micro:bit 연결';
-    $('connection-status').textContent = connecting ? '연결 중' : connected ? mock ? '모의 연결' : '연결됨' : '연결 안 됨';
-    $('recording-status').textContent = ({recording:'기록 중',paused:'일시정지',finishing:'기록 마감 중',ended:'기록 마침',preview:'준비'})[current?.state] ?? (saved ? '저장된 자료' : '준비');
-    $('storage-status').textContent = !saved ? '기록 시작 전' : saved.temporary ? '임시 분석' : !saved.writable ? '읽기 전용' : ({clean:'저장됨',saving:'저장 중',pending:'저장 대기',error:'저장 오류'})[saved.status];
-    $('experiment-title').textContent = context.activity?.name ?? context.sensor.name ?? '가져온 자료';
+    $('disconnect').textContent = connecting ? copy.common.cancelConnection : copy.common.disconnect;
+    $('connection-status').textContent = connecting ? copy.common.connecting : connected ? mock ? copy.common.mockConnected : copy.common.connected : copy.common.disconnected;
+    $('recording-status').textContent = ({recording:copy.common.recordingActive,paused:copy.common.paused,finishing:copy.common.finishing,ended:copy.common.ended,preview:copy.common.prepare})[current?.state] ?? (saved ? copy.common.stored : copy.common.prepare);
+    $('storage-status').textContent = !saved ? copy.common.beforeRecording : saved.temporary ? copy.common.temporary : !saved.writable ? copy.common.readOnly : copy.common[saved.status];
+    $('experiment-title').textContent = displayContext ? displayContext.activity?.name ?? displayContext.sensor.name ?? copy.common.imported : '';
+    findElement(root,'div','.lab-status').hidden = !context;
+    for (const item of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('[data-view]'))) {
+      item.disabled = busy || !!programmerState.busy || (!context && ['prepare','measure','analysis'].includes(item.dataset.view));
+    }
     input('run-name').disabled = !!store || busy;
     button('connect').disabled = recording || connected || connecting || busy || !runtime || saved?.source === 'import' || (!mock && !transport.isSupported()) || !!programmerState.busy;
     $('reconnect').hidden=!deviceState.canReconnect||connected||connecting;
     button('reconnect').disabled=button('connect').disabled;
-    $('connect').textContent=deviceState.canReconnect?'다른 장치 선택':mock?'모의 장치 연결':'micro:bit 연결';
+    $('connect').textContent=deviceState.canReconnect?copy.common.chooseDevice:mock?copy.common.mockConnect:copy.common.connect;
     button('disconnect').disabled = (!connected && !connecting) || !!programmerState.busy;
     button('start-recording').disabled = !!store || busy || !readyToRecord() || !navigator.locks;
     button('pause-recording').disabled = !recording || busy;
@@ -313,49 +351,55 @@ export function createController(root = document, { repository = null, deviceTra
     $('export-json').hidden=!saved; $('export-csv').hidden=!saved;
     $('show-experiment-guide').hidden=!getGuideContent(context).experimentGuide;
     experimentGuide.setRecording(Boolean(recording));
-    $('sample-count').textContent = saved ? `원자료 ${saved.sampleCount.toLocaleString('ko-KR')}개` : '기록 시작 전 수신값은 미리보기입니다.';
+    $('sample-count').textContent = saved ? formatCopy(copy.measurement.count, {count:saved.sampleCount.toLocaleString('ko-KR')}) : copy.measurement.previewNote;
     $('lab-notice').textContent = saved?.temporary ? '이 환경에서는 브라우저에 저장할 수 없습니다. 분석 결과는 전체 실험 JSON으로 보관하세요.' : saved?.error ? saved.error + ' 메모리의 자료는 유지됩니다. 다시 저장하거나 전체 실험 JSON을 보관하세요.'
       : saved?.nearLimit ? '보관 한도에 가까워졌습니다. 전체 실험 JSON으로 보관하고 새 실험을 준비하세요.'
       : current?.problem ? current.problem : !navigator.locks ? '이 브라우저에서는 새 실험을 기록할 수 없습니다. 저장된 자료를 열어 분석할 수 있어요.'
       : mock && connected ? '모의 장치를 사용하고 있어요. 실제 센서 측정값이 아닙니다.' : '';
     if (renderedContext !== context) {
       renderedContext = context;
-      $('preparation-notes').replaceChildren(...(context.preparation ?? []).map(text => { const li=document.createElement('li'); li.textContent=text; return li; }));
-      $('activity-actions').replaceChildren(...(context.activity?.events ?? []).map(event => { const button=document.createElement('button'); button.textContent=event.label; button.dataset.activityEvent=event.type; button.addEventListener('click',()=>act(()=>{if(!session?.markEvent(event.type)) throw new Error(session?.getState().problem || '기록 중 조작을 남길 수 있습니다.');}),{signal});return button; }));
+      $('preparation-notes').replaceChildren(...(context?.preparation ?? []).map(text => { const li=document.createElement('li'); li.textContent=text; return li; }));
+      $('activity-actions').replaceChildren(...(context?.activity?.events ?? []).map(event => { const button=document.createElement('button'); button.textContent=event.label; button.dataset.activityEvent=event.type; button.addEventListener('click',()=>act(()=>{if(!session?.markEvent(event.type)) throw new Error(session?.getState().problem || '기록 중 조작을 남길 수 있습니다.');}),{signal});return button; }));
     }
     for (const button of $('activity-actions').querySelectorAll('button')) button.disabled = !recording || busy;
-    if (screen === 'measure') {
+    if (screen === 'measure' && context) {
       measurement.render({context,store,latest:preview,previewPoints,device:deviceState,recording});
     }
     if (saved?.eventCount !== renderedEvents) {
       renderedEvents = saved?.eventCount;
-      const labels={'recording-start':'기록 시작','recording-paused':'일시정지','recording-resumed':'기록 재개','measurement-end':'기록 마침',note:'메모','additional-measurement':'추가 측정',discontinuity:'측정 공백','reception-change':'수신 상태 변경',interrupted:'중단 후 복원',...Object.fromEntries((context.activity?.events ?? []).map(event=>[event.type,event.label]))};
+      const labels={'recording-start':'기록 시작','recording-paused':'일시정지','recording-resumed':'기록 재개','measurement-end':'기록 마침',note:'메모','additional-measurement':'추가 측정',discontinuity:'측정 공백','reception-change':'수신 상태 변경',interrupted:'중단 후 복원',...Object.fromEntries((context?.activity?.events ?? []).map(event=>[event.type,event.label]))};
       const records = store?.getEvents(100) ?? [];
       for (const id of ['lab-events','analysis-events']) $(id).replaceChildren(...records.slice(-100).map(e=>{const li=document.createElement('li');li.textContent=new Date(e.receivedAt).toLocaleTimeString('ko-KR')+' · '+(labels[e.type] ?? e.type)+(e.payload.note ? ' · '+e.payload.note : '');return li;}));
     }
     analysis.updateStatus();
   }
-  for (const button of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('[data-view]'))) button.addEventListener('click',()=>navigate(button.dataset.view),{signal});
+  for (const button of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('[data-view]'))) button.addEventListener('click',()=>{
+    if (button.disabled || busy || programmerState.busy) return;
+    if (button.dataset.view === 'home') void act(()=>exitToHome()); else navigate(button.dataset.view);
+  },{signal});
   listen('connect',()=>connect()); listen('reconnect',()=>connect({reuseDevice:true})); $('disconnect').addEventListener('click',()=>disconnect().catch(showError),{signal}); listen('start-recording',start);
   listen('pause-recording',()=>session.pause()); listen('resume-recording',()=>{requireReady();session.resume();});
   listen('finish-recording',async()=>{await session.finish();await store.flush();});
   listen('additional-recording',async()=>{requireReady();const dialog=dialogElement('additional-dialog');dialog.returnValue='';$('additional-activity-conditions').hidden=!context.activity;const result=await new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue),{once:true});dialog.showModal();});if(result==='start'){requireReady();session.startAdditional({sameContext:true,...(context.activity ? {sameContainer:true,sameGas:true,samePosition:true} : {})});}});
   listen('add-note',()=>{const note=input('event-note').value.trim();if(!note)throw new Error('메모를 입력하세요.');session.markEvent('note',{note});input('event-note').value='';});
-  listen('new-experiment',()=>navigate('home'));
+  listen('new-experiment',()=>exitToHome());
   listen('activate-experiment',()=>activateExperiment()); listen('activate-prepared',()=>activateExperiment(true)); listen('prepare-device',()=>navigate('prepare'));
   listen('show-experiment-guide',()=>experimentGuide.show(context,{anchor:$('show-experiment-guide')}));
   listen('to-measure',()=>navigate('measure')); listen('return-current',()=>navigate(session ? 'measure' : 'analysis'));
-  if (historyEnabled) window.addEventListener('popstate',()=>applyLocation(),{signal});
+  if (historyEnabled) window.addEventListener('popstate',()=>{
+    if (busy || programmerState.busy) { restoreLocation(); return; }
+    void act(()=>applyLocation());
+  },{signal});
   const cards = [
     ...catalog.sensors.map(item => ({ name:item.name, next:getExperiment(item.id), target:'sensor-cards', description:item.channels.map(c=>c.name).join(' · ') })),
-    ...catalog.activities.map(item => ({ name:item.name, next:getExperiment(item.sensorIds[0],item.id), target:'activity-cards', description:'준비 안내와 활동 기록, 분석 질문을 함께 사용합니다.' })),
+    ...catalog.activities.map(item => ({ name:item.name, next:getExperiment(item.sensorIds[0],item.id), target:'activity-cards', description:labDefaults.home.activityDescription })),
   ];
   for (const item of cards) {
       const next = item.next;
-      const link = document.createElement('a'); link.className='experiment-card'; link.href=routeUrl(next,'prepare',{mock}).href;
+      const link = document.createElement('a'); link.className='experiment-card'; link.href=routeUrl(next,'preview',{mock}).href;
       const title=document.createElement('strong'),description=document.createElement('span');title.textContent=item.name;
       description.textContent=item.description;
-      link.append(title,description);link.addEventListener('click',event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();if(!busy&&!programmerState.busy)browse(next);},{signal});$(item.target).append(link);
+      link.append(title,description);link.addEventListener('click',event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();void act(()=>browse(next));},{signal});$(item.target).append(link);
   } listen('retry-save',()=>store.flush());
   listen('export-json',()=>exportFile('json'));listen('export-csv',()=>exportFile('csv'));
   $('open-file').addEventListener('click',()=>input('file-input').click(),{signal});
@@ -368,9 +412,9 @@ export function createController(root = document, { repository = null, deviceTra
     if (connected || session?.getState().recording) renderRequested = true;
     if(renderRequested){renderRequested=false;render();}
   },200);
-  resetPreparation(); applyLocation(initialUrl); render();
+  void act(()=>applyLocation(initialUrl)); render();
   return { async dispose(){
     await persistCurrent(); await disconnect(); await store?.close();
     clearInterval(interval);abort.abort();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();measurement.dispose();experimentGuide.dispose();repo.close();
-  }, getState:()=>({screen,context,busy:busy || !!programmerState.busy,storage:store?.getState(),session:session?.getState()}) };
+  }, getState:()=>({screen,context,targetContext,busy:busy || !!programmerState.busy,storage:store?.getState(),session:session?.getState()}) };
 }
