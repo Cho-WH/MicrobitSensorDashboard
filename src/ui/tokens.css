@@ -1,0 +1,70 @@
+/* Luminous V2. Runtime values adopted from the reviewed measurement screen and
+   preparation B. Scope stays opt-in; scene gradients and layout stay local. */
+@font-face {
+  font-family:'Pretendard Variable'; font-weight:100 900; font-style:normal; font-display:swap;
+  src:url('../../public/vendor/pretendard/PretendardVariable.woff2') format('woff2');
+}
+:root[data-visual-theme=luminous] {
+  /* Surfaces and reading. A divider is not an input boundary. */
+  --sl-bg:#f6f8fc; --sl-surface:#fff; --sl-surface-soft:#eef3fa;
+  --sl-navy:#0b1f3b; --sl-text:#1f2937; --sl-muted:#53657d; --sl-line:#e1e8f2;
+  --sl-input-border:#c1cde0;
+
+  /* Actions, selection and focus have separate roles, even when colors match. */
+  --sl-action-bg:#ff7a45; --sl-action-text:var(--sl-navy);
+  --sl-action-hover:#ff915f; --sl-action-pressed:#ef6b35;
+  --sl-primary-bg:var(--sl-navy); --sl-primary-text:var(--sl-surface);
+  --sl-primary-hover:#17365c; --sl-primary-pressed:#081829;
+  --sl-control-hover:var(--sl-surface-soft); --sl-control-hover-line:#b5c5df;
+  --sl-control-pressed:#e3ebf8; --sl-disabled-bg:#edf1f6; --sl-disabled-text:#65758a; --sl-disabled-line:transparent;
+  --sl-selection:#246bfd; --sl-focus:var(--sl-selection);
+  --sl-nav-marker:#e36225;
+  --sl-tab-text:var(--sl-navy); --sl-tab-selected:var(--sl-selection);
+  --sl-tab-line:var(--sl-selection); --sl-tab-idle-line:var(--sl-line); --sl-tab-hover:var(--sl-surface-soft);
+
+  /* Functional status and event annotations. Never infer state from color. */
+  --sl-success:#137d55; --sl-idle:#8392a7;
+  --sl-recording-text:#b54416; --sl-recording-bg:#fff0e8; --sl-idle-bg:#eff3f8;
+  --sl-finish-text:var(--sl-recording-text); --sl-finish-bg:#fff8f4; --sl-finish-line:#ffd5c2;
+  --sl-event-text:#244a91; --sl-event-line:#8eaff0;
+  --sl-event-bg:#f0f6ff; --sl-event-hover:#dce9ff; --sl-event-row-hover:#eaf1fc;
+  --sl-notice-bg:#edf3ff;
+
+  /* The display adapter reads these once. Data colors are not action colors. */
+  --sl-chart-grid:#e5ebf4; --sl-chart-axis:var(--sl-muted);
+  --sl-channel-1:#e36225; --sl-channel-2:#246bfd;
+  --sl-channel-3:#7c5cff; --sl-channel-4:#137d55;
+
+  /* Geometry by role: flat tabs/memos, compact utility, rounded containers. */
+  --sl-radius-flat:0; --sl-radius-compact:4px; --sl-radius-control:10px;
+  --sl-radius-badge:6px; --sl-radius-popover:12px; --sl-radius-note:14px;
+  --sl-radius-dialog:16px; --sl-radius-reading:17px;
+  --sl-radius-panel:18px; --sl-radius-shell:20px;
+  --sl-target:44px; --sl-target-compact:36px;
+  --sl-space-1:4px; --sl-space-2:8px; --sl-space-3:12px;
+  --sl-space-4:16px; --sl-space-6:24px; --sl-space-8:32px;
+  --sl-font:'Pretendard Variable',system-ui,'Malgun Gothic',sans-serif;
+  --sl-type-control:14px; --sl-type-label:13px; --sl-type-small:12px; --sl-type-caption:11px;
+  --sl-shadow-panel:0 8px 28px #0b1f3b06;
+  --sl-shadow-menu:0 12px 36px #0b1f3b22; --sl-shadow-dialog:0 24px 80px #0b1f3b30;
+  --sl-backdrop:#0b1f3b50;
+  --sl-motion-control:140ms; --sl-motion-panel:220ms;
+}
+
+/* Preparation is a local dark stage, not a global dark mode. Palette roles
+   are overridden here; the bright measurement/data surfaces keep their values. */
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) {
+  --sl-stage-text:#f6f8fc; --sl-stage-muted:#cad7e8; --sl-stage-line:#49617d;
+  --sl-stage-selection:#b7d2ff; --sl-stage-soft:#233e5e;
+  --sl-stage-control-text:#d1dff1; --sl-stage-control-line:#657f9e;
+  --sl-stage-overlay:#ffffff0d; --sl-stage-selected-bg:#304e72;
+  --sl-stage-detail-line:#58718e; --sl-stage-detail-bg:#172e48;
+  --sl-disabled-text:#aebed3; --sl-disabled-bg:#23374f; --sl-disabled-line:#3c5370;
+  --sl-focus:#b7d2ff;
+  --sl-tab-text:var(--sl-stage-control-text); --sl-tab-selected:#fff;
+  --sl-tab-idle-line:var(--sl-stage-control-line);
+  --sl-tab-line:#ff9464; --sl-tab-hover:var(--sl-stage-overlay);
+}
+@media(prefers-reduced-motion:reduce) {
+  :root[data-visual-theme=luminous] { --sl-motion-control:0ms; --sl-motion-panel:0ms; }
+}

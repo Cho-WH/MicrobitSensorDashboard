@@ -4,7 +4,7 @@ import { readCell } from '../domain/columns.js';
 import { element, findElement } from './dom.js';
 import { setText } from './text.js';
 import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
-import { readMeasurementTheme, channelColor } from './visual-theme.js';
+import { readVisualTheme, channelColor } from './visual-theme.js';
 import { createMeasurementEvents } from './measurement-events.js';
 
 /** @param {ParentNode} root @param {()=>void} onChange */
@@ -25,7 +25,7 @@ export function createMeasurementView(root,onChange) {
     contentAbort.abort();contentAbort=new AbortController();
     context=next;chart?.dispose();chart=null;chartKey='';runId=null;rows=[];events=[];eventCount=-1;range.value='recent';
     copy = getLabCopy(next);
-    theme = readMeasurementTheme(root,next.channels);
+    theme = readVisualTheme(root,next.channels);
     applyLabCopy(root.querySelector('[data-screen="measure"]') ?? root, copy);
     const defaults=next.classConfig?.presentation?.visibleChannelIds??next.sensor?.defaultVisibleChannelIds??next.channels.map(channel=>channel.id);
     selected=new Set(defaults.filter(id=>next.channels.some(channel=>channel.id===id)));

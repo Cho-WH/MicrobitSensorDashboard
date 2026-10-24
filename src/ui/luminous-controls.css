@@ -1,0 +1,56 @@
+/* Shared presentation rules. Existing controls keep their own DOM, commands
+   and state. Screen styles own placement/size overrides, not these states. */
+:root[data-visual-theme=luminous] {
+  /* Bridge unmigrated UI only. New rules use semantic --sl-* roles directly. */
+  --ink:var(--sl-navy); --muted:var(--sl-muted); --line:var(--sl-line);
+  --teal:var(--sl-selection); --pale:var(--sl-surface-soft);
+  font-family:var(--sl-font); color:var(--sl-text); background:var(--sl-bg);
+}
+[data-visual-theme=luminous] :is(button,select,input) {
+  font-family:var(--sl-font); font-size:var(--sl-type-control); border-radius:var(--sl-radius-control);
+}
+[data-visual-theme=luminous] button {
+  min-height:var(--sl-target); border-color:var(--sl-button-line,var(--sl-line));
+  color:var(--sl-button-text,var(--sl-navy)); background:var(--sl-button-bg,var(--sl-surface)); font-weight:550;
+  transition:background var(--sl-motion-control),border-color var(--sl-motion-control);
+}
+[data-visual-theme=luminous] button:hover:not(:disabled) { background:var(--sl-button-hover,var(--sl-control-hover)); border-color:var(--sl-button-hover-line,var(--sl-control-hover-line)); }
+[data-visual-theme=luminous] button:active:not(:disabled) { background:var(--sl-button-pressed,var(--sl-control-pressed)); }
+[data-visual-theme=luminous] button:disabled,
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) button:disabled { opacity:1; color:var(--sl-disabled-text); background:var(--sl-disabled-bg); border-color:var(--sl-disabled-line); cursor:default; }
+[data-visual-theme=luminous] :is(button,a,input,select,summary):focus-visible { outline:2px solid var(--sl-focus); outline-offset:3px; }
+[data-visual-theme=luminous] button[aria-busy=true] { cursor:progress; }
+
+/* Role bindings only override component values; hover/pressed/disabled above
+   remain the single state implementation. New actions reuse one of these roles. */
+[data-visual-theme=luminous] button.primary,
+[data-visual-theme=luminous] #pause-recording {
+  --sl-button-bg:var(--sl-primary-bg); --sl-button-text:var(--sl-primary-text);
+  --sl-button-hover:var(--sl-primary-hover); --sl-button-pressed:var(--sl-primary-pressed);
+  --sl-button-line:transparent; --sl-button-hover-line:transparent;
+}
+[data-visual-theme=luminous] :is(#start-recording,#resume-recording),
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) :is(.step-actions,.guide-device-actions,.guide-program-actions,.magnetic-actions) .primary {
+  --sl-button-bg:var(--sl-action-bg); --sl-button-text:var(--sl-action-text);
+  --sl-button-hover:var(--sl-action-hover); --sl-button-pressed:var(--sl-action-pressed);
+  --sl-button-line:transparent; --sl-button-hover-line:transparent;
+}
+[data-visual-theme=luminous] #finish-recording {
+  --sl-button-text:var(--sl-finish-text); --sl-button-line:var(--sl-finish-line);
+  --sl-button-bg:var(--sl-finish-bg); --sl-button-hover:var(--sl-recording-bg);
+}
+
+/* Flat navigation and annotations: line + overlay, never an outlined pill. */
+[data-visual-theme=luminous] :is(.guide .guide-progress button,.measurement-event-row,.measurement-event-marker button),
+[data-visual-theme=luminous] #add-note { border-radius:var(--sl-radius-flat); box-shadow:none; }
+[data-visual-theme=luminous] .guide .guide-progress button { background:transparent; color:var(--sl-tab-text); border-top-color:var(--sl-tab-idle-line); font-weight:400; }
+[data-visual-theme=luminous] .guide .guide-progress button[aria-current]:not(:disabled) { color:var(--sl-tab-selected); border-top-color:var(--sl-tab-line); font-weight:700; }
+[data-visual-theme=luminous] .guide .guide-progress button:hover:not(:disabled) { background:var(--sl-tab-hover); }
+
+/* Dialog chrome shared by settings and event details. Content/layout stays local. */
+.luminous-settings-dialog,.measurement-event-dialog {
+  padding:var(--sl-space-6); border:1px solid var(--sl-surface);
+  border-radius:var(--sl-radius-dialog); box-shadow:var(--sl-shadow-dialog); color:var(--sl-navy);
+}
+.luminous-settings-dialog::backdrop,.measurement-event-dialog::backdrop { background:var(--sl-backdrop); }
+@media(prefers-reduced-motion:reduce) { [data-visual-theme=luminous] *,[data-visual-theme=luminous] *::before { transition:none; animation:none; } }

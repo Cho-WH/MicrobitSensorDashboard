@@ -1,0 +1,59 @@
+/* Preparation B: scene, content and responsive layout. The archived A preview
+   opts out of this local stage. Shared control/tab states live in luminous-controls.css. */
+[data-visual-theme=luminous] .guide { --guide-motion-duration:var(--sl-motion-panel); }
+[data-visual-theme=luminous] .preparation-heading { margin:20px 0 16px; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) {
+  --ink:var(--sl-stage-text); --muted:var(--sl-stage-muted); --teal:var(--sl-stage-selection); --line:var(--sl-stage-line); --pale:var(--sl-stage-soft);
+  padding:var(--sl-space-6); border:1px solid #203c5c; border-radius:var(--sl-radius-shell); color:var(--ink);
+  background:radial-gradient(ellipse at 80% 85%,#1b4370,transparent 54%),linear-gradient(135deg,#081829,#102846);
+  box-shadow:0 18px 40px #0b1f3b18;
+}
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-layout { grid-template-columns:minmax(260px,.85fr) minmax(0,1.3fr); gap:30px; align-items:center; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-visual { order:2; border:0; background:radial-gradient(ellipse at 55% 35%,#5b7b9e55,transparent 72%); position:relative; overflow:hidden; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .step-panel { order:1; padding:12px 0; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .step-title { font-size:29px; line-height:1.4; letter-spacing:-1px; margin:12px 0 18px; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .step-counter { color:#ffb897; font-size:var(--sl-type-label); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) :is(.guide-top button,.guide-substeps button):not(:disabled) { background:transparent; color:var(--sl-stage-control-text); border-color:var(--sl-stage-control-line); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-top [data-guide-action=quick] { flex:0 0 auto; max-width:100%; min-height:var(--sl-target-compact); padding:8px 12px; border-radius:var(--sl-radius-compact); font-size:var(--sl-type-label); line-height:18px; font-weight:500; margin-left:auto; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-top [data-guide-action=quick]:hover:not(:disabled) { background:var(--sl-stage-overlay); border-color:#9bb4d3; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-substeps [aria-current]:not(:disabled) { background:var(--sl-stage-selected-bg); color:var(--sl-surface); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .step-actions > button:not(.primary):not(:disabled) { background:transparent; border-color:var(--sl-stage-control-line); color:#d2e1f5; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) :is(.guide-note,.guide-connection-status):empty { display:none; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-device-visual { position:relative; padding:0 18px 22px; background:none; min-height:0; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-usb-image { height:clamp(180px,calc(100dvh - 500px),320px); width:100%; object-fit:contain; filter:drop-shadow(0 18px 24px #020b1850); margin:0; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-device-visual h4 { color:var(--sl-surface); font-size:17px; margin:0 0 8px; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-device-visual :is(p,small) { color:var(--muted); font-size:var(--sl-type-control); line-height:1.75; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-device-visual .eyebrow { color:var(--sl-stage-selection); margin:12px 0 0; font-size:var(--sl-type-small); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .equipment-list li { background:radial-gradient(ellipse at 45% 30%,#47658388,transparent 75%),linear-gradient(140deg,#2b4868,#203852); border-color:var(--sl-stage-detail-line); color:var(--sl-stage-text); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .equipment-section h4 { color:#d1e2fb; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .equipment-illustrated img { filter:drop-shadow(0 10px 12px #020b1833); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) button.help-trigger[data-action-help] { background:transparent; color:#e4efff; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) button.help-trigger[data-action-help]::before { border-color:#99b2d0; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) button.help-trigger[data-action-help]:is(:hover,[aria-expanded=true]) { background:#345273; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) :is(.model-toolbar,.wiring-view-controls) { background:#182f4a; border-color:#496782; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) :is(.viewer-modes,.wiring-view-controls) button:not(:disabled) { background:transparent; color:var(--sl-stage-control-text); border-color:var(--sl-stage-control-line); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) :is(.viewer-modes,.wiring-view-controls) button[aria-pressed=true]:not(:disabled) { background:var(--sl-stage-selected-bg); color:var(--sl-surface); border-color:#9fbde3; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .viewer-large { color:#c8dfff; }
+/* Keep the 3D work surface bright so ground wires and pin lettering remain readable. */
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-frame { height:clamp(260px,calc(100dvh - 520px),520px); border:1px solid #59718d; border-radius:0 0 10px 10px; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-wiring { color:#eef4ff; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-wiring :is(th,td) { border-color:var(--sl-stage-detail-line); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-wiring .is-current { background:#2a4c70; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-value { background:#294563; border-color:var(--sl-stage-detail-line); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-value strong { color:var(--sl-stage-text); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-reception[data-fresh=false] .guide-value strong { color:#b1c3da; }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-last-received { font-size:var(--sl-type-label); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-program { background:var(--sl-stage-detail-bg); color:var(--sl-stage-text); }
+[data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-model[data-viewer-state=loading] .guide-model-status { background:#172e48ee; }
+@media(max-width:1000px) {
+  [data-visual-theme=luminous] .guide:not([data-stage-style=light]) { padding:18px; }
+  [data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-layout { grid-template-columns:1fr; gap:var(--sl-space-4); }
+  [data-visual-theme=luminous] .guide:not([data-stage-style=light]) .step-panel { order:0; }
+  [data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-usb-image { height:280px; }
+}
+@media(max-width:480px) {
+  [data-visual-theme=luminous] .guide:not([data-stage-style=light]) .step-title { font-size:25px; letter-spacing:-.6px; }
+}
+@media(max-width:850px) {
+  [data-visual-theme=luminous] .guide:not([data-stage-style=light]) .guide-top [data-guide-action=quick] { min-height:var(--sl-target); }
+}

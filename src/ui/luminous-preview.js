@@ -1,4 +1,5 @@
-// V1 opt-in composition. Move the real controls before controller binding;
+// Opt-in screen composition; shared visual rules are loaded by the stylesheet.
+// Move the real controls before controller binding;
 // recording, connection, persistence and navigation still have their existing owners.
 import { element } from './dom.js';
 
