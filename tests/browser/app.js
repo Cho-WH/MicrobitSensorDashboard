@@ -1,4 +1,5 @@
 import { composeGuideSteps } from '../../src/guide/steps.js';
+import { mountLabFixture, clickLabControl, clickVisible } from './lab-fixture.js';
 import { createController } from '../../src/app/controller.js';
 import { createRepository } from '../../src/data/repository.js';
 import { buildExperimentJson, parseExperimentJson } from '../../src/data/files/json.js';
@@ -22,12 +23,9 @@ export async function runAppTests(report=()=>{}) {
     if(delayCreate&&batch.insertOnly){delayCreate=false;await new Promise(resolve=>{releaseCreate=resolve;});}
     return commit(batch);
   };
-  const parsed=new DOMParser().parseFromString(await (await fetch(new URL('../../lab.html',import.meta.url))).text(),'text/html');
-  const host=document.createElement('div'); host.style.cssText='width:min(1400px,100%);margin:20px auto';
-  host.append(...Array.from(parsed.body.children,node=>document.importNode(node,true))); document.body.append(host);
-  host.getElementById=id=>host.querySelector('#'+CSS.escape(id));
+  const fixture=await mountLabFixture(),{host}=fixture;
   const $=selector=>host.querySelector(selector);
-  const click=async selector=>{await until(()=>!app.getState().busy&&$(selector)&&!$(selector).disabled,'조작 비활성: '+selector);$(selector).click();await new Promise(resolve=>setTimeout(resolve,240));check($('#lab-error').hidden,$('#lab-error').textContent);};
+  const click=async selector=>{await until(()=>!app.getState().busy&&$(selector)&&!$(selector).disabled,'조작 비활성: '+selector);clickLabControl(host,selector);await new Promise(resolve=>setTimeout(resolve,240));check($('#lab-error').hidden,$('#lab-error').textContent);};
   let app;
   const select=async path=>{
     await click(`[href*="/${path}/"]`);await until(()=>app.getState().screen==='preview','실험 미리보기 누락');
@@ -36,7 +34,7 @@ export async function runAppTests(report=()=>{}) {
     check($('[data-view="measure"]').disabled&&$('#connect').disabled&&$('#start-recording').disabled,'미리보기에서 장치·기록 권한을 얻었습니다.');
     await click('#activate-experiment');
     await until(()=>app.getState().screen==='prepare'||$('#leave-dialog').open,'준비 화면 전환 응답 누락');
-    if($('#leave-dialog').open){check(!app.getState().session?.recording,'검사의 자동 이동이 진행 중 기록을 마치려고 합니다.');$('#leave-dialog').close('save');}
+    if($('#leave-dialog').open){check(!app.getState().session?.recording,'검사의 자동 이동이 진행 중 기록을 마치려고 합니다.');clickVisible($('#leave-save'));}
     await until(()=>app.getState().screen==='prepare','준비 화면 전환 실패');
   };
   const step=async id=>{const item=composeGuideSteps(app.getState().context).find(item=>item.id===id);await click(`[data-guide-group="${item.group}"]`);const node=$(`[data-guide-step="${id}"]`);if(node.getClientRects().length)await click(`[data-guide-step="${id}"]`);};
@@ -59,14 +57,15 @@ export async function runAppTests(report=()=>{}) {
     await click('[data-view="analysis"]');await click('#tab-interpretation');
     $('#reflection-observation').value='첫 실험의 관찰 기록';
     // Deliberately leave the edit as a DOM draft; exiting must flush it.
-    failSave=true; $('[data-view="home"]').click();
+    failSave=true; clickVisible($('[data-view="home"]'));
     await until(()=>!app.getState().busy&&!$('#lab-error').hidden,'저장 실패 시 이탈 차단 누락');
     check(app.getState().screen==='analysis'&&app.getState().storage.id===firstId,'저장 실패에도 실험을 나갔습니다.');
     check($('#connection-status').textContent==='모의 연결','저장 실패 때 연결을 해제했습니다.');
     check($('#reflection-observation').value==='첫 실험의 관찰 기록','저장 실패 때 작성 내용을 잃었습니다.');
-    failSave=false;delaySave=true;$('[data-view="home"]').click();
+    failSave=false;delaySave=true;clickVisible($('[data-view="home"]'));
     await until(()=>typeof releaseSave==='function','저장 완료 대기 경계 누락');
     const stoppingCount=app.getState().storage.sampleCount;
+    // Fault injection: an out-of-screen request must still be rejected while saving.
     $('[href*="/sensors/magnetometer/"]').click();
     check(app.getState().screen==='analysis'&&!app.getState().targetContext,'저장 중 새 실험으로 진입했습니다.');
     await new Promise(resolve=>setTimeout(resolve,350));
@@ -178,9 +177,9 @@ export async function runAppTests(report=()=>{}) {
     const files=new DataTransfer();files.items.add(new File([legacy],'gay-lussac-v2.json',{type:'application/json'}));
     $('#file-input').files=files.files;$('#file-input').dispatchEvent(new Event('change'));
     await until(()=>$('#leave-dialog').open||app.getState().storage?.source==='import'||!$('#lab-error').hidden,'파일 열기 응답 누락');
-    if($('#leave-dialog').open) $('#leave-dialog').close('save');
+    if($('#leave-dialog').open) clickVisible($('#leave-save'));
     await until(()=>app.getState().storage?.source==='import'&&app.getState().screen==='analysis','M2에서 기존 파일 열기 실패');
-    await click('[data-view="measure"]');check($('#connect').disabled&&$('#start-recording').disabled,'가져온 자료에 장치 연결/기록이 허용되었습니다.');
+    await click('[data-view="measure"]');check(!$('#connect').disabled&&$('#start-recording').disabled&&!app.getState().session.recording,'호환 파일의 명시적 이어 측정과 새 기록 시작을 구분하지 않았습니다.');
     const imported=await repo.readSnapshot(app.getState().storage.id);
     check(imported.samples.length===parseExperimentJson(legacy).samples.length,'기존 파일 원자료 개수 손실');
     report('M2 통합 · 기존 게이뤼삭 파일 분석과 수신 자료 분리');
@@ -189,17 +188,19 @@ export async function runAppTests(report=()=>{}) {
     for(const id of ['equipment','program']) await confirm(id);
     await click('#to-measure');await click('#connect');
     check(app.getState().screen==='prepare','측정 화면에서 연결한 장치의 준비 선택으로 이동하지 않았습니다.');
+    check(!$('#measurement-settings').open&&!host.querySelector('dialog:modal'),'준비 화면으로 이동한 뒤 숨은 설정창이 조작을 막습니다.');
     await step('connection');await click('[data-device-action="calibrate"]');
     await until(()=>$('.guide-status').textContent.includes('준비 완료'),'시작 경합 검사 준비 실패');await click('#to-measure');
     const beforeCreate=(await repo.listRuns()).length;delayCreate=true;
-    await until(()=>!$('#start-recording').disabled,'기록 시작 경합 검사 준비 실패');$('#start-recording').click();
+    await until(()=>!$('#start-recording').disabled,'기록 시작 경합 검사 준비 실패');clickVisible($('#start-recording'));
     await until(()=>typeof releaseCreate==='function','DB 생성 지연 경계 누락');
-    $('#disconnect').click();releaseCreate();
+    clickLabControl(host,'#disconnect');releaseCreate();
     await until(()=>!app.getState().busy,'생성 중 단절 처리 미완료');
     check(!app.getState().storage&&(await repo.listRuns()).length===beforeCreate,'준비 무효화 후 빈 Run/기록을 남겼습니다.');
     check($('#lab-error').textContent.includes('기록을 시작하지'),'시작 취소 원인을 알리지 않았습니다.');
     report('M2 통합 · DB 생성 대기 중 단절은 기록 시작·빈 Run 생성 취소');
   } finally {
-    await app?.dispose();host.remove();repo.close();await globalThis.idb.deleteDB(databaseName);
+    failSave=false;delaySave=false;delayCreate=false;releaseSave?.();releaseCreate?.();
+    await app?.dispose();fixture.dispose();repo.close();await globalThis.idb.deleteDB(databaseName);
   }
 }

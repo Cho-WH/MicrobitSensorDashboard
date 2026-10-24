@@ -94,6 +94,9 @@
 }
 [data-visual-theme=luminous] dialog { max-width:calc(100vw - 32px); max-height:calc(100dvh - 32px); padding:var(--sl-space-6); overflow:auto; }
 [data-visual-theme=luminous] dialog::backdrop { background:var(--sl-backdrop); }
+[data-visual-theme=luminous] :is(.record-dialog,.saved-run-actions,.stored-event) button { border:0; border-radius:var(--sl-radius-compact); }
+[data-visual-theme=luminous] :is(.saved-run-actions,.stored-event) button { --sl-button-bg:transparent; --sl-button-hover:var(--sl-control-hover); }
+[data-visual-theme=luminous] :is(.record-dialog-error,.record-condition-warning) { color:var(--sl-recording-text); }
 [data-visual-theme=luminous] .column-filter-panel { border-radius:var(--sl-radius-popover); box-shadow:var(--sl-shadow-menu); }
 [data-visual-theme=luminous] :is(dialog,.analysis-screen,.column-filter-panel) :is(select,input:not([type=checkbox])) {
   color:var(--sl-text); background:var(--sl-surface); border-color:var(--sl-input-border); border-radius:var(--sl-radius-compact);

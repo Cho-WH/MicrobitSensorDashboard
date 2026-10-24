@@ -1,4 +1,5 @@
 import { createController } from '../../src/app/controller.js';
+import { mountLabFixture, clickLabControl, clickVisible } from './lab-fixture.js';
 import { createRepository } from '../../src/data/repository.js';
 
 const check=(value,message)=>{if(!value)throw new Error(message);};
@@ -15,12 +16,10 @@ export async function runNavigationTests(report=()=>{}) {
   repo.commitBatch=batch=>temporaryImport&&batch.insertOnly
     ?Promise.reject(Object.assign(new Error('검사용 저장소 사용 불가'),{code:'storage-unavailable'}))
     :failSave?Promise.reject(new Error('뒤로 가기 저장 실패')):commit(batch);
-  const html=new DOMParser().parseFromString(await(await fetch(new URL('../../lab.html',import.meta.url))).text(),'text/html');
-  const host=document.createElement('div');host.append(...[...html.body.children].map(node=>document.importNode(node,true)));document.body.append(host);
-  host.getElementById=id=>host.querySelector('#'+CSS.escape(id));
+  const fixture=await mountLabFixture(),{host}=fixture;
   const $=selector=>host.querySelector(selector);
   const url=(path)=>new URL('../../'+path,import.meta.url).href;
-  const click=async selector=>{await wait(()=>!app.getState().busy&&!$(selector).disabled,selector+' 비활성');$(selector).click();await wait(()=>!app.getState().busy,selector+' 미완료');};
+  const click=async selector=>{await wait(()=>!app.getState().busy&&!$(selector).disabled,selector+' 비활성');clickLabControl(host,selector);await wait(()=>!app.getState().busy,selector+' 미완료');};
   try {
     history.replaceState(null,'',url('sensors/temperature/?mock=1&view=preview'));
     app=createController(host,{repository:repo,initialUrl:location.href});
@@ -52,7 +51,7 @@ export async function runNavigationTests(report=()=>{}) {
     report('미리보기 · 직접 주소·뒤로 가기·앞으로 가기에서 소속과 권한 유지');
 
     // Recreate the controller at the same URL, as on a reload, using the same isolated database.
-    await app.dispose();host.replaceChildren(...[...html.body.children].map(node=>document.importNode(node,true)));
+    await app.dispose();await fixture.reset();
     app=createController(host,{repository:repo,initialUrl:location.href});
     await wait(()=>!app.getState().busy,'미리보기 재진입 실패');
     check(app.getState().screen==='preview'&&!app.getState().storage&&!app.getState().context&&$('#experiment-title').textContent===$('#preview-title').textContent,'새로 진입한 미리보기가 준비·기록으로 바뀌었습니다.');
@@ -65,12 +64,12 @@ export async function runNavigationTests(report=()=>{}) {
     $('#file-input').files=files.files;$('#file-input').dispatchEvent(new Event('change'));
     await wait(()=>!app.getState().busy&&app.getState().storage?.temporary,'임시 분석 열기 실패');
     const temporaryId=app.getState().storage.id, temporaryCount=app.getState().storage.sampleCount;
-    $('[data-view="home"]').click();await wait(()=>$('#leave-dialog').open,'임시 분석 파일 보관 확인 누락');
-    $('#leave-dialog').close('cancel');await wait(()=>!app.getState().busy,'임시 분석 종료 취소 실패');
+    clickVisible($('[data-view="home"]'));await wait(()=>$('#leave-dialog').open,'임시 분석 파일 보관 확인 누락');
+    clickVisible($('#leave-dialog button[value=cancel]'));await wait(()=>!app.getState().busy,'임시 분석 종료 취소 실패');
     check(app.getState().screen==='analysis'&&app.getState().storage.id===temporaryId&&app.getState().storage.sampleCount===temporaryCount,'종료 취소가 임시 자료를 버렸습니다.');
     check(!$('[data-screen="analysis"]').inert,'종료 취소 뒤 분석 편집이 잠겼습니다.');
     report('임시 분석 · 파일 보관 전 종료 취소 시 원자료와 편집 권한 유지');
   } finally {
-    failSave=false;await app?.dispose();host.remove();repo.close();await globalThis.idb.deleteDB(databaseName);history.replaceState(null,'',originalUrl);
+    failSave=false;await app?.dispose();fixture.dispose();repo.close();await globalThis.idb.deleteDB(databaseName);history.replaceState(null,'',originalUrl);
   }
 }

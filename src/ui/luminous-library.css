@@ -24,9 +24,12 @@
 [data-visual-theme=luminous] #saved-runs li > div { min-width:0; flex:1; color:var(--sl-navy); font-weight:600; overflow-wrap:anywhere; }
 [data-visual-theme=luminous] #saved-runs small { color:var(--sl-muted); font-size:var(--sl-type-small); font-weight:400; }
 [data-visual-theme=luminous] #saved-runs button { min-width:84px; }
+[data-visual-theme=luminous] #saved-runs li > .saved-run-actions { flex:0 0 auto; }
 [data-visual-theme=luminous] #lab-error { background:var(--sl-recording-bg); border-color:var(--sl-recording-text); border-radius:var(--sl-radius-compact); padding:12px 16px; line-height:1.7; }
 [data-visual-theme=luminous] #lab-notice:not(:empty) { color:var(--sl-muted); background:var(--sl-notice-bg); padding:12px 16px; border-radius:var(--sl-radius-compact); }
 @media(max-width:650px) {
+  [data-visual-theme=luminous] #saved-runs li { flex-wrap:wrap; }
+  [data-visual-theme=luminous] #saved-runs li > .saved-run-actions { flex:1 1 100%; justify-content:flex-start; }
   [data-visual-theme=luminous] :is(.experiment-preview,[data-screen=saved] > .lab-panel) { padding:var(--sl-space-4); }
   [data-visual-theme=luminous] .home-intro { padding-top:12px; }
   [data-visual-theme=luminous] .experiment-card { min-height:126px; }

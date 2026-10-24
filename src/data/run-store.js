@@ -2,6 +2,7 @@
 // gay-lussac/data/run-store.js. Pending queues, revision acknowledgements and locks retained.
 import { DATABASE, withEventNote, validateSample } from '../domain/contracts.js';
 import { LIMITS } from '../domain/limits.js';
+import { canResumeImportedRun } from './files/recording-source.js';
 import { validateExperimentSnapshot, validateWorkspace } from './files/validation.js';
 
 const fail = (code, message) => Object.assign(new Error(message), { code });
@@ -68,6 +69,7 @@ export async function openRunStore({ repository, id = crypto.randomUUID(), conte
   } catch (error) { releaseLock(); await lockTask; throw error; }
 
   let run = structuredClone(initial.run), samples = structuredClone(initial.samples), events = structuredClone(initial.events);
+  const canAppend = !temporary && (run.source !== 'import' || canResumeImportedRun(run));
   let workspace = structuredClone(initial.workspace);
   let saved = { sampleId: run.lastSavedSampleId, eventId: run.lastSavedEventId ?? 0,
     runRevision: run.runRevision, workspaceRevision: workspace?.workspaceRevision ?? 0 };
@@ -117,11 +119,14 @@ export async function openRunStore({ repository, id = crypto.randomUUID(), conte
   }
   function appendSample(sample) {
     assertWriter();
-    if (run.source === 'import') throw fail('imported-source', '가져온 원자료에 측정값을 추가할 수 없습니다. 새 실험을 준비해 주세요.');
+    if (!canAppend) throw fail('imported-source', '이 자료에는 측정값을 추가할 수 없습니다. 새 실험을 준비해 주세요.');
     if (sample.sampleId !== lastSampleId + 1) throw fail('sample-order', '샘플 ID는 순서대로 증가해야 합니다.');
     if (samples.length >= LIMITS.samples) throw fail('sample-limit', '측정값 개수 한도에 도달했어요. 보관 후 새 실험을 시작해 주세요.');
     checkSerializable(sample, 2);
     const next = validateSample({ ...sample, runId: id }, run.context);
+    // Imported fixed columns have no device source. Preserve old cells and mark new ones missing.
+    if (run.importedColumns?.length) next.importedValues = Object.fromEntries(run.importedColumns.map(column =>
+      [column.id, { value: null, reason: '추가 측정에서 제공되지 않은 값' }]));
     const bytes = sampleBytes + jsonBytes(next) + (samples.length ? 1 : 0);
     admit({ nextSampleBytes: bytes });
     samples.push(structuredClone(next)); sampleBytes = bytes; lastSampleId = sample.sampleId; changed();

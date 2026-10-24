@@ -54,7 +54,7 @@ export async function prepareLuminousShell(root = document) {
   measure.append(dialog);
   settings.addEventListener('click', () => dialog.showModal());
   close.addEventListener('click', () => dialog.close());
-  dialog.addEventListener('close', () => { if(settings.getClientRects().length) settings.focus({preventScroll:true}); });
+  dialog.addEventListener('close', () => { if(!measure.hidden&&settings.getClientRects().length) settings.focus({preventScroll:true}); });
   $('#prepare-device').addEventListener('click', () => dialog.close());
 
   const overview = element('div', 'luminous-overview');

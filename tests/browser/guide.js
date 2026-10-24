@@ -1,3 +1,4 @@
+import { mountLabFixture, clickVisible } from './lab-fixture.js';
 import { createGuideView } from '../../src/ui/guide-view.js';
 import { getExperiment } from '../../src/catalog/index.js';
 import { stableText } from './layout.js';
@@ -11,15 +12,16 @@ const waitFor = async predicate => {
 
 // Actual UI, controller facts injected explicitly. This does not claim physical USB/BLE verification.
 export async function runGuideTests(report = (_message) => {}) {
-  const host = document.createElement('div'); host.style.cssText = 'max-width:1100px;margin:20px auto'; document.body.append(host);
+  const fixture=await mountLabFixture();fixture.showScreen('prepare');
+  const host=fixture.host.querySelector('#guide-host');
   const errors = [], changes = [], connections=[],deviceActions=[]; let disconnects = 0, installs = 0, measurements = 0;
   const view = createGuideView(host, { onChange: value => changes.push(value), onError: error => errors.push(error),
     onDisconnect: () => disconnects++, onInstall: () => installs++, onConnect: options=>connections.push(options), onMeasure:()=>measurements++,onDeviceAction:action=>deviceActions.push(action) });
   const $ = selector => host.querySelector(selector);
-  const step = id => { const item=view.getProgress().steps.find(item=>item.id===id);check(item,`준비 단계 ${id} 없음`);$(`[data-guide-group="${item.group}"]`).click();const node=$(`[data-guide-step="${id}"]`);if(node.getClientRects().length)node.click(); };
-  const click = id => { const node = $(`[data-guide-action="${id}"]`); check(node && !node.hidden && !node.disabled, `${id} 조작을 실행할 수 없음`); node.click(); };
+  const step = id => { const item=view.getProgress().steps.find(item=>item.id===id);check(item,`준비 단계 ${id} 없음`);clickVisible($(`[data-guide-group="${item.group}"]`));const node=$(`[data-guide-step="${id}"]`);if(node.getClientRects().length)clickVisible(node); };
+  const click = id => { const node = $(`[data-guide-action="${id}"]`); check(node && !node.hidden && !node.disabled, `${id} 조작을 실행할 수 없음`); clickVisible(node); };
   try {
-    let sharedSources;
+    let sharedSources,sharedUsbSource;
     for(const sensor of ['magnetometer','temperature','light-level','accelerometer']){
       view.open(getExperiment(sensor),{reset:true});
       const images=[...host.querySelectorAll('.equipment-illustrated img')];
@@ -29,12 +31,15 @@ export async function runGuideTests(report = (_message) => {}) {
       const sources=images.map(image=>image.src);
       if(sharedSources)check(JSON.stringify(sources)===JSON.stringify(sharedSources),'내장 센서가 서로 다른 장치 이미지를 사용합니다.');
       sharedSources=sources;
-      step('usb');check($('.guide-usb-image')?.src===sources[1],'USB 안내가 준비물 자산을 재사용하지 않습니다.');
+      step('usb');const usbImage=$('.guide-usb-image');await usbImage.decode();
+      check(usbImage.checkVisibility()&&usbImage.naturalWidth>0&&usbImage.alt,'기본 준비 화면의 USB 안내 그림 또는 대체 설명 누락');
+      if(sharedUsbSource)check(usbImage.src===sharedUsbSource,'기본 USB 안내 자산이 센서마다 달라졌습니다.');
+      sharedUsbSource=usbImage.src;
       step('connection');check(!$('.guide-power').hidden&&$('.guide-power img').src===sources[2],'연결 단계의 배터리 안내 누락');
-      $('.guide-power summary').click();check($('.guide-power').open,'배터리 안내를 펼칠 수 없습니다.');
+      clickVisible($('.guide-power summary'));check($('.guide-power').open,'배터리 안내를 펼칠 수 없습니다.');
       check(!$('canvas')&&!$('iframe').getAttribute('src'),'정지 이미지 안내에서 3D가 실행됩니다.');
     }
-    report('내장 센서 4종 · 준비물/USB/배터리 정지 이미지 재사용과 로딩');
+    report('내장 센서 4종 · 공통 준비물·배터리와 기본 USB 안내 그림 로딩');
     view.open(getExperiment('magnetometer'),{reset:true});
     const facts={attemptId:'mag-1',connected:true,canInstall:true,canConnect:true};
     const showPhase=(phase,calibration='unknown',receptionReady=false)=>view.render({...facts,calibration,receptionReady,devicePreparation:{phase,calibration,allowReadings:phase==='receiving'}});
@@ -44,7 +49,7 @@ export async function runGuideTests(report = (_message) => {}) {
     check($('.guide-reception').hidden&&!$('.guide-sensor-preparation').hidden,'응답 대기에 빈 수치 칸이 나타납니다.');
     showPhase('choice');check($('[data-guide-step="calibration"]').getAttribute('aria-current')==='step','선택 안내 자동 전환 실패');
     check($('[data-guide-action="confirm"]').hidden,'장치 보정을 직접 완료 처리하는 버튼이 남았습니다.');
-    $('[data-device-action="calibrate"]').focus();$('[data-device-action="calibrate"]').click();
+    $('[data-device-action="calibrate"]').focus();clickVisible($('[data-device-action="calibrate"]'));
     check(deviceActions.at(-1)==='calibrate','보정 명령 콜백 누락');
     showPhase('starting');showPhase('calibrating');
     check($('.guide-reception').hidden&&$('.magnetic-actions').hidden,'보정 중 수치/선택 버튼이 노출됩니다.');
@@ -58,7 +63,7 @@ export async function runGuideTests(report = (_message) => {}) {
     check(measurements===1&&!view.getProgress().ready,'준비 체크와 수신에 따른 측정 허용이 분리되지 않았습니다.');
     for(const id of ['equipment','program']){step(id);click(id==='program'?'program-confirm':'confirm');}
     check(view.getProgress().ready&&view.getProgress().setup.calibration==='device-reported','장치 보정 근거가 반영되지 않았습니다.');
-    facts.attemptId='mag-skip';showPhase('choice');step('calibration');$('[data-device-action="skip"]').click();
+    facts.attemptId='mag-skip';showPhase('choice');step('calibration');clickVisible($('[data-device-action="skip"]'));
     check(deviceActions.at(-1)==='skip','생략 명령 콜백 누락');showPhase('skipping');showPhase('receiving','skipped',true);
     check(view.getProgress().canMeasure&&!view.getProgress().steps.find(step=>step.id==='calibration').complete,'생략이 완료로 둔갑하거나 측정을 차단했습니다.');
     check(view.getProgress().setup.calibration==='skipped'&&$('.step-description').textContent.includes('생략'),'생략 이력 또는 안내 누락');
@@ -86,7 +91,7 @@ export async function runGuideTests(report = (_message) => {}) {
       programmerState: { status: 'error', message: 'USB 전송을 마치지 못했어요.', progress: null } });
     check(!view.getProgress().observations.programUserConfirmed, '새 준비가 이전 프로그램 확인을 복원했습니다.');
     step('program'); check($('.guide-device-status').textContent.includes('마치지'), 'USB 실패 원인을 표시하지 않았습니다.');
-    check($('.guide-usb-image')?.src===sharedSources[1],'BMP280 프로그램 안내의 공통 USB 그림 누락');
+    check($('.guide-usb-image')?.src===sharedUsbSource,'BMP280 프로그램 안내의 공통 USB 그림 누락');
     click('install'); check(installs === 1, 'USB 재시도 콜백이 실행되지 않았습니다.');
     view.render({ attemptId: 'bmp-1', connected: false, busy: true, programmerState: { status: 'flashing', progress: 42, message: '프로그램 설치 중', deviceName: 'micro:bit V2' } });
     check($('.guide-device-status').textContent.includes('42%'), 'USB 진행률을 표시하지 않았습니다.');
@@ -122,7 +127,7 @@ export async function runGuideTests(report = (_message) => {}) {
         const sample=()=>{const r=frame.getBoundingClientRect();samples.push([r.x,r.y,r.width,r.height,getComputedStyle(frame).visibility]);};
         const observer=new MutationObserver(sample);observer.observe(model,{attributes:true,subtree:true,childList:true});
         try {
-          $(`[data-guide-step="${id}"]`).click();
+          clickVisible($(`[data-guide-step="${id}"]`));
           check(model.dataset.viewerState==='loading','단계 적용 대기 상태를 검사하지 못했습니다.');
           sample();await waitFor(()=>model.dataset.viewerState==='applied');sample();
           check(samples.every(r=>r.slice(0,4).every((v,i)=>Math.abs(v-[before.x,before.y,before.width,before.height][i])<1)&&r[4]==='visible'),`${id}: 단계 적용 도중 3D 위치·크기·표시가 흔들립니다.`);
@@ -159,7 +164,7 @@ export async function runGuideTests(report = (_message) => {}) {
     check(!$('[data-guide-action="reconnect"]').hidden,'배터리 검사 중 끊긴 장치의 복구 경로 누락');
     report('실제 준비 UI · 체크 이력과 측정 가능 분리·수신 중단 차단·활동 배치·배터리 복구');
     check(errors.length === 0, errors.join('\n'));
-  } finally { view.dispose(); host.remove(); }
+  } finally { view.dispose(); fixture.dispose(); }
 }
 
 // Real app, isolated review DB and existing mock transport. Resize the same

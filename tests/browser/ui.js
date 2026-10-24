@@ -1,3 +1,4 @@
+import { mountLabFixture, clickLabControl } from './lab-fixture.js';
 import { createAnalysisView } from '../../src/ui/analysis-view.js';
 import { stableText } from './layout.js';
 import { createReflectionPrint } from '../../src/ui/reflection-view.js';
@@ -29,24 +30,11 @@ function fixture({ count = 1500, dated = true, temporary = false } = {}) {
 }
 
 export async function runUiTests(report = (_message) => {}) {
-  const luminous = new URL(location.href).searchParams.get('visual') === 'luminous';
-  const previousTheme = document.documentElement.dataset.visualTheme;
-  let style;
-  if (luminous) {
-    style = document.createElement('link'); style.rel = 'stylesheet'; style.href = '../../src/ui/luminous.css';
-    await new Promise((resolve,reject) => { style.onload = resolve; style.onerror = reject; document.head.append(style); });
-    document.documentElement.dataset.visualTheme = 'luminous';
-    await document.fonts.ready;
-  }
-  const response = await fetch(new URL('../../lab.html', import.meta.url));
-  check(response.ok, '분석 화면 HTML을 불러오지 못했습니다.');
-  const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
-  const screen = parsed.querySelector('[data-screen="analysis"]');
-  check(screen, '실제 분석 화면을 찾지 못했습니다.');
   const previousFocus = document.activeElement, previousScroll = { x: scrollX, y: scrollY };
-  const host = document.createElement('div'); host.id = 'browser-analysis-host';
-  host.style.cssText = 'width:min(1200px,100%);margin:24px auto;--analysis-duration:0ms';
-  const root = document.importNode(screen, true); root.hidden = false; host.append(root); document.body.append(host);
+  const lab = await mountLabFixture(), {host} = lab;
+  host.style.setProperty('--analysis-duration','0ms');
+  lab.showScreen('analysis');
+  const root = host.querySelector('[data-screen="analysis"]');
   const $ = selector => root.querySelector(selector);
   const failures = [], initialChartCount = Object.keys(globalThis.Chart.instances).length;
   const presentation = chart => ({
@@ -68,7 +56,7 @@ export async function runUiTests(report = (_message) => {}) {
   const click = async selector => {
     const target = $(selector); check(target, '화면 조작을 찾지 못했습니다: ' + selector);
     check(!target.disabled, '필요한 조작이 비활성화되어 있습니다: ' + selector);
-    target.click(); await settle();
+    clickLabControl(host,target); await settle();
     check(!$('#analysis-feedback').textContent, $('#analysis-feedback').textContent);
   };
   try {
@@ -144,7 +132,7 @@ export async function runUiTests(report = (_message) => {}) {
     const screenPresentation = presentation(liveGraph), beforeExport = structuredClone(first.data);
     const png = view.exportPng('분석 출력');
     check(same(exported,screenPresentation), 'PNG의 자료·제외·추세선·글꼴·축 색이 화면 그래프와 다릅니다.');
-    if (luminous) {
+    {
       const overview = globalThis.Chart.getChart($('#overview-chart'));
       check(liveGraph.data.datasets[0].borderColor === overview.data.datasets.find(dataset => dataset.label === liveGraph.options.scales.y.title.text)?.borderColor,
         '관계 그래프가 원자료 보기의 세로축 채널 색을 유지하지 못했습니다.');
@@ -226,11 +214,8 @@ export async function runUiTests(report = (_message) => {}) {
     report('실제 DOM · 임시 분석은 글 반영 후에도 메모리 보관·JSON 파일 저장 안내 유지');
     check(!failures.length, failures.join('\n'));
   } finally {
-    view?.dispose(); host.remove();
+    view?.dispose(); lab.dispose();
     globalThis.Chart.unregister(exportObserver);
-    style?.remove();
-    if (previousTheme === undefined) delete document.documentElement.dataset.visualTheme;
-    else document.documentElement.dataset.visualTheme = previousTheme;
     previousFocus?.focus?.({ preventScroll: true }); scrollTo(previousScroll.x, previousScroll.y);
   }
   check(Object.keys(globalThis.Chart.instances).length === initialChartCount, '분석 화면 종료 후 Chart 인스턴스가 남았습니다.');

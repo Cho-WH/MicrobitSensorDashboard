@@ -7,8 +7,8 @@ import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 import { readVisualTheme, channelColor, channelTextColor } from './visual-theme.js';
 import { createMeasurementEvents } from './measurement-events.js';
 
-/** @param {ParentNode} root @param {()=>void} onChange */
-export function createMeasurementView(root,onChange) {
+/** @param {ParentNode} root @param {()=>void} onChange @param {(event:any)=>void} [onEditNote] */
+export function createMeasurementView(root,onChange,onEditNote = null) {
   const fields=findElement(root,'div','#display-channels'), range=findElement(root,'select','#live-range');
   const cards=findElement(root,'div','#live-cards'), chartSummary=findElement(root,'p','#live-chart-summary');
   const reception=findElement(root,'p','#measurement-reception'), abort=new AbortController();
@@ -19,7 +19,7 @@ export function createMeasurementView(root,onChange) {
   let copy = getLabCopy(null);
   let theme = null;
   let painted = null;
-  const eventView = root.querySelector('.luminous-overview') ? createMeasurementEvents(root.querySelector('#lab-events'), root.querySelector('.lab-chart')) : null;
+  const eventView = root.querySelector('.luminous-overview') ? createMeasurementEvents(root.querySelector('#lab-events'), root.querySelector('.lab-chart'),onEditNote) : null;
   range.addEventListener('change',onChange,{signal:abort.signal});
   function configure(next) {
     if(context===next)return;
@@ -70,11 +70,11 @@ export function createMeasurementView(root,onChange) {
       const id=saved?.id??null;
       if(id!==runId){runId=id;rows=[];events=[];eventCount=-1;}
       if(stored&&saved.lastSampleId!==(rows.at(-1)?.sampleId??0))rows.push(...store.readSamples({afterId:rows.at(-1)?.sampleId??0}));
-      if(saved&&saved.eventCount!==eventCount){eventCount=saved.eventCount;events=store.getEvents(Number.MAX_SAFE_INTEGER);}
+      if(saved&&saved.eventsVersion!==eventCount){eventCount=saved.eventsVersion;events=store.getEvents(Number.MAX_SAFE_INTEGER);}
       const source=stored?rows:previewPoints, end=recording||!stored?Date.now():source.at(-1)?.receivedAt??Date.now();
       const points=range.value==='all'?source:source.filter(point=>!Number.isFinite(point.receivedAt)||point.receivedAt>=end-60000);
       const channels=next.channels.filter(channel=>selected.has(channel.id)), key=channels.map(channel=>channel.id).join('|');
-      eventView?.render(events,next);
+      eventView?.render(events,next,saved?.writable===true);
       if(chartKey!==key||!chart){chart?.dispose();chart=createChartView(findElement(root,'canvas','#live-chart'),{context:next,channels,legendToggle:false,theme,eventMarkers:!eventView,onLayout:()=>eventView?.layout(chart?.timeGeometry())});chartKey=key;painted=null;}
       // Frozen stored data need no redraw while fresh device readings still update
       // the cards. Recording/preview retain their moving time axis.

@@ -26,8 +26,8 @@ async function close(frame) {
 }
 
 export async function runPresentationPerformance(report=()=>{}) {
-  for(const legacy of [true,false]) {
-    const frame=await open('dev/design/?sensor=accelerometer&state=paused'+(legacy?'&theme=legacy':''));
+  {
+    const frame=await open('dev/design/?sensor=accelerometer&state=paused');
     const doc=frame.contentDocument,win=frame.contentWindow,$=selector=>doc.querySelector(selector);
     const times=[],starts=new WeakMap();let redraws=0;
     const observer={id:'review-cost',beforeUpdate(chart){starts.set(chart,performance.now());},afterUpdate(chart){
@@ -56,7 +56,7 @@ export async function runPresentationPerformance(report=()=>{}) {
       scroller.scrollTop=scroller.scrollHeight;scroller.dispatchEvent(new win.Event('scroll'));await settle();
       check($('#raw-rows [data-sample-id="700"]')&&$('#raw-rows').querySelectorAll('.sample-row').length<100,'가상 표가 마지막 자료에 도달하지 못하거나 전체 행을 생성했습니다.');
       times.sort((a,b)=>a-b);
-      report(`${legacy?'비교용 기존':'기본 Luminous'} · 4채널 600→700개 · Chart update 중앙값 ${times[Math.floor(times.length/2)].toFixed(1)}ms / p95 ${times[Math.floor(times.length*.95)].toFixed(1)}ms · 분석 전환 ${transition.toFixed(0)}ms · 표 끝 이동 ${(performance.now()-scrollStart).toFixed(0)}ms · 정지 1.2초 재그리기 ${pausedRedraws}회`);
+      report(`기본 Luminous · 4채널 600→700개 · Chart update 중앙값 ${times[Math.floor(times.length/2)].toFixed(1)}ms / p95 ${times[Math.floor(times.length*.95)].toFixed(1)}ms · 분석 전환 ${transition.toFixed(0)}ms · 표 끝 이동 ${(performance.now()-scrollStart).toFixed(0)}ms · 정지 1.2초 재그리기 ${pausedRedraws}회`);
     } finally {win.Chart.unregister(observer);await close(frame);}
   }
 }

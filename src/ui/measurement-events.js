@@ -1,14 +1,14 @@
 import { element } from './dom.js';
 import { clockTime, formatClockTime } from '../analysis/clock-time.js';
+import { eventTitle, eventDetail } from './event-content.js';
 
 const lifecycle = new Set(['recording-start','recording-paused','recording-resumed','measurement-end','additional-measurement']);
-const labels = {'recording-start':'기록 시작','recording-paused':'일시정지','recording-resumed':'기록 재개','measurement-end':'기록 마침',note:'메모','additional-measurement':'추가 측정',discontinuity:'측정 공백','reception-change':'수신 상태 변경',interrupted:'중단 후 복원','parse-error':'수신값 확인 필요'};
 const stamp = (event, precise = false) => Number.isFinite(event.receivedAt) ? formatClockTime(clockTime(event.receivedAt)).slice(0, precise ? 12 : 8) : '시각 정보 없음';
 const important = event => event.source === 'user' && !lifecycle.has(event.type);
 
 // Display only: the list, labels and grouped markers share the stored events.
 // Selecting a marker never selects, excludes or rewrites measurement samples.
-export function createMeasurementEvents(list, plot) {
+export function createMeasurementEvents(list, plot, onEditNote = null) {
   const layer = element('div', 'measurement-event-markers'); plot.append(layer);
   const status = element('details', 'measurement-system-events');
   const statusTitle = element('summary'), statusList = element('ol');
@@ -17,14 +17,20 @@ export function createMeasurementEvents(list, plot) {
   const heading = element('h2', '', '조작 기록'), detailList = element('ol'), close = element('button', '', '닫기');
   heading.id = 'measurement-event-title'; dialog.setAttribute('aria-labelledby', heading.id);
   close.type = 'button'; dialog.append(heading, detailList, close); plot.after(dialog);
-  let records = [], names = {}, lastEvents = null, lastContext = null, markerKey = '', returnFocus = null;
+  let records = [], lastEvents = null, lastContext = null, markerKey = '', returnFocus = null;
   let markers = [];
-  const title = event => names[event.type] ?? labels[event.type] ?? event.type;
+  let writable = false;
+  const title = event => eventTitle(event,lastContext);
   function showDetails(events, anchor) {
     returnFocus = anchor;
     detailList.replaceChildren(...events.map(event => {
       const item = element('li'); item.append(element('strong', '', title(event)), element('time', '', stamp(event,true)));
+      const detail=eventDetail(event,lastContext);if(detail)item.append(element('p','',detail));
       if (event.payload?.note) item.append(element('p', '', event.payload.note));
+      if(writable && onEditNote && event.source==='user') {
+        const edit=element('button','event-note-edit',event.payload?.note?'메모 수정':'메모 추가');edit.type='button';edit.dataset.eventId=String(event.eventId);
+        edit.addEventListener('click',()=>{dialog.close();onEditNote(event);});item.append(edit);
+      }
       return item;
     }));
     dialog.showModal();
@@ -47,11 +53,11 @@ export function createMeasurementEvents(list, plot) {
     item.append(content); return item;
   }
   return {
-    render(events, context) {
-      if (lastEvents === events && lastContext === context) return;
+    render(events, context, canEdit = false) {
+      if (lastEvents === events && lastContext === context && writable === canEdit) return;
+      writable=canEdit;
       if (lastContext !== context) markerKey = '';
       lastEvents = events; lastContext = context;
-      names = Object.fromEntries((context?.activity?.events ?? []).map(event => [event.type, event.label]));
       records = events.filter(important);
       list.replaceChildren(...records.slice(-100).reverse().map(event => row(event, true)));
       const system = events.filter(event => !important(event));

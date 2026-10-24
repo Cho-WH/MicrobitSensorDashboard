@@ -1,4 +1,5 @@
 import { runStorageTests } from './storage.js';
+import { runRecordTests } from './records.js';
 import { runFileTests } from './files.js';
 import { runUiTests } from './ui.js';
 import { runGuideTests, runPreparationTests } from './guide.js';
@@ -18,10 +19,14 @@ button.addEventListener('click', async () => {
   try {
     const suites = {copy:runCopyTests,storage:runStorageTests,files:runFileTests,ui:runUiTests,guide:runGuideTests,preparation:runPreparationTests,measurement:runMeasurementTests,app:runAppTests,navigation:runNavigationTests,layout:runLayoutTests,devices:runDeviceTests,luminous:runLuminousTests,workspace:runLuminousWorkspaceTests};
     const selected = new URL(location.href).searchParams.get('suite');
+    suites.records = runRecordTests;
     suites.accessibility = runPresentationAccessibility;
-    if (selected === 'performance') suites.performance = runPresentationPerformance;
+    const names=selected ? selected.split(',') : Object.keys(suites);
+    if(names.includes('performance')) suites.performance=runPresentationPerformance;
+    for(const name of names) if(!suites[name]) throw new Error('알 수 없는 검사 묶음: '+name);
     const failures = [];
-    for (const [name, run] of selected && suites[selected] ? [[selected, suites[selected]]] : Object.entries(suites)) {
+    for (const name of names) {
+      const run=suites[name];
       try { await run(report); }
       catch (error) {
         failures.push(`${name}: ${error.message}`);

@@ -1,3 +1,4 @@
+import { mountLabFixture, clickVisible } from './lab-fixture.js';
 import {createMeasurementView} from '../../src/ui/measurement-view.js';
 import {createRepository} from '../../src/data/repository.js';
 import {openRunStore} from '../../src/data/run-store.js';
@@ -29,8 +30,7 @@ export async function runMeasurementTests(report=()=>{}) {
     } finally {box.remove();}
   }
   report('자기장·가속도 측정/원자료 그래프 · 공통 세로축·음수/크기 범위·동일 값 높이·사건·원자료 보존');
-  const parsed=new DOMParser().parseFromString(await (await fetch(new URL('../../lab.html',import.meta.url))).text(),'text/html');
-  const host=document.importNode(parsed.querySelector('[data-screen="measure"]'),true);host.hidden=false;document.body.append(host);
+  const fixture=await mountLabFixture(), {host}=fixture;fixture.showScreen('measure');
   const context=getExperiment('magnetometer'), databaseName='microbit.sensor-lab.measurement-tests.'+crypto.randomUUID();
   const repository=createRepository({databaseName});
   const store=await openRunStore({repository,context,source:'replay',create:true});
@@ -52,10 +52,10 @@ export async function runMeasurementTests(report=()=>{}) {
     for(let id=1001;id<=1010;id++)add(id);view.render(options);
     check(chart().data.datasets[0].data.filter(p=>p.sampleId).length===1010,'새로 기록된 자료가 전체 그래프에 추가되지 않았습니다.');
     const x=host.querySelector('input[value="magneticX"]'), strength=host.querySelector('input[value="magneticStrength"]');
-    x.click();strength.click();x.click();
+    clickVisible(x);clickVisible(strength);clickVisible(x);
     check(x.checked&&chart().data.datasets[0].label.includes('X'),'마지막 표시 채널까지 숨기거나 선택이 적용되지 않았습니다.');
     check(JSON.stringify(original)===JSON.stringify(store.getSamples().slice(0,1000)),'표시 전환이 원자료를 바꿨습니다.');
     check(host.querySelector('#measurement-reception').dataset.fresh==='false','보관된 값을 실시간 수신처럼 표시했습니다.');
     report('실제 측정 그래프 · 최근/전체 1,010개·UTC 시각·짧은 기록 공백·채널 선택과 원자료 보존');
-  }finally{view?.dispose();await store.close();repository.close();host.remove();await globalThis.idb.deleteDB(databaseName);}
+  }finally{view?.dispose();await store.close();repository.close();fixture.dispose();await globalThis.idb.deleteDB(databaseName);}
 }

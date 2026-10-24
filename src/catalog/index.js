@@ -20,6 +20,9 @@ export const getSensorPreparation = context => registry.getSensor(context?.senso
 export function getActivityPolicy(context, modules = registry) {
   return modules.getActivity(context?.activity, context?.sensor)?.policy;
 }
+// Old saved contexts keep their data/labels; available actions come from the registered activity.
+export const getActivityEvents = context => registry.getActivity(context?.activity, context?.sensor)?.definition.events ?? context?.activity?.events ?? [];
+
 export const genericQuestions = [
   { id: 'observation', title: '관찰한 관계', question: '자료에서 어떤 관계를 발견했나요? 수치나 그래프를 근거로 설명하세요.' },
   { id: 'reasoning', title: '해석과 근거', question: '관찰한 관계를 어떻게 설명할 수 있나요?' },

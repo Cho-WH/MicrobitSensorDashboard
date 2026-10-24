@@ -1,6 +1,7 @@
 // Adapted from Cho-WH/bme280 59c5c149450f970bace2deaa183857c275595853,
 // gay-lussac/measurement/session.js. Recording gate is explicit; activity rules are injected.
 import { createReceptionMonitor, discontinuityReason } from './reception-monitor.js';
+import { canResumeImportedRun } from '../data/files/recording-source.js';
 
 const fail = (code, message) => Object.assign(new Error(message), { code });
 
@@ -33,7 +34,7 @@ export function createSession({ store, monitor = undefined, activityPolicy = und
     store.appendEvent({ receivedAt: at.receivedAt, type, payload, source });
   function assertRecordingAllowed() {
     const storage = store.getState();
-    if (!storage.writable || storage.source === 'import') throw fail('read-only', '이 실험에는 새 측정값을 기록할 수 없어요.');
+    if (!storage.writable || storage.temporary || (storage.source === 'import' && !canResumeImportedRun(initial.run))) throw fail('read-only', '이 실험에는 새 측정값을 기록할 수 없어요.');
     if (storage.status === 'error') throw fail('storage-error', '저장 오류를 해결한 뒤 기록을 재개해 주세요.');
   }
   function resetContinuity() { lastInput = null; reception = 'waiting'; monitor.disconnected(); }
