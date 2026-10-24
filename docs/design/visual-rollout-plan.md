@@ -226,7 +226,7 @@ DOM ID·`data-view` 같은 이름은 기존 이벤트 연결을 조사해 유지
 
 ```text
 MicrobitSensorDashboard의 docs/design/visual-language.md와
-visual-rollout-plan.md, reference/approved-moodboard.png를 기준으로
+visual-rollout-plan.md, 대화에서 선택한 기준 이미지(에이전트에 별도 제공)를 기준으로
 우선 V0–V1을 진행한다.
 
 목표는 선택한 시안의 창의적이고 세련되며 차분한 미래적 인상을
