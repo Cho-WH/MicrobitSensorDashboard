@@ -84,3 +84,18 @@ including the recording illustration replaced by an HTML instruction flow.
 The channel selection/live value presentation follows the existing
 MicrobitSensorDashboard `303a0bb957472d3a762ab05c6a2a043bedd29e8d` UI; it
 uses the shared chart adapter and RunStore, with no second collection engine.
+
+## Luminous V1 design preview assets
+
+The opt-in preview uses the unmodified Pretendard Variable 1.3.9 font by
+Kil Hyung-jin, licensed under SIL OFL 1.1. The local font and license are in
+`public/vendor/pretendard/`; the pinned upstream URL and SHA-256 are recorded
+in `vendor/manifest.json`. No runtime CDN request is made.
+
+The navigation and recording icons in `public/vendor/lucide/` are unmodified
+Lucide 0.468.0 SVGs, using the existing `public/vendor/lucide-LICENSE`.
+Each file's upstream source and hash are recorded in the same manifest.
+
+The transparent PNGs in `public/assets/design/` are locally rendered derivatives
+of the existing shared device models. Their staging source and provenance are
+documented in `public/assets/design/README.md`; the existing model notices apply.

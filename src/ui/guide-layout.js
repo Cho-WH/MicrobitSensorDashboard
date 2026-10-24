@@ -1,11 +1,35 @@
 // Ported from G/ui/guide-layout.js at 59c5c149. Measures inert copies, never live controls.
-/** @param {{content:HTMLElement,progress:HTMLElement,steps:import('../guide/types.js').GuideStep[],
+/** @param {{content:HTMLElement,progress:HTMLElement,equipment:HTMLElement,steps:import('../guide/types.js').GuideStep[],
  * measureSteps:import('../guide/types.js').GuideStep[],createMeasurement:(step:import('../guide/types.js').GuideStep)=>HTMLElement}} options */
-export function createGuideLayout({ content, progress, steps, measureSteps, createMeasurement }) {
+export function createGuideLayout({ content, progress, equipment, steps, measureSteps, createMeasurement }) {
   let measuredWidth = 0, measuredFont = '', lastStep = null;
   let animation = null, disposed = false;
   const stepOrder = new Map(steps.map((step, index) => [step.id, index]));
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
+
+  function fitEquipment() {
+    if (disposed || !equipment.getClientRects().length) return;
+    if (!matchMedia('(min-width: 851px)').matches) {
+      equipment.style.removeProperty('--equipment-image-height');
+      return;
+    }
+    // Budget only the illustrations. Labels, help and instructions retain their
+    // natural size; short/zoomed windows may still scroll at the 96px image floor.
+    const box = equipment.getBoundingClientRect(), rows = new Map();
+    for (const image of equipment.querySelectorAll('.equipment-illustrated img')) {
+      const row = Math.round(image.parentElement.getBoundingClientRect().top);
+      rows.set(row, Math.max(rows.get(row) ?? 0, image.getBoundingClientRect().height));
+    }
+    if (!rows.size) return;
+    const pictures = [...rows.values()].reduce((sum, height) => sum + height, 0);
+    const fixedHeight = box.height - pictures;
+    const stage = equipment.closest('.guide');
+    const stageInset = stage ? parseFloat(getComputedStyle(stage).paddingBottom) : 0;
+    const available = innerHeight - (box.top + scrollY) - 26 - stageInset;
+    const height = Math.max(96, Math.min(210, Math.floor((available - fixedHeight) / rows.size)));
+    const value = `${height}px`;
+    if (equipment.style.getPropertyValue('--equipment-image-height') !== value) equipment.style.setProperty('--equipment-image-height', value);
+  }
 
   function measure(force = false) {
     if (disposed) return;
@@ -52,10 +76,12 @@ export function createGuideLayout({ content, progress, steps, measureSteps, crea
       { duration: parseFloat(style.getPropertyValue('--guide-motion-duration')), easing: style.getPropertyValue('--guide-motion-easing').trim() },
     );
   }
-  const observer = new ResizeObserver(() => { measure(); syncProgress(); });
+  const observer = new ResizeObserver(() => { measure(); syncProgress(); fitEquipment(); });
   observer.observe(content);
   observer.observe(progress);
-  const fontsChanged = () => { measure(true); syncProgress(); };
+  observer.observe(equipment);
+  window.addEventListener('resize', fitEquipment);
+  const fontsChanged = () => { measure(true); syncProgress(); fitEquipment(); };
   document.fonts?.addEventListener('loadingdone', fontsChanged);
   document.fonts?.ready.then(fontsChanged);
   const motionChanged = () => { if (motion.matches) animation?.cancel(); };
@@ -63,6 +89,7 @@ export function createGuideLayout({ content, progress, steps, measureSteps, crea
   return { measure, syncProgress, transition, dispose() {
     disposed = true;
     observer.disconnect();
+    window.removeEventListener('resize', fitEquipment);
     document.fonts?.removeEventListener('loadingdone', fontsChanged);
     motion.removeEventListener('change', motionChanged);
     animation?.cancel();

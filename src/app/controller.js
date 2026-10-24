@@ -31,6 +31,7 @@ export function createController(root = document, { repository = null, deviceTra
   let leaving = false;
   let renderRequested = true, renderedEvents = -1, renderedContext = null, exportedRevision = -1;
   const mock = new URL(initialUrl).searchParams.get('mock') === '1';
+  const visual = new URL(initialUrl).searchParams.get('visual');
   const repo = repository ?? createRepository({ onUnavailable: message => showError(message) });
   const transport = deviceTransport ?? createTransport(mock ? {ble:createMockBleClient(()=>context)} : {});
   let targetContext = null, runtime = null, programmer = null, programmerState = {}, installed = false;
@@ -193,7 +194,7 @@ export function createController(root = document, { repository = null, deviceTra
     if(prepared)guide.showPrepared();
   }
   function restoreLocation() {
-    if (historyEnabled) history.replaceState(null, '', routeUrl(screen === 'preview' ? targetContext : context, screen, {mock}));
+    if (historyEnabled) history.replaceState(null, '', routeUrl(screen === 'preview' ? targetContext : context, screen, {mock,visual}));
   }
   async function applyLocation(url = location.href) {
     try {
@@ -292,7 +293,7 @@ export function createController(root = document, { repository = null, deviceTra
     if (['prepare','measure','analysis'].includes(next) && !context) return;
     if (next === 'preview' && !targetContext) return;
     screen = next;
-    if (historyEnabled && push) history.pushState(null, '', routeUrl(next === 'preview' ? targetContext : context, next, {mock}));
+    if (historyEnabled && push) history.pushState(null, '', routeUrl(next === 'preview' ? targetContext : context, next, {mock,visual}));
     findElement(root,'a','.skip-link').href = location.pathname + location.search + '#main';
     if (next === 'prepare' && !mock) programmer?.prepare().catch(showError);
     for (const section of /** @type {NodeListOf<HTMLElement>} */ (root.querySelectorAll('[data-screen]'))) section.hidden = section.dataset.screen !== next;
@@ -307,13 +308,19 @@ export function createController(root = document, { repository = null, deviceTra
     const displayContext = screen === 'preview' ? targetContext : context;
     if (copyContext !== displayContext) {
       copyContext = displayContext; copy = getLabCopy(displayContext);
-      for (const host of root.querySelectorAll('.lab-identity, .lab-toolbar, #current-experiment, [data-screen="measure"], [data-screen="saved"], #leave-dialog, #csv-mapping, #additional-dialog, .preparation-heading')) applyLabCopy(host, copy);
+      for (const host of root.querySelectorAll('.lab-identity, .lab-toolbar, .luminous-sidebar, #current-experiment, [data-screen="measure"], [data-screen="saved"], #leave-dialog, #csv-mapping, #additional-dialog, .preparation-heading')) applyLabCopy(host, copy);
       applyLabCopy(root.querySelector('[data-screen="home"]'), labDefaults);
       applyLabCopy(root.querySelector('[data-screen="preview"]'), getLabCopy(targetContext));
       findElement(root,'a','.skip-link').textContent = copy.common.skip;
     }
     deviceState=transport.getState();
     const saved = store?.getState(), current = session?.getState(), recording = current?.recording;
+    const measurementScreen = findElement(root,'section','[data-screen="measure"]');
+    const previousRecordingState = measurementScreen.dataset.recordingState;
+    const focusedRecordControl = measurementScreen.contains(document.activeElement) && ['start-recording','pause-recording','resume-recording','finish-recording'].includes(document.activeElement.id);
+    measurementScreen.dataset.recordingState = current?.state ?? (saved ? 'ended' : 'preview');
+    measurementScreen.dataset.storageState = saved?.status ?? 'none';
+    measurementScreen.dataset.connectionState = deviceState.status;
     if (context) guide.render({attemptId:attempt,connected,connecting,deviceMessage:deviceState.message,deviceName:deviceState.deviceName,receptionReady:hasFreshReading(),receivedAt:deviceState.lastReceivedAt,latest:preview,
       firmwareInstalled:installed ? context.firmware : false,calibration:deviceState.calibration ?? 'unknown',devicePreparation:deviceState.devicePreparation,
       busy:busy || programmerState.busy,recording:recording || current?.state === 'finishing',programmerState,mock,
@@ -349,6 +356,11 @@ export function createController(root = document, { repository = null, deviceTra
     button('export-json').disabled = !saved; button('export-csv').disabled = !saved?.sampleCount;
     $('retry-save').hidden = saved?.status !== 'error';
     $('export-json').hidden=!saved; $('export-csv').hidden=!saved;
+    if (root.querySelector('.luminous-overview') && focusedRecordControl && previousRecordingState !== measurementScreen.dataset.recordingState) {
+      const nextControl = ({recording:'pause-recording',paused:'resume-recording',ended:'additional-recording'})[measurementScreen.dataset.recordingState];
+      if (nextControl && !button(nextControl).disabled && !button(nextControl).hidden) button(nextControl).focus({preventScroll:true});
+      else { $('recording-status').tabIndex=-1; $('recording-status').focus({preventScroll:true}); }
+    }
     $('show-experiment-guide').hidden=!getGuideContent(context).experimentGuide;
     experimentGuide.setRecording(Boolean(recording));
     $('sample-count').textContent = saved ? formatCopy(copy.measurement.count, {count:saved.sampleCount.toLocaleString('ko-KR')}) : copy.measurement.previewNote;
@@ -396,7 +408,7 @@ export function createController(root = document, { repository = null, deviceTra
   ];
   for (const item of cards) {
       const next = item.next;
-      const link = document.createElement('a'); link.className='experiment-card'; link.href=routeUrl(next,'preview',{mock}).href;
+      const link = document.createElement('a'); link.className='experiment-card'; link.href=routeUrl(next,'preview',{mock,visual}).href;
       const title=document.createElement('strong'),description=document.createElement('span');title.textContent=item.name;
       description.textContent=item.description;
       link.append(title,description);link.addEventListener('click',event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();void act(()=>browse(next));},{signal});$(item.target).append(link);
@@ -404,7 +416,7 @@ export function createController(root = document, { repository = null, deviceTra
   listen('export-json',()=>exportFile('json'));listen('export-csv',()=>exportFile('csv'));
   $('open-file').addEventListener('click',()=>input('file-input').click(),{signal});
   input('file-input').addEventListener('change',()=>{const file=input('file-input').files[0];input('file-input').value='';act(()=>readFile(file));},{signal});
-  $('mock-link').addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) location.assign(routeUrl(context,'prepare',{mock:true}).href);});},{signal});
+  $('mock-link').addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) location.assign(routeUrl(context,'prepare',{mock:true,visual}).href);});},{signal});
   window.addEventListener('beforeunload',event=>{const draftsSaved=analysis.flush(),saved=store?.getState();if(!draftsSaved || session?.getState().recording || (saved?.writable && saved.status!=='clean') || (saved?.temporary && exportedRevision!==saved.runRevision)) {event.preventDefault();event.returnValue='';}},{signal});
   document.addEventListener('visibilitychange',()=>{if(document.hidden && store?.getState().writable){analysis.flush();store.flush().catch(showError);}},{signal});
   const interval = setInterval(()=>{

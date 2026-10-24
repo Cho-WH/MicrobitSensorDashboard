@@ -4,6 +4,7 @@ import { columnLabel } from '../analysis/calculations.js';
 import { clockTime, formatClockTime, formatElapsedTime } from '../analysis/clock-time.js';
 import { formatCalculated } from '../analysis/calculations.js';
 import { trendSummary } from './trend-summary.js';
+import { channelColor as resolveChannelColor } from './visual-theme.js';
 
 // Keep axis lettering at its original size; only the plot bitmap stretches.
 function captureLayoutPreview(chart) {
@@ -182,14 +183,17 @@ export function exportAnalysisPng(model, { name = '', selectedIds = [] } = {}) {
 }
 
 /** @param {HTMLCanvasElement} canvas @param {any} options */
-export function createChartView(canvas, { context, channels, inspect = false, legendToggle = true, onCursor = () => {}, onLayout = () => {} } = {}) {
+export function createChartView(canvas, { context, channels, inspect = false, legendToggle = true, theme = null, onCursor = () => {}, onLayout = () => {} } = {}) {
   if (!globalThis.Chart) throw new Error('그래프 도구를 불러오지 못했어요. 화면을 새로 열어 주세요.');
   const sourceChannels = getSourceColumns(channels ?? context).filter(c => !['sampleId', 'receivedAt'].includes(c.id) && c.supported !== false);
   const colors = ['#d67b40', '#197f88', '#8d65b1', '#43854d'];
-  const channelColor = (c, i) => c.color ?? colors[i % colors.length];
+  const channelColor = (c, i) => theme ? resolveChannelColor(theme,c,i) : c.color ?? colors[i % colors.length];
   const scales = Object.fromEntries(sourceChannels.map((c, i) => ['channel' + i, {
     type: 'linear', position: i % 2 ? 'right' : 'left',
-    title: { display: true, text: columnLabel(c), color: channelColor(c, i) }, grid: { drawOnChartArea: i === 0, color: '#edf1f2' },
+    title: { display: true, text: columnLabel(c), color: channelColor(c, i), ...(theme ? {font:{family:theme.font,size:12}} : {}) },
+    ticks: theme ? {color:theme.text,font:{family:theme.font,size:11},maxTicksLimit:6} : {},
+    border: theme ? {color:theme.grid} : {},
+    grid: { drawOnChartArea: i === 0, color: theme?.grid ?? '#edf1f2' },
   }]));
   let currentPoints = [], timeOrigin = 0, cursor = null, hasTime = false;
   const chart = new globalThis.Chart(canvas, {
@@ -219,9 +223,12 @@ export function createChartView(canvas, { context, channels, inspect = false, le
       elements: { point: { radius: 0, hitRadius: 8 }, line: { borderWidth: 2 } },
       plugins: { tooltip: { enabled: !inspect, callbacks: {
         title: items => hasTime ? formatElapsedTime(items[0]?.raw.elapsedSeconds) : '자료 ' + items[0]?.raw.sampleId,
-      } }, legend: { display: !inspect, position: 'bottom', labels: { usePointStyle: true, boxWidth: 7, font: { size: 13 } } } },
+      } }, legend: { display: !inspect && !theme, position: 'bottom', labels: { usePointStyle: true, boxWidth: 7, font: { size: 13 } } } },
       scales: {
-        x: { type: 'linear', min: -60, max: 0, title: { display: true, text: '지금으로부터 (초)' }, grid: { color: '#edf1f2' } },
+        x: { type: 'linear', min: -60, max: 0,
+          title: { display: true, text: '지금으로부터 (초)', ...(theme ? {color:theme.text,font:{family:theme.font,size:12}} : {}) },
+          ...(theme ? {ticks:{color:theme.text,font:{family:theme.font,size:11},maxTicksLimit:7},border:{color:theme.grid}} : {}),
+          grid: { color: theme?.grid ?? '#edf1f2' } },
         ...scales,
       },
     },
@@ -264,7 +271,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
       }
       // User actions share the time axis. Null points keep discontinuities visible.
       chart.data.datasets[sourceChannels.length] = { type: 'scatter', label: '조작 기록', yAxisID: 'channel0',
-        pointStyle: 'triangle', pointRadius: 6, backgroundColor: '#87632f',
+        pointStyle: 'triangle', pointRadius: 6, backgroundColor: theme?.colors[0] ?? '#87632f',
         data: events.filter((e) => hasTime && Number.isFinite(e.receivedAt) && e.source === 'user').flatMap((e) => {
           const nearest = currentPoints.find((p) => p.receivedAt >= e.receivedAt && !readCell(p, sourceChannels[0]?.id).reason);
           if (!nearest) return [];

@@ -1,0 +1,67 @@
+import { stableText } from './layout.js';
+const check=(value,message)=>{if(!value)throw new Error(message);};
+const settle=()=>new Promise(resolve=>setTimeout(resolve,260));
+async function until(predicate,label) {
+  const deadline=performance.now()+12000;
+  while(!predicate()){if(performance.now()>deadline)throw new Error(label);await settle();}
+}
+
+// Real app + real IndexedDB, fixed simulated input. No duplicate UI or run model.
+export async function runLuminousTests(report=()=>{}) {
+  let frame;
+  try {
+    for(const [sensor,width,height] of [['bmp280',1366,768],['bmp280',1024,768],['bmp280',390,844],['magnetometer',1366,768],['light-level',390,844]]) {
+      frame=document.createElement('iframe');frame.title='새 측정 화면 검증';frame.style.cssText='display:block;border:0;max-width:none';document.body.append(frame);
+      frame.style.width=width+'px';frame.style.height=height+'px';
+      frame.src=new URL(`../../dev/design/?sensor=${sensor}&state=recording`,import.meta.url).href;
+      await until(()=>frame.contentDocument?.documentElement.dataset.reviewReady==='recording','모의 측정 검토 화면을 열지 못했습니다.');
+      const doc=frame.contentDocument, $=selector=>doc.querySelector(selector), win=frame.contentWindow;
+      try {
+        check(doc.documentElement.scrollWidth<=width+1,`${sensor} ${width}px 페이지가 가로로 넘칩니다.`);
+        stableText(doc,'.lab-card strong','.lab-card,.lab-chart',['—','0',sensor==='magnetometer'?'-1,000.1':sensor==='light-level'?'255':'1,000.01'],`${sensor} ${width}px 측정값`,{noScroll:true});
+        const chart=()=>win.Chart.getChart($('#live-chart'));
+        const colors=chart().data.datasets.filter(item=>item.yAxisID&&item.type!=='scatter').map(item=>item.borderColor);
+        const checked=[...doc.querySelectorAll('#display-channels input:checked')];
+        const cardColors=checked.map(input=>doc.querySelector(`.lab-card[data-channel="${input.value}"]`).style.getPropertyValue('--channel-color'));
+        check(cardColors.every((color,index)=>color===colors[index]),`계기와 그래프의 채널색이 다릅니다: ${cardColors} / ${colors}`);
+        if(width===1366&&sensor==='bmp280') {
+          // Pausing may add a display-only null gap; actual sample identities/values stay fixed.
+          const samples=()=>JSON.stringify(chart().data.datasets[0].data.filter(point=>point.sampleId));
+          const original=samples();
+          $('#pause-recording').focus();$('#pause-recording').click();await settle();
+          check(doc.activeElement===$('#resume-recording'),'일시정지 뒤 키보드 초점이 재개로 이어지지 않습니다.');
+          check(!$('#resume-recording').disabled,'일시정지 뒤 재개할 수 없습니다.');
+          $('.luminous-settings').click();check($('#measurement-settings').open,'설정 대화상자를 열 수 없습니다.');
+          $('#prepare-device').click();await settle();
+          check(!$('#measurement-settings').open&&!$('[data-screen="prepare"]').hidden,'장비 준비로 이동한 뒤 모달이 남았습니다.');
+          $('[data-view="measure"]').click();await settle();
+          check(samples()===original,'준비 화면 왕복으로 기록 자료가 바뀌었습니다.');
+          const pressure=$('#display-channels input[value="pressureHpa"]');pressure.click();await settle();pressure.click();await settle();
+          check(samples()===original,'표시 항목 전환으로 측정 자료가 바뀌었습니다.');
+          $('#resume-recording').click();await settle();
+          const advance=[...doc.querySelectorAll('footer button')].find(button=>button.textContent==='10초 수신');advance.click();await settle();
+          check($('#sample-count').textContent.includes('700'),'재개 후 새 자료가 기존 기록에 이어지지 않았습니다.');
+          $('[data-view="analysis"]').click();await settle();$('[data-view="measure"]').click();await settle();
+          check($('#sample-count').textContent.includes('700')&&$('#recording-status').textContent==='기록 중','분석 화면 이동으로 기록 상태가 바뀌었습니다.');
+          report('새 화면 · 기록 제어·키보드 초점·설정/준비/분석 이동·채널 선택에서 기록 보존');
+          const reviewButton=label=>[...doc.querySelectorAll('body > footer button')].find(button=>button.textContent===label);
+          reviewButton('저장 실패 시험').click();
+          await until(()=>$('[data-screen="measure"]').dataset.storageState==='error','저장 실패 상태 미표시');
+          check(!$('#retry-save').hidden,'저장 실패 뒤 다시 저장 버튼이 없습니다.');
+          const unsaved=samples();
+          reviewButton('저장 정상화').click();
+          await until(()=>$('[data-screen="measure"]').dataset.storageState==='clean','저장 재시도 실패');
+          check(samples()===unsaved,'저장 재시도 중 원자료가 바뀌었습니다.');
+          reviewButton('수신 끊기').click();await settle();
+          check($('[data-screen="measure"]').dataset.connectionState==='disconnected'&&samples()===unsaved,'수신 끊김 뒤 자료 또는 연결 표시 오류');
+          report('새 화면 · 저장 실패 표시·재시도·연결 종료에서 원자료 보존');
+        }
+        report(`새 화면 · ${sensor} ${width}×${height} · 숫자 안정성·채널색·가로 넘침 확인`);
+      } finally {
+        const cleanup=[...doc.querySelectorAll('footer button')].find(button=>button.textContent==='검토 자료 정리');
+        cleanup?.click();if(cleanup)await until(()=>doc.querySelector('body > footer')?.textContent==='검토용 자료를 정리했습니다.','검토 자료 정리 실패');
+        frame.remove();
+      }
+    }
+  } finally {frame?.remove();}
+}

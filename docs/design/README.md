@@ -1,6 +1,9 @@
 # Luminous Lab · 센서 실험실 시각 디자인 v2
 
-**상태:** 디자인 설계 및 구현 준비. 앱 코드는 아직 변경하지 않았다.
+**상태:** 사용자가 준비 화면 B안을 선택했다. 새 디자인 경로(`?visual=luminous`)의 준비 단계에 B안을 적용하고 대비·장치 카드 밝기를 다듬었다. A안의 캡처와 직접 조작 경로는 보관한다. 기존 기본 경로 변경·배포·V2 공통화는 진행하지 않았다.
+
+- [준비 화면 A/B 검토](review/v1/preparation-comparison.md): 두 방향의 차이와 검토 조건
+- [로컬 비교 실행 방법](../../dev/design/README.md): 실제 준비 화면에서 A/B 전환
 
 - [시각 디자인 문법](visual-language.md): 색·표면·빛·타이포그래피·상태 표현의 출발 규칙과 조정 원칙
 - [단계별 적용 설계](visual-rollout-plan.md): V0–V5, 실제 측정 화면 시안 우선 검토, 구현 시작 지시문 (§12)
@@ -9,7 +12,7 @@
 
 ## 시안 이미지
 
-원본 이미지 **approved-moodboard.png**는 이번 GitHub 문서 커밋에 포함되어 있지 않다. 디자인 작업을 시작할 때 별도로 제공한 기준 이미지를 함께 참조해야 한다. 원본 이미지는 대화에서 전달된 `sensor-lab-luminous-design-v2.zip` 안의 `docs/design/reference/approved-moodboard.png`에 있다.
+사용자가 제공한 기준 시안을 [approved-moodboard.png](reference/approved-moodboard.png)에 원본 그대로 보관한다. 디자인 작업을 시작할 때 이 이미지를 함께 참조한다.
 
 참고 이미지에 등장하는 장치 연결 상태, 수치, 단위는 제품 기능 명세가 아니다. 실제 기능과 측정 정보는 저장소의 센서 정의를 따른다.
 

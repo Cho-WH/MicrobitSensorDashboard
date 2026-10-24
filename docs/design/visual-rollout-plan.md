@@ -3,9 +3,9 @@
 > **v2 — 전체 화면 검증 후 공통화**  
 > 대상: `Cho-WH/MicrobitSensorDashboard`  
 > 소스 검토 기준: `791d792c543ada0d0f9064b1067031c527b622b1` · v1 작성 시 확인한 소스  
-> 디자인 기준: [시각 디자인 문법](visual-language.md) · 대화에서 선택한 기준 시안(원본 이미지 별도 보관; 저장소에 미포함)  
+> 디자인 기준: [시각 디자인 문법](visual-language.md) · [사용자가 제공한 기준 시안](reference/approved-moodboard.png)\
 > 범위: 디자인 우선 개편. 필요한 UI 재배치·재구성 포함, 기능·과학적 의미·데이터 보존.  
-> 상태: 2026-10-25 문서 개정. 앱 구현·저장소 변경·브라우저 검증은 아직 수행하지 않음.
+> 상태: 2026-10-25 V1 측정 화면 구현 및 준비 B안 채택. A안은 보관하며 새 디자인 경로에서 B안을 다듬는 중. V2 공통화·기본 배포는 미진행. [검토 기록](review/v1/preparation-comparison.md)
 
 ## 1. 목표와 진행 순서
 
@@ -226,7 +226,7 @@ DOM ID·`data-view` 같은 이름은 기존 이벤트 연결을 조사해 유지
 
 ```text
 MicrobitSensorDashboard의 docs/design/visual-language.md와
-visual-rollout-plan.md, 대화에서 선택한 기준 이미지(에이전트에 별도 제공)를 기준으로
+visual-rollout-plan.md, docs/design/reference/approved-moodboard.png의 기준 이미지를 기준으로
 우선 V0–V1을 진행한다.
 
 목표는 선택한 시안의 창의적이고 세련되며 차분한 미래적 인상을
@@ -261,4 +261,4 @@ visual-rollout-plan.md, 대화에서 선택한 기준 이미지(에이전트에 
 - R6. [밝기 정의](https://github.com/Cho-WH/MicrobitSensorDashboard/blob/791d792c543ada0d0f9064b1067031c527b622b1/src/catalog/sensors/light-level/definition.js): 실제 단위·범위.
 - W5. [MDN CSS @layer](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/%40layer): 계층 우선순위.
 
-저장소 근거는 v1 작성 시 확인한 소스다. 이번 v2는 사용자의 의도에 맞춰 변경 권한과 진행 순서를 수정했다. 실제 기준 화면의 구현·브라우저 검토·실기기 검증은 이후 에이전트와 진행할 작업이다.
+저장소 근거는 v1 작성 시 확인한 소스다. 이번 v2는 사용자의 의도에 맞춰 변경 권한과 진행 순서를 수정했다. V0–V1 측정 화면과 사용자가 선택한 준비 화면 B안은 새 디자인 경로에 구현했고, A안은 비교용으로 보관한다. 브라우저 검토는 모의 센서로 진행했으며 실기기 검증은 남아 있다.

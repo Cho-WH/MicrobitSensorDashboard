@@ -66,6 +66,15 @@
 .equipment-illustrated img { grid-column:1 / -1; width:100%; height:auto; aspect-ratio:8 / 5; object-fit:contain; }
 .equipment-list .equipment-illustrated:first-child { grid-column:1 / -1; }
 .equipment-illustrated:first-child img { aspect-ratio:12 / 5; max-height:210px; }
+/* Wide windows should reveal more equipment, not endlessly enlarge each image. */
+@media(min-width:851px) {
+  .guide-equipment { container:equipment / inline-size; }
+  .equipment-illustrated img,.equipment-illustrated:first-child img { height:var(--equipment-image-height,clamp(96px,18dvh,210px)); aspect-ratio:auto; }
+  @container equipment (min-width:560px) {
+    .equipment-list { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .equipment-list .equipment-illustrated:first-child { grid-column:span 2; }
+  }
+}
 .guide-usb-image { display:block; width:100%; height:auto; max-height:330px; object-fit:contain; margin:12px 0 24px; }
 .guide-power { padding:18px 28px; border-top:1px solid var(--line); }
 .guide-power summary { cursor:pointer; color:var(--teal); font-size:14px; font-weight:600; }

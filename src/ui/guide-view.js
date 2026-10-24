@@ -235,7 +235,7 @@ export function createGuideView(host, callbacks = {}) {
     }
     messages.cable={label:'케이블 끝 모양',text:content.cableHelp};
     help=createActionHelp(shell,{messages});
-    layout=createGuideLayout({content:copy,progress:nav,steps,measureSteps:steps.filter(step=>step.group==='wiring'),createMeasurement(step){
+    layout=createGuideLayout({content:copy,progress:nav,equipment,steps,measureSteps:steps.filter(step=>step.group==='wiring'),createMeasurement(step){
       const measurement=element('div','step-content'); measurement.append(element('p','step-counter','02 · 배선'),element('h3','step-title',step.title),element('p','step-description',step.description)); return measurement;
     }});
   }
@@ -286,6 +286,10 @@ export function createGuideView(host, callbacks = {}) {
       applyLabCopy(deviceVisual, labels);
       if(content.illustrations){
         const img=element('img','guide-usb-image');img.src=content.illustrations.usb.src;img.alt=content.illustrations.usb.alt;img.width=1440;img.height=900;img.decoding='async';
+        if (shell.ownerDocument.documentElement.dataset.visualTheme === 'luminous') {
+          img.src=new URL('../../public/assets/design/luminous-usb.png',import.meta.url).href;
+          img.width=1200;img.height=1000;
+        }
         deviceVisual.querySelector('.usb-diagram').replaceWith(img);
       }
     }

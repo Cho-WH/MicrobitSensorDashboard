@@ -158,6 +158,86 @@
       "modified": true,
       "version": "59c5c149",
       "license": "public/assets/devices/README.md"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/blob/0.468.0/icons/activity.svg",
+      "file": "public/vendor/lucide/activity.svg",
+      "sha256": "050fbcda05e13c2051cf857683645e19c6b180861ef4d0cc28a6f09ba1ea1666",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/blob/0.468.0/icons/archive.svg",
+      "file": "public/vendor/lucide/archive.svg",
+      "sha256": "78c732e34e232db63af06a2330b4448045cfdf49b48b59f2d31922df54c7bb17",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/blob/0.468.0/icons/chart-no-axes-combined.svg",
+      "file": "public/vendor/lucide/chart-no-axes-combined.svg",
+      "sha256": "c78cd9f846108d5edbaf3a16d9df1763a8dde97bd1d4b55f359b78daa01f3c4b",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/blob/0.468.0/icons/flask-conical.svg",
+      "file": "public/vendor/lucide/flask-conical.svg",
+      "sha256": "a2ce857c159bef4c128a6d9f0b6dcbd6504ecf1a2a670ee220efd14fd032b561",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/blob/0.468.0/icons/pause.svg",
+      "file": "public/vendor/lucide/pause.svg",
+      "sha256": "0f4280e6dcc1047551bbc6ef8a9f1a34959de13c7f077d9667d12ab90c8fbca7",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/blob/0.468.0/icons/play.svg",
+      "file": "public/vendor/lucide/play.svg",
+      "sha256": "e646902a5a8ba055ce573c6f51d10bb6eb9d230e7d6e84a9e6c81f599778ffc1",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/blob/0.468.0/icons/settings-2.svg",
+      "file": "public/vendor/lucide/settings-2.svg",
+      "sha256": "461a8c978685f762e024c23647230f59f00bcae599a025645829435cadb6f3a4",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/blob/0.468.0/icons/sliders-horizontal.svg",
+      "file": "public/vendor/lucide/sliders-horizontal.svg",
+      "sha256": "4a6b5404724a439227964670bf9eb71bcebd98384178441e50093f2620169b1a",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/lucide-icons/lucide/blob/0.468.0/icons/square.svg",
+      "file": "public/vendor/lucide/square.svg",
+      "sha256": "bd979354f0ab184b95cecf03eedefe40c2dc65830ac6d7e60017b2b25a354acb",
+      "modified": false,
+      "version": "0.468.0",
+      "license": "public/vendor/lucide-LICENSE"
+    },
+    {
+      "source": "https://github.com/orioncactus/pretendard/blob/v1.3.9/packages/pretendard/dist/web/variable/woff2/PretendardVariable.woff2",
+      "file": "public/vendor/pretendard/PretendardVariable.woff2",
+      "sha256": "9599f12fd42fc0bce1cd50b47a0c022e108d7aa64dd0d1bb0ed44f3282d900b4",
+      "modified": false,
+      "version": "1.3.9",
+      "license": "public/vendor/pretendard/LICENSE"
     }
   ],
   "upstreamCommit": "59c5c149450f970bace2deaa183857c275595853"

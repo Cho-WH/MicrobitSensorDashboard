@@ -23,8 +23,10 @@ test('home has no selected context; sensor/activity links resolve independently 
 });
 test('navigation preserves trusted sensor/activity only and rejects unsupported configuration',()=>{
   const base=new URL('https://example.test/lab/'), context=getExperiment('bmp280','gay-lussac');
-  const analysis=routeUrl(context,'analysis',{base,mock:true});
+  const analysis=routeUrl(context,'analysis',{base,mock:true,visual:'luminous'});
   assert.equal(parseRoute(analysis,base).screen,'analysis'); assert.equal(analysis.searchParams.get('mock'),'1');
+  assert.equal(analysis.searchParams.get('visual'),'luminous');
+  assert.equal(routeUrl(context,'prepare',{base}).searchParams.has('visual'),false);
   assert.equal(parseRoute(routeUrl(context,'home',{base}),base).context,null);
   for(const path of ['sensors/unknown/','lab.html?cfg=arbitrary','lab.html?view=preview','lab.html?view=unknown','../outside/','https://other.test/lab/']) assert.throws(()=>parseRoute(path,base));
   assert.ok(!sameExperiment(context,getExperiment('bmp280')));

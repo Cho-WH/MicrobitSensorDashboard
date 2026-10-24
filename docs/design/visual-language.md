@@ -4,7 +4,7 @@
 > 대상: `Cho-WH/MicrobitSensorDashboard`  
 > 소스 검토 기준: `791d792c543ada0d0f9064b1067031c527b622b1` · v1 작성 시 확인한 소스  
 > v2 개정: 2026-10-25 · 배치 제약 해제, 전체 화면 검증 우선  
-> 기준 이미지: 대화에서 선택한 기준 시안(원본 이미지 별도 보관; 저장소에 미포함)  
+> 기준 이미지: [사용자가 제공한 기준 시안](reference/approved-moodboard.png)\
 > 적용 절차: [단계별 적용 설계](visual-rollout-plan.md)
 
 ## 1. 디자인의 약속
