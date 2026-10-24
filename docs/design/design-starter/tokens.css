@@ -1,0 +1,127 @@
+/* Luminous Lab v2 package — provisional values carried over from v1.
+ * Not a complete app stylesheet or an approved component system.
+ * Integration target: src/ui/tokens.css
+ * One development opt-in: <html data-visual-theme="luminous">
+ * V1: tune these candidates while building the full measurement screen.
+ * V2: consolidate the values and components validated in that screen.
+ * Layout, grouping, navigation and scene composition may change.
+ * DOM components and Canvas must explicitly consume the tokens.
+ * Do not keep this starter and the integrated file as parallel sources.
+ */
+:root[data-visual-theme="luminous"] {
+  color-scheme: light;
+
+  /* Identity and neutral surfaces. */
+  --sl-bg: #f6f8fc;
+  --sl-surface-data: #ffffff;
+  --sl-surface-soft: #eef3fa;
+  --sl-surface-glass: rgba(255, 255, 255, 0.88);
+  --sl-surface-dark: #0b1f3b;
+  --sl-text: #1f2937;
+  --sl-text-muted: #53657d;
+  --sl-text-on-dark: #f6f8fc;
+  --sl-text-muted-on-dark: #bccbe0;
+  --sl-navy: #0b1f3b;
+  --sl-border-subtle: #e1e8f2;
+  --sl-border-control: #7f8da4;
+  --sl-border-on-dark: #8a9db8;
+  --sl-edge-light: rgba(255, 255, 255, 0.92);
+
+  /* Bright accents and readable variants. */
+  --sl-orange: #ff7a45;
+  --sl-orange-plot: #d65a20;
+  --sl-orange-text: #b54416;
+  --sl-cobalt: #246bfd;
+  --sl-cobalt-text: #1d4ed8;
+  --sl-violet: #7c5cff;
+  --sl-violet-text: #6740cf;
+
+  /* Actions are independent of data channels. */
+  --sl-action-bg: #0b1f3b;
+  --sl-action-text: #ffffff;
+  --sl-action-hover: #17365c;
+  --sl-accent-action-bg: #ff7a45;
+  --sl-accent-action-text: #0b1f3b;
+  --sl-accent-action-hover: #ff915f;
+  --sl-quiet-hover: #eef3fa;
+  --sl-selection-bg: #e8efff;
+  --sl-selection-line: #246bfd;
+  --sl-focus-ring: #246bfd;
+  --sl-focus-ring-on-dark: #bccbe0;
+  --sl-disabled-bg: #edf1f6;
+  --sl-disabled-text: #65758a;
+
+  /* Functional states: always accompanied by text/icon/shape. */
+  --sl-success: #137d55;
+  --sl-success-bg: #ecf7f0;
+  --sl-warning: #8a5b00;
+  --sl-warning-bg: #fff5d9;
+  --sl-danger: #b42335;
+  --sl-danger-bg: #fff0f2;
+  --sl-recording: #b54416;
+
+  /* Chart values: resolve these once in the presentation adapter. */
+  --sl-chart-bg: #ffffff;
+  --sl-chart-grid: #e5ebf4;
+  --sl-chart-axis: #53657d;
+  --sl-chart-included: #0b1f3b;
+  --sl-chart-excluded: #65758a;
+  --sl-chart-trend: #d65a20;
+  --sl-chart-selection: #1d4ed8;
+  --sl-channel-temperature-line: #d65a20;
+  --sl-channel-temperature-text: #b54416;
+  --sl-channel-pressure-line: #246bfd;
+  --sl-channel-pressure-text: #1d4ed8;
+  --sl-channel-light-line: #7c5cff;
+  --sl-channel-light-text: #6740cf;
+
+  /* Geometry: different roles, not one radius for every rectangle. */
+  --sl-radius-control: 10px;
+  --sl-radius-reading: 16px;
+  --sl-radius-panel: 18px;
+  --sl-radius-shell: 24px;
+  --sl-radius-pill: 999px;
+  --sl-control-height: 40px;
+  --sl-touch-target: 44px;
+  --sl-space-1: 4px;
+  --sl-space-2: 8px;
+  --sl-space-3: 12px;
+  --sl-space-4: 16px;
+  --sl-space-6: 24px;
+  --sl-space-8: 32px;
+
+  /* No font binaries included. Use the system fallback until licensed assets
+     are deliberately integrated; this declaration does not load a font. */
+  --sl-font-ui: "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+  --sl-font-body: 1rem;
+  --sl-font-label: 0.875rem;
+  --sl-font-caption: 0.8125rem;
+  --sl-font-title: 1.5rem;
+  --sl-font-value: 2.125rem;
+  --sl-line-body: 1.65;
+  --sl-line-value: 1.1;
+
+  /* Depth and atmosphere. Apply to selected static regions, not every card. */
+  --sl-shadow-panel: 0 8px 28px rgba(11, 31, 59, 0.055);
+  --sl-shadow-floating: 0 14px 38px rgba(11, 31, 59, 0.14);
+  --sl-edge-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  --sl-atmosphere:
+    radial-gradient(ellipse at 3% 0%, rgba(36, 107, 253, 0.055), transparent 48%),
+    radial-gradient(ellipse at 96% 8%, rgba(255, 122, 69, 0.045), transparent 38%);
+
+  --sl-duration-press: 80ms;
+  --sl-duration-control: 140ms;
+  --sl-duration-panel: 220ms;
+  --sl-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Tokens alone do not cancel existing transitions/animations.
+   Each migrated component and any JS transition must consume this policy. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-visual-theme="luminous"] {
+    --sl-duration-press: 0ms;
+    --sl-duration-control: 0ms;
+    --sl-duration-panel: 0ms;
+  }
+}
