@@ -31,7 +31,7 @@ function fixture({ count = 1500, dated = true, temporary = false } = {}) {
 
 export async function runUiTests(report = (_message) => {}) {
   const previousFocus = document.activeElement, previousScroll = { x: scrollX, y: scrollY };
-  const lab = await mountLabFixture(), {host} = lab;
+  const lab = await mountLabFixture({component:true}), {host} = lab;
   host.style.setProperty('--analysis-duration','0ms');
   lab.showScreen('analysis');
   const root = host.querySelector('[data-screen="analysis"]');

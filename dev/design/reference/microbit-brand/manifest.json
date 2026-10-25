@@ -1,0 +1,58 @@
+{
+  "retrieved": "2026-10-25",
+  "owner": "Micro:bit Educational Foundation",
+  "source": "https://www.microbit.org/brand-guidelines/",
+  "usage": "Reference archive only; governed by official brand guidelines, not the repository MIT license. No runtime inclusion.",
+  "files": [
+    {
+      "file": "compatibility-logos.zip",
+      "url": "https://cdn.sanity.io/files/ajwvhvgo/production/2b8eb609d8f5562ddeedb3c90999b30403194784.zip",
+      "bytes": 277848,
+      "sha256": "e88563b8fafbdb06e687b61ac10ab440d632736884c3e98aa598acda2270b86a",
+      "modified": false
+    },
+    {
+      "file": "brand-guidelines-2023-11.pdf",
+      "url": "https://cdn.sanity.io/files/ajwvhvgo/production/09e8ec7c6101cab235cf10392eb3992311d09b9c.pdf",
+      "bytes": 5873424,
+      "sha256": "af5b08d01150e5f8433df5bff3e4b099437725d286fa1d3050c8e5b06f4b9abd",
+      "modified": false
+    },
+    {
+      "file": "official-logo-reference.svg",
+      "url": "https://cdn.sanity.io/images/ajwvhvgo/production/6aada623aed7540f77754cbd49b36f05d0fd6b86-150x89.svg",
+      "bytes": 8925,
+      "sha256": "10988e5ba010201898d2271f6c573397a5f7c8f5d459080a2825c21a3e61b28b",
+      "modified": false
+    },
+    {
+      "file": "works-with-v1.png",
+      "url": "https://cdn.sanity.io/images/ajwvhvgo/production/1b837029372307c8a2b205ec1fa139c82925b96a-1295x421.png",
+      "bytes": 27211,
+      "sha256": "0e93eddbdf84c8e4dcee8796dd45a09f2052a112f82c02cd7e12a177dc86e0ab",
+      "modified": false
+    },
+    {
+      "file": "works-with-v2.png",
+      "url": "https://cdn.sanity.io/images/ajwvhvgo/production/2fe35a7ef1aeeea50b3000c6fc42c028b5aa9625-1295x422.png",
+      "bytes": 28266,
+      "sha256": "b01561f4e23af6a7e6e1931762d034331af76450db9ccf18a6b70a7457d31794",
+      "modified": false
+    },
+    {
+      "file": "works-with-v1-v2.png",
+      "url": "https://cdn.sanity.io/images/ajwvhvgo/production/17d9277789c6f781092ee9c2f6993b0457c6ce94-1454x421.png",
+      "bytes": 29877,
+      "sha256": "e6ae4b7b82a6031beaa89fa04626ba8e887c0d560276f5c9dff44c0550b7ce2f",
+      "modified": false
+    },
+    {
+      "file": "v2-only-transparent.png",
+      "sourceArchive": "compatibility-logos.zip",
+      "sourceEntry": "Compatibility logo icon set/v2-only-transparent.png",
+      "bytes": 29913,
+      "sha256": "332203c7ed47895d2c0180cc55e598881ebb655c9dbe893cef2be82ad2349927",
+      "modified": false
+    }
+  ]
+}

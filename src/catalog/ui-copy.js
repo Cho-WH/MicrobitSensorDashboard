@@ -60,8 +60,7 @@ export const labDefaults = {
   },
   guideSteps: {
     equipmentTitle: '장치와 도구를 준비해요', equipmentAction: '준비했어요', equipmentGroup: '준비물',
-    usbTitle: '설치할 때 USB를 연결해요', usbDescription: '프로그램을 새로 넣을 때 micro:bit와 컴퓨터를 데이터 전송이 가능한 케이블로 연결하세요. 이미 올바른 프로그램이 있다면 이 단계는 건너뛸 수 있어요.', usbAction: 'USB를 연결했어요',
-    programTitle: '센서 프로그램을 넣어요', programDescription: 'USB로 이 센서의 프로그램을 설치하세요. 이미 설치했다면 아래에서 확인하고 넘어가세요.', programGroup: '프로그램',
+    programTitle: '센서 프로그램을 넣어요', programDescription: '사용 중인 기기와 micro:bit를 USB 데이터 케이블로 연결한 뒤, 설치 버튼을 누르세요. 이미 올바른 프로그램이 있다면 아래에서 확인하고 넘어가세요.', programGroup: '프로그램',
     connectionTitle: 'Bluetooth로 연결해요', connectionDescription: '측정할 micro:bit를 선택하세요. USB 연결과 Bluetooth 연결은 별개입니다.', connectionGroup: '연결·수신', wirelessGroup: '무선 연결',
     receptionTitle: '새 측정값을 확인해요', receptionDescription: '선택한 센서의 유효한 측정값이 계속 들어오는지 확인합니다. 값이 같더라도 새 수신이면 정상입니다.',
   },
@@ -73,7 +72,7 @@ export const labDefaults = {
     quickTitle: '준비된 장치를 확인해요', readyTitle: '이제 측정을 시작해 볼까요?', receptionTitle: '연결과 수신을 확인해요', quickDescription: '현재 장치의 준비 상태를 확인하고 연결하세요.', summaryDescription: recordingPreviewNote, quickCounter: '준비된 장치', summaryCounter: '준비 결과',
     ready: '준비 완료', canMeasure: '수신 확인 · 측정 가능', progress: '준비 확인 {count} / {total}', mockPrefix: '모의 장치 · ',
     userConfirmed: '직접 확인했어요', deviceObserved: '장치에서 확인했어요', deviceReported: '장치가 보정 완료를 알렸어요', simulated: '모의 수신으로 확인했어요',
-    usbLabel: 'USB 연결', programLabel: '설치', connectionLabel: '연결', receptionLabel: '수신 확인', calibrationLabel: '보정 확인',
+    programLabel: '설치', connectionLabel: '연결', receptionLabel: '수신 확인', calibrationLabel: '보정 확인',
     usbEyebrow: '프로그램을 넣을 때', computer: '컴퓨터', usbHeading: 'USB 데이터 케이블로 연결해요', usbNote: '충전 전용 케이블로는 설치할 수 없어요. 설치가 끝날 때까지 케이블을 꽂아 두세요.', usbWireless: '측정값은 다음 단계에서 Bluetooth로 받습니다.',
     powerHeading: '배터리로 전원을 공급하려면', powerNote: 'USB 대신 배터리로 전원을 공급할 수 있어요. 1.5 V AAA 전지 두 개(총 3 V)를 케이스의 +·− 표시에 맞춰 넣고, 흰색 플러그를 보드의 배터리 단자에 연결하세요. 프로그램 설치에는 USB 데이터 케이블이 필요해요.',
     noReading: '아직 받은 값이 없어요.', wireless: '무선 연결', continuous: '새 값 연속 수신', calibration: '보정 직접 확인', batteryCheck: 'USB 분리 후 수신', review: '다시 보기', check: '확인하기',

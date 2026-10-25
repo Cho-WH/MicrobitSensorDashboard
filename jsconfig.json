@@ -1,4 +1,36 @@
 {
-  "compilerOptions": { "allowJs": true, "checkJs": true, "noEmit": true, "target": "ES2023", "module": "ESNext", "moduleResolution": "Bundler", "lib": ["ES2023", "DOM", "DOM.Iterable"], "strict": false, "skipLibCheck": true },
-  "include": ["src/domain/**/*.js", "src/catalog/**/*.js", "src/analysis/**/*.js", "src/data/**/*.js", "src/measurement/**/*.js", "src/device/**/*.js", "src/guide/**/*.js", "src/app/routes.js", "src/app/controller.js", "src/ui/guide-view.js", "src/ui/guide-layout.js", "src/ui/experiment-guide.js", "src/ui/measurement-view.js", "src/ui/luminous-shell.js", "src/types.d.ts"]
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/domain/**/*.js",
+    "src/catalog/**/*.js",
+    "src/analysis/**/*.js",
+    "src/data/**/*.js",
+    "src/measurement/**/*.js",
+    "src/device/**/*.js",
+    "src/guide/**/*.js",
+    "src/app/routes.js",
+    "src/app/controller.js",
+    "src/ui/guide-view.js",
+    "src/ui/guide-layout.js",
+    "src/ui/experiment-guide.js",
+    "src/ui/measurement-view.js",
+    "src/types.d.ts",
+    "src/app/startup.js",
+    "src/ui/app-shell.js",
+    "src/ui/app-presentation.js"
+  ]
 }

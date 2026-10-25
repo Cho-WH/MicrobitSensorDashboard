@@ -21,10 +21,13 @@ import { LIMITS } from '../domain/limits.js';
 import { findElement } from '../ui/dom.js';
 import { createRecordDialogs } from '../ui/record-dialogs.js';
 import { renderEventList } from '../ui/event-content.js';
+import { bindAppShell } from '../ui/app-shell.js';
+import { createConnectionNotice } from '../ui/connection-notice.js';
 
 // Connects modules and owns navigation only. Source records live exclusively in RunStore.
 export function createController(root = document, { repository = null, deviceTransport = null, historyEnabled = true, initialUrl = location.href } = {}) {
   const $ = id => root.getElementById(id), abort = new AbortController(), { signal } = abort;
+  bindAppShell(root, { signal });
   const input = id => findElement(root, 'input', '#' + id);
   const button = id => findElement(root, 'button', '#' + id);
   const dialogElement = id => findElement(root, 'dialog', '#' + id);
@@ -36,6 +39,7 @@ export function createController(root = document, { repository = null, deviceTra
   const mock = new URL(initialUrl).searchParams.get('mock') === '1';
   const repo = repository ?? createRepository({ onUnavailable: message => showError(message) });
   const transport = deviceTransport ?? createTransport(mock ? {ble:createMockBleClient(()=>context)} : {});
+  const connectionNotice = createConnectionNotice(root, { signal });
   let targetContext = null, runtime = null, programmer = null, programmerState = {}, installed = false, recordingSourceAllowed = false;
   let deviceState = transport.getState();
   const guide = createGuideView($('guide-host'), { onInstall: () => act(install), onConnect: options => act(()=>connect(options)),
@@ -372,6 +376,7 @@ export function createController(root = document, { repository = null, deviceTra
       findElement(root,'a','.skip-link').textContent = copy.common.skip;
     }
     deviceState=transport.getState();
+    connectionNotice.render({ screen, support: transport.getSupport?.() ?? (transport.isSupported() ? 'supported' : 'unsupported'), busy: busy || !!programmerState.busy });
     const saved = store?.getState(), current = session?.getState(), recording = current?.recording;
     const measurementScreen = findElement(root,'section','[data-screen="measure"]');
     const previousRecordingState = measurementScreen.dataset.recordingState;
@@ -494,8 +499,8 @@ export function createController(root = document, { repository = null, deviceTra
     if (connected || session?.getState().recording) renderRequested = true;
     if(renderRequested){renderRequested=false;render();}
   },200);
-  void act(()=>applyLocation(initialUrl)); render();
-  return { async dispose(){
+  const ready = act(()=>applyLocation(initialUrl)); render();
+  return { ready, async dispose(){
     await persistCurrent(); await disconnect(); await store?.close();
     clearInterval(interval);abort.abort();dialogs.dispose();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();measurement.dispose();experimentGuide.dispose();repo.close();
   }, getState:()=>({screen,context,targetContext,busy:busy || !!programmerState.busy,storage:store?.getState(),session:session?.getState()}) };

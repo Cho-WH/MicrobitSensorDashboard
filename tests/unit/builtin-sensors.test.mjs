@@ -37,7 +37,7 @@ test('new built-in codecs preserve signs, zero, partial errors and finite range 
 test('new built-ins use common preparation, require current reception, and never gain thermal activity or magnetic calibration', () => {
   for (const id of sensors) {
     const context = getExperiment(id), guide = createGuideProgress(context), content = getGuideContent(context);
-    assert.deepEqual(guide.getState().steps.map(step => step.id), ['equipment', 'usb', 'program', 'connection', 'reception']);
+    assert.deepEqual(guide.getState().steps.map(step => step.id), ['equipment', 'program', 'connection', 'reception']);
     assert.deepEqual(content.wiring, []); assert.equal(content.viewer, null); assert.deepEqual(content.calibrationInstructions, []);
     assert.throws(() => getExperiment(id, 'gay-lussac'));
     guide.confirm('equipment'); guide.confirm('program'); assert.equal(guide.getState().ready, false);

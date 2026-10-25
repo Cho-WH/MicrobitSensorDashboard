@@ -118,6 +118,10 @@ tests/         unit/, browser/, fixtures/
 
 생성 함수에는 필요한 의존성만 인자로 전달한다. 시계·타이머·BLE·Repository 같은 외부 효과는 테스트 대체가 가능하게 하고, 매 함수 호출을 감싸는 범용 인터페이스 계층은 추가하지 않는다.
 
+### 실제 앱 시작 경계
+
+현재 앱의 고정 틀·초기 스타일은 `lab.html`이 선언한다. `startApp(root, options)`은 필수 스타일·서체 결정을 거쳐 Controller를 만들고, 반환된 `ready`가 최초 경로 적용·렌더를 끝낸 뒤 조작을 공개한다. 이는 장치 연결이나 기록 시작 완료를 뜻하지 않는다. 초기 로딩·실패 안내는 bootstrap과 HTML이, 메뉴·설정창 이벤트는 Controller 수명에 묶인 `bindAppShell`이 맡는다. 개발·전체 앱 검사는 같은 시작 경로를 사용하고, View 단위 검사는 Controller 생략을 명시한다. 측정·분석 작업 영역의 남은 높이는 공통 표시 도우미가 전달하고 내부 배분은 각 화면 CSS가 맡는다. 개발 서버와 빌드는 같은 CSS 결합 함수를 사용한다. 이들은 Session·RunStore·Workspace 상태를 소유하지 않는다. 시각 규칙의 소유권과 적용 기록은 [기본 UI 구조 전환 계획](design/visual-rollout-plan.md#14-기본-ui-구조-전환-계획)을 따른다.
+
 ### 최소 공개 인터페이스
 
 다음 이름은 이식 후 목표 API다. 기존 내부 함수의 이름을 모두 바꾸기 위한 요구가 아니라 모듈 사이에서 합의할 호출면이다.
@@ -240,6 +244,8 @@ BMP280의 이식 초기값은 원본의 첫 값 제한 3초, 시작 재시도 �
 지원하지 않는 원격 측정 간격 변경을 UI에 노출하지 않는다. 기존 `basic.pause(100)`은 명목 간격이지 정확한 10Hz 보증이 아니다. 실험에는 실제 수신 시각을 저장하며 브라우저 도착 시간을 장치 측정 시각으로 표시하지 않는다. 고속 진동 측정용 장치 timestamp·sequence는 후속 프로토콜 범위다.
 
 ### 6.3. USB 설치·식별
+
+USB 연결 안내는 별도 확인 단계 없이 프로그램 설치 단계에서 제공한다. 설치 성공과 기설치 사용자 확인은 기존처럼 구분한다. 모바일 공식 앱을 통한 HEX 전송은 [센서 프로그램 설치 개선 과제](sensor-program-installation-roadmap.md)에 후속 조사·검증 계획으로 기록한다. 현재 구현된 설치 경로는 아래 USB 계약이며, 무선 설치 지원이 추가된 상태가 아니다.
 
 기존 공식 USB 어댑터의 파일 사전 준비 → 해시 검증 → 보드 확인 → 전송 → 자원 해제 순서를 보존한다. 원본 BMP280 해시는 UTF-8 텍스트의 CRLF만 LF로 바꾸어 계산하므로 manifest의 `digestMode`에 그 규칙을 명시한다. 새 해시를 계산하지 않고 raw-byte 해시로 의미를 바꾸지 않는다. 전체 전송 경로와 V2 확인을 먼저 유지한다. [원본 어댑터][G-programmer]
 
@@ -431,6 +437,10 @@ BMP280의 센서·확장 보드·연결선 끝 형상은 기존 배선 뷰어와
 
 초기판은 백그라운드 기록·화면 잠금 중 연결 유지·완전한 오프라인/PWA를 보장하지 않는다. 브라우저 기능은 이름 대신 capability로 검사하고, BLE 미지원이 파일 분석까지 막지 않게 한다. 서비스 워커·Web Worker는 실제 오프라인 요구나 측정된 병목이 생겼을 때 별도 도입한다.
 
+Bluetooth 지원 판정은 `device/browser-support.js`가 소유하며 BLE 어댑터와 Transport의 `getSupport()`·`isSupported()`가 같은 결과를 사용한다. 보안 컨텍스트, `requestDevice` 존재, 확인 가능한 Permissions Policy를 동기적으로 읽는다. 이 결과는 API 사용 가능 여부이며 장치 존재·권한 허용·연결 성공을 증명하지 않는다. 자동 장치 선택·권한 요청·주기적 하드웨어 탐색은 하지 않는다. `getAvailability()`의 false를 브라우저 미지원이나 전원 꺼짐으로 취급하지 않는다.
+
+UI는 이 판정으로 공통 안내 하나를 현재 화면에 배치한다. OS 추정은 iOS용 도움말 선택에만 쓰며, API를 제공하는 iOS 브라우저를 막지 않는다. 모의 Transport는 실제 브라우저의 미지원 안내 대상이 아니다. Bluefy 링크와 검증 범위는 [설치 개선 과제 §3.3](sensor-program-installation-roadmap.md#33-설치-성공과-측정-지원은-별도)에 기록한다.
+
 ## 12. 구현 단계와 검증
 
 ### 12.1. 개발·빌드
@@ -445,9 +455,10 @@ M1에서 `package.json`의 module 모드, 지원 중인 Node LTS 버전과 lockf
 | `npm test` | Node 테스트 러너로 순수 도메인·codec·저장/세션 계약 테스트 |
 | `npm run typecheck` | JSDoc 공개 계약과 import 의존성 검사 |
 | `npm run test:browser` | 브라우저의 실제 IndexedDB·DOM·가상 표·탐색 테스트 실행 경로 |
+| `npm run test:e2e` | 격리된 Chromium에서 기본 UI 전환 관련 6개 묶음과 실제 페이지·3D 복구 검사 실행 |
 | `npm run build` | 내부 진입 HTML·자원 생성 및 레지스트리 정적 검증 |
 
-브라우저 테스트는 원본 `tests/browser.html`·`browser.js`의 유효한 사례를 이식한다. 초기에는 이 러너를 활용하고, 자동화가 필요한 핵심 흐름만 이후 브라우저 자동화 도구로 감싼다. 테스트 프레임워크를 중복 도입하지 않는다. [Node 테스트 러너][W-test]
+브라우저 테스트는 원본 `tests/browser.html`·`browser.js`의 유효한 사례를 이식한다. 기존 DOM·저장 검사는 유지하고 기본 UI 전환 관련 묶음을 Playwright Test의 독립 BrowserContext에서 실행한다. 새 화면 크기·3D 복구 검사는 실제 최상위 페이지에서 사용자 입력과 준비 응답을 확인한다. 재시도 없이 최초 실패의 trace·화면·결과를 남기며 실제 장치 확인과 구분한다. [Node 테스트 러너][W-test]
 
 ### 12.2. 단계별 산출물
 

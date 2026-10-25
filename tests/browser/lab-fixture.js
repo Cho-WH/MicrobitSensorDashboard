@@ -1,26 +1,43 @@
-import { prepareLuminousShell } from '../../src/ui/luminous-shell.js';
+import { prepareAppPresentation } from '../../src/ui/app-presentation.js';
+import { completeStartup } from '../../src/app/startup.js';
 
-// The same template and composition as bootstrap.js, with injected data/device effects only.
+// Real static template and styles. Full-app suites call startApp themselves;
+// component suites explicitly opt out of routing/controller initialization.
 // Restore document-wide presentation so running a suite alone and after another suite agree.
-export async function mountLabFixture() {
+export async function mountLabFixture({component=false}={}) {
   const url=new URL('../../lab.html',import.meta.url), response=await fetch(url);
   if(!response.ok)throw new Error('앱 HTML을 불러오지 못했습니다.');
   const template=new DOMParser().parseFromString(await response.text(),'text/html');
-  const theme=document.documentElement.dataset.visualTheme, styles=new Set(document.head.querySelectorAll('link[rel=stylesheet]'));
+  for(const node of template.body.querySelectorAll('[src],[href]'))for(const name of ['src','href']) {
+    const value=node.getAttribute(name);
+    if(value&&!value.startsWith('#'))node.setAttribute(name,new URL(value,url).href);
+  }
+  const theme=document.documentElement.dataset.visualTheme, font=document.documentElement.style.getPropertyValue('--sl-font');
+  const resources=[];
   const host=document.createElement('div');host.className='browser-lab-fixture';document.body.append(host);
   host.getElementById=id=>host.querySelector('#'+CSS.escape(id));
   const dispose=()=>{
     host.remove();
-    for(const style of document.head.querySelectorAll('link[rel=stylesheet]'))if(!styles.has(style))style.remove();
+    resources.forEach(style=>style.remove());
+    if(font)document.documentElement.style.setProperty('--sl-font',font);else document.documentElement.style.removeProperty('--sl-font');
     if(theme===undefined)delete document.documentElement.dataset.visualTheme;else document.documentElement.dataset.visualTheme=theme;
   };
   async function reset() {
+    host.dataset.appState='loading';
     host.replaceChildren(...[...template.body.children].filter(node=>!['SCRIPT','NOSCRIPT'].includes(node.tagName)).map(node=>document.importNode(node,true)));
-    await prepareLuminousShell(host);
+    if(component){await prepareAppPresentation();completeStartup(host);}
     if(!host.querySelector('.luminous-sidebar')||!host.querySelector('.luminous-overview')||!host.querySelector('#measurement-settings'))
       throw new Error('기본 앱 화면 구성을 거치지 않았습니다.');
   }
-  try { await reset(); } catch(error) {dispose();throw error;}
+  try {
+    document.documentElement.dataset.visualTheme=template.documentElement.dataset.visualTheme;
+    const critical=document.importNode(template.querySelector('[data-startup-style]'),true);resources.push(critical);document.head.append(critical);
+    await Promise.all([...template.querySelectorAll('link[rel=stylesheet]')].map(node=>new Promise((resolve,reject)=>{
+      const style=document.importNode(node,true);style.href=new URL(node.getAttribute('href'),url).href;
+      resources.push(style);style.onload=resolve;style.onerror=reject;document.head.append(style);
+    })));
+    await reset();
+  } catch(error) {dispose();throw error;}
   return {host,reset,dispose,showScreen(name) {
     for(const screen of host.querySelectorAll('[data-screen]'))screen.hidden=screen.dataset.screen!==name;
   }};

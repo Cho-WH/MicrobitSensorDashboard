@@ -6,12 +6,16 @@ import { setText } from './text.js';
 import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 import { readVisualTheme, channelColor, channelTextColor } from './visual-theme.js';
 import { createMeasurementEvents } from './measurement-events.js';
+import { createViewportLayout } from './viewport-layout.js';
 
 /** @param {ParentNode} root @param {()=>void} onChange @param {(event:any)=>void} [onEditNote] */
 export function createMeasurementView(root,onChange,onEditNote = null) {
   const fields=findElement(root,'div','#display-channels'), range=findElement(root,'select','#live-range');
   const cards=findElement(root,'div','#live-cards'), chartSummary=findElement(root,'p','#live-chart-summary');
   const reception=findElement(root,'p','#measurement-reception'), abort=new AbortController();
+  createViewportLayout(findElement(root,'section','[data-screen="measure"]'), {
+    regions:[findElement(root,'div','.luminous-graph')], signal:abort.signal,
+  });
   const receptionState=element('span'), receptionTime=element('span');
   reception.replaceChildren(receptionState,receptionTime);
   let contentAbort=new AbortController();

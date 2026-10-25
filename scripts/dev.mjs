@@ -4,11 +4,17 @@ import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { entryRoutes } from '../src/app/routes.js';
 import { renderEntry } from './entry-pages.mjs';
+import { bundleStyles, styleEntry } from './styles.mjs';
 export function serve({ root = resolve(fileURLToPath(new URL('..', import.meta.url))), port = 8080 } = {}) {
   const types = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.csv':'text/csv' };
   const server = createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost'), path = decodeURIComponent(url.pathname);
+      if (path === '/' + styleEntry) {
+        const content = await bundleStyles(root);
+        res.writeHead(200, { 'Content-Type':types['.css'], 'Cache-Control':'no-store' });
+        res.end(content); return;
+      }
       const entry = entryRoutes.find(route => path === '/' + route.path || path === '/' + route.path + 'index.html' || path === '/' + route.path.slice(0, -1));
       if (entry) {
         if (path === '/' + entry.path.slice(0, -1)) { res.writeHead(308, { Location: '/' + entry.path + url.search }); res.end(); return; }

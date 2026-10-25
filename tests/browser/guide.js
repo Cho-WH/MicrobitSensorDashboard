@@ -12,7 +12,7 @@ const waitFor = async predicate => {
 
 // Actual UI, controller facts injected explicitly. This does not claim physical USB/BLE verification.
 export async function runGuideTests(report = (_message) => {}) {
-  const fixture=await mountLabFixture();fixture.showScreen('prepare');
+  const fixture=await mountLabFixture({component:true});fixture.showScreen('prepare');
   const host=fixture.host.querySelector('#guide-host');
   const errors = [], changes = [], connections=[],deviceActions=[]; let disconnects = 0, installs = 0, measurements = 0;
   const view = createGuideView(host, { onChange: value => changes.push(value), onError: error => errors.push(error),
@@ -31,7 +31,10 @@ export async function runGuideTests(report = (_message) => {}) {
       const sources=images.map(image=>image.src);
       if(sharedSources)check(JSON.stringify(sources)===JSON.stringify(sharedSources),'내장 센서가 서로 다른 장치 이미지를 사용합니다.');
       sharedSources=sources;
-      step('usb');const usbImage=$('.guide-usb-image');await usbImage.decode();
+      click('confirm');
+      check(!$('.guide-program').hidden&&$('[data-guide-step="program"]').getAttribute('aria-current')==='step','준비물 확인 후 USB 확인을 거치지 않고 설치 화면에 진입해야 합니다.');
+      check(!$('[data-guide-step="usb"]')&&$('[data-guide-action="install"]').checkVisibility()&&$('[data-guide-action="program-confirm"]').checkVisibility(),'통합 설치 화면의 설치·기설치 조작이 누락되었습니다.');
+      const usbImage=$('.guide-usb-image');await usbImage.decode();
       check(usbImage.checkVisibility()&&usbImage.naturalWidth>0&&usbImage.alt,'기본 준비 화면의 USB 안내 그림 또는 대체 설명 누락');
       if(sharedUsbSource)check(usbImage.src===sharedUsbSource,'기본 USB 안내 자산이 센서마다 달라졌습니다.');
       sharedUsbSource=usbImage.src;

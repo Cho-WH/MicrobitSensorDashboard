@@ -37,6 +37,10 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
         }
       }
       if(width===1366) {
+        const plotHeight=$('.graph-stage').clientHeight;
+        frame.style.height=(height+160)+'px'; await settle();
+        check($('.graph-stage').clientHeight>plotHeight,'추가된 작업 높이가 그래프에 배분되지 않았습니다.');
+        frame.style.height=height+'px'; await settle();
         const chart=win.Chart.getChart($('#analysis-chart')), savedPoints=points();
         await click('#trend-details summary');
         const detail=$('#trend-detail').getBoundingClientRect(),pane=$('#analysis-graph-pane').getBoundingClientRect();

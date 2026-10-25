@@ -1,4 +1,4 @@
-import { createController } from '../../src/app/controller.js';
+import { startApp } from '../../src/app/startup.js';
 import { createRepository } from '../../src/data/repository.js';
 import { openRunStore } from '../../src/data/run-store.js';
 import { parseExperimentJson } from '../../src/data/files/json.js';
@@ -26,7 +26,7 @@ export async function runRecordTests(report=()=>{}) {
   const click=async selector=>{await idle();clickLabControl(host,selector);};
   const submit=selector=>clickVisible($(selector+' [type=submit]'));
   try {
-    app=createController(host,{repository:repo,historyEnabled:false,initialUrl:new URL('../../lab.html?mock=1',import.meta.url).href});await idle();
+    app=await startApp(host,{repository:repo,historyEnabled:false,initialUrl:new URL('../../lab.html?mock=1',import.meta.url).href});await idle();
     const text=await(await fetch('../fixtures/gay-lussac-v2.json')).text(),original=parseExperimentJson(text);
     const files=new DataTransfer();files.items.add(new File([text],'legacy.json',{type:'application/json'}));
     $('#file-input').files=files.files;$('#file-input').dispatchEvent(new Event('change'));

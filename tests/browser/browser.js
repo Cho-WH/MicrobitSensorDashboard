@@ -8,6 +8,7 @@ import { runMeasurementTests } from './measurement.js';
 import { runLayoutTests } from './layout.js';
 import { runCopyTests } from './copy.js';
 import { runNavigationTests } from './navigation.js';
+import { runStartupTests } from './startup.js';
 import { runDeviceTests } from './devices.js';
 import { runLuminousTests, runLuminousWorkspaceTests } from './luminous.js';
 import { runPresentationPerformance, runPresentationAccessibility } from './presentation.js';
@@ -20,6 +21,7 @@ button.addEventListener('click', async () => {
     const suites = {copy:runCopyTests,storage:runStorageTests,files:runFileTests,ui:runUiTests,guide:runGuideTests,preparation:runPreparationTests,measurement:runMeasurementTests,app:runAppTests,navigation:runNavigationTests,layout:runLayoutTests,devices:runDeviceTests,luminous:runLuminousTests,workspace:runLuminousWorkspaceTests};
     const selected = new URL(location.href).searchParams.get('suite');
     suites.records = runRecordTests;
+    suites.startup = runStartupTests;
     suites.accessibility = runPresentationAccessibility;
     const names=selected ? selected.split(',') : Object.keys(suites);
     if(names.includes('performance')) suites.performance=runPresentationPerformance;

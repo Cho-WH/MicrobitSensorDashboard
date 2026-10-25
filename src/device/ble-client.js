@@ -1,5 +1,6 @@
 // Adapted from Cho-WH/bme280@59c5c149 js/bluetooth.js and this repository's
 // js/bluetooth.js: UART discovery and cleanup retained; framing is byte-bounded and streaming.
+import { getBluetoothSupport } from './browser-support.js';
 const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const UART_002 = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 const UART_003 = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
@@ -45,7 +46,8 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
   let inputHandler = null, disconnectListener = null, notificationListener = null, gattListener = null;
   const encoder = new TextEncoder();
   const framer = createLineFramer({ onLine: line => inputHandler?.(line), onError: error => inputHandler?.(error) });
-  const isSupported = () => typeof bluetooth?.requestDevice === 'function';
+  const getSupport = () => getBluetoothSupport({ bluetooth });
+  const isSupported = () => getSupport() === 'supported';
   const checkAvailable = () => { if (!isSupported()) throw Object.assign(new Error('이 브라우저에서는 Bluetooth 측정을 지원하지 않습니다.'), { code: 'bluetooth-unavailable' }); };
   function clearReferences() {
     notifier?.removeEventListener('characteristicvaluechanged', notificationListener);
@@ -117,7 +119,7 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     try { await previousNotifier?.stopNotifications(); } catch { /* A disconnected device has no active subscription to stop. */ }
     if (previousDevice?.gatt?.connected) previousDevice.gatt.disconnect();
   }
-  return { requestDevice, connect, startNotifications, sendStartCommand, disconnect, isSupported,
+  return { requestDevice, connect, startNotifications, sendStartCommand, disconnect, isSupported, getSupport,
     setDisconnectedListener(listener) { disconnectListener = listener; },
     getContext: () => ({ device, service, txCharacteristic: writer, rxCharacteristic: notifier }),
   };

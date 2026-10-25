@@ -2,6 +2,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createBleClient, createLineFramer } from '../../src/device/ble-client.js';
+import { getBluetoothSupport, isAppleMobile } from '../../src/device/browser-support.js';
+
+test('Bluetooth capability checks stay silent and distinguish security, policy and missing API', () => {
+  const bluetooth = {
+    requestDevice() { assert.fail('support detection must not open a chooser'); },
+    getAvailability() { assert.fail('hardware availability is not a browser support verdict'); },
+  };
+  assert.equal(getBluetoothSupport({ bluetooth, secure: true }), 'supported');
+  assert.equal(getBluetoothSupport({ bluetooth: null, secure: true }), 'unsupported');
+  assert.equal(getBluetoothSupport({ bluetooth: null, secure: false }), 'insecure');
+  assert.equal(getBluetoothSupport({ bluetooth, secure: true, policy: { allowsFeature: () => false } }), 'blocked');
+  assert.equal(getBluetoothSupport({ bluetooth, secure: true, policy: { allowsFeature() { throw new Error('old API'); } } }), 'supported');
+  const client = createBleClient({ bluetooth });
+  assert.equal(client.getSupport(), 'supported'); assert.equal(client.isSupported(), true);
+});
+
+test('Apple mobile hint includes iPad desktop mode without treating a Mac as iOS', () => {
+  assert.equal(isAppleMobile({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)' }), true);
+  assert.equal(isAppleMobile({ userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_0)' }), true);
+  assert.equal(isAppleMobile({ platform: 'MacIntel', maxTouchPoints: 5 }), true);
+  assert.equal(isAppleMobile({ platform: 'MacIntel', maxTouchPoints: 0 }), false);
+  assert.equal(isAppleMobile({ userAgent: 'Mozilla/5.0 (Linux; Android 15)' }), false);
+});
 
 const encode = text => new TextEncoder().encode(text);
 test('UTF-8 streaming handles split code points, CRLF, multiple lines and DataView offsets', () => {

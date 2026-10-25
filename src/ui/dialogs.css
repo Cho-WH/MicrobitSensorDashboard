@@ -1,0 +1,37 @@
+/* Record/file editor content and layout; shared dialog chrome and states are in controls.css. */
+#event-note-dialog .button-row { margin-top:14px; }
+.additional-dialog { width:min(560px, 100% - 32px); max-height:calc(100dvh - 40px); overflow:auto; padding:28px; border:1px solid var(--sl-line); border-radius:14px; color:var(--sl-navy); background:white; box-shadow:rgba(33, 61, 71, 0.25) 0px 20px 70px; }
+.additional-dialog::backdrop { background:rgba(33, 61, 71, 0.4); }
+.additional-dialog h2 { font-size:1.4375rem; margin:0px 0px 12px; }
+.additional-dialog p { font-size:0.875rem; line-height:1.7; margin:12px 0px; }
+.additional-dialog .button-row { justify-content:flex-end; margin-top:20px; flex-wrap:wrap; }
+@media (max-width: 540px) {
+  .additional-dialog { padding:20px; }
+  .additional-dialog .button-row button { flex:1 1 0%; }
+}
+.record-dialog { width:min(560px, -32px + 100vw); max-height:calc(100dvh - 48px); overflow:auto; padding:24px; border:0px; border-radius:4px; color:var(--sl-text,#172945); background:var(--sl-surface,#fff); box-shadow:rgba(8, 29, 60, 0.25) 0px 24px 80px; }
+.record-dialog::backdrop { background:rgba(8, 29, 60, 0.4); }
+.record-dialog h2 { margin:0px 0px 14px; font-size:1.25rem; }
+.record-dialog-description { line-height:1.6; }
+.record-dialog-fields { display:grid; gap:14px; margin:18px 0px; }
+.record-dialog-fields > label:not(.record-check) { display:grid; gap:7px; }
+.record-dialog input:not([type="checkbox"]), .record-dialog select, .record-dialog textarea { width:100%; box-sizing:border-box; border-radius:3px; padding:10px; font:inherit; color:inherit; }
+.record-dialog textarea { min-height:100px; resize:vertical; }
+.record-dialog .record-check { display:flex; align-items:center; gap:10px; padding:8px 0px; }
+.record-dialog .record-check input { width:18px; height:18px; min-height:18px; margin:0px; padding:0px; flex:0 0 auto; }
+.record-dialog .button-row { display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
+.record-dialog button { min-height:40px; padding:8px 12px; border:0px; border-radius:3px; font:inherit; cursor:pointer; background:rgb(234, 240, 248); color:rgb(23, 52, 83); }
+.stored-event .event-note-edit { min-height:40px; padding:8px 12px; border:0px; border-radius:3px; font:inherit; cursor:pointer; color:rgb(23, 52, 83); }
+.record-dialog button.primary { background:var(--sl-primary,#0b1f3b); color:rgb(255, 255, 255); }
+.record-dialog button:disabled { opacity:0.5; cursor:default; }
+.record-dialog-error, .record-condition-warning { color:rgb(163, 54, 23); line-height:1.5; }
+.record-dialog-error:empty { display:none; }
+.record-export-columns { max-height:260px; overflow:auto; }
+.stored-event { display:flex; gap:12px; align-items:baseline; justify-content:space-between; }
+.stored-event > span { min-width:0px; overflow-wrap:anywhere; }
+.stored-event .event-note-edit { flex:0 0 auto; background:transparent; }
+.stored-event .event-note-edit:hover { background:rgb(220, 231, 245); }
+@media (max-width: 600px) {
+  .stored-event { flex-wrap:wrap; }
+  .record-dialog { padding:18px; }
+}

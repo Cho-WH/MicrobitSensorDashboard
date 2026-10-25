@@ -1,0 +1,62 @@
+/* Shared controls: roles, interaction states and dialog chrome. Screen files own placement and size.
+   Local --sl-button-* bindings select a role; hover/pressed/disabled paint stays here. */
+button, input { -webkit-tap-highlight-color:transparent; }
+button { font:inherit; cursor:pointer; border:1px solid rgb(188, 207, 206); border-radius:8px; padding:11px 16px; line-height:1.4; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:12px; }
+:focus-visible { outline:rgb(189, 123, 54) solid 3px; outline-offset:4px; }
+button { touch-action:manipulation; }
+.button-row { display:flex; gap:8px; }
+input { accent-color:var(--sl-selection-text); }
+.stop-button:not(:disabled) { color:rgb(155, 57, 51); background:rgb(252, 241, 239); border-color:rgb(227, 185, 180); }
+.stop-button:not(:disabled):hover { color:rgb(129, 46, 41); background:rgb(247, 225, 221); border-color:rgb(203, 140, 133); }
+.stop-button svg { flex:0 0 auto; }
+select, input { font:inherit; color:var(--sl-navy); background:white; border:1px solid rgb(188, 207, 206); border-radius:6px; padding:10px; min-height:44px; }
+.lab-controls input, .lab-controls select { min-height:44px; border:1px solid rgb(188, 207, 206); border-radius:8px; padding:8px 12px; font:inherit; }
+[data-visual-theme="luminous"] :is(button, select, input, textarea) { font-family:var(--sl-font); font-size:var(--sl-type-control); border-radius:var(--sl-radius-control); }
+[data-visual-theme="luminous"] button { min-height:var(--sl-target); font-weight:550; transition:background var(--sl-motion-control),border-color var(--sl-motion-control); }
+[data-visual-theme="luminous"] :is(button, a, input, select, textarea, summary, [role="slider"]):focus-visible { outline:2px solid var(--sl-focus); outline-offset:3px; }
+[data-visual-theme="luminous"] button[aria-busy="true"] { cursor:progress; }
+[data-visual-theme="luminous"] button.primary, [data-visual-theme="luminous"] button[data-ui-action="primary"] { --sl-button-bg:var(--sl-primary-bg); --sl-button-text:var(--sl-primary-text); --sl-button-hover:var(--sl-primary-hover); --sl-button-pressed:var(--sl-primary-pressed); --sl-button-line:transparent; --sl-button-hover-line:transparent; }
+[data-visual-theme="luminous"] button[data-ui-action="accent"] { --sl-button-bg:var(--sl-action-bg); --sl-button-text:var(--sl-action-text); --sl-button-hover:var(--sl-action-hover); --sl-button-pressed:var(--sl-action-pressed); --sl-button-line:transparent; --sl-button-hover-line:transparent; }
+[data-visual-theme="luminous"] button[data-ui-action="finish"] { --sl-button-text:var(--sl-finish-text); --sl-button-line:var(--sl-finish-line); --sl-button-bg:var(--sl-finish-bg); --sl-button-hover:var(--sl-recording-bg); }
+[data-visual-theme="luminous"] :is(.guide .guide-progress button, .measurement-event-row, .measurement-event-marker button), [data-visual-theme="luminous"] #add-note { border-radius:var(--sl-radius-flat); box-shadow:none; }
+.luminous-settings-dialog, .measurement-event-dialog { padding:var(--sl-space-6); border:1px solid var(--sl-surface); border-radius:var(--sl-radius-dialog); box-shadow:var(--sl-shadow-dialog); color:var(--sl-navy); }
+.luminous-settings-dialog::backdrop, .measurement-event-dialog::backdrop { background:var(--sl-backdrop); }
+[data-visual-theme="luminous"] :is(.analysis-screen, .experiment-preview, [data-screen="saved"], dialog) button { box-shadow:none; }
+[data-visual-theme="luminous"] button,
+[data-visual-theme="luminous"] :is(.analysis-screen, .experiment-preview, [data-screen="saved"], dialog) button { color:var(--sl-button-text,var(--sl-navy)); background:var(--sl-button-bg,var(--sl-surface)); border-color:var(--sl-button-line,var(--sl-input-border)); }
+[data-visual-theme="luminous"] button:hover:not(:disabled),
+[data-visual-theme="luminous"] :is(.analysis-screen, .experiment-preview, [data-screen="saved"], dialog) button:hover:not(:disabled) { background:var(--sl-button-hover,var(--sl-control-hover)); border-color:var(--sl-button-hover-line,var(--sl-control-hover-line)); }
+[data-visual-theme="luminous"] button:active:not(:disabled),
+[data-visual-theme="luminous"] :is(.analysis-screen, .experiment-preview, [data-screen="saved"], dialog) button:active:not(:disabled) { background:var(--sl-button-pressed,var(--sl-control-pressed)); }
+[data-visual-theme="luminous"] button:disabled,
+[data-visual-theme="luminous"] :is(.analysis-screen, .experiment-preview, [data-screen="saved"], dialog) button:disabled { color:var(--sl-disabled-text); background:var(--sl-disabled-bg); border-color:var(--sl-disabled-line); opacity:1; cursor:default; }
+[data-visual-theme="luminous"] button[data-ui-action="quiet"], [data-visual-theme="luminous"] .analysis-screen :is(.quiet-button, .history-actions button, .relationship-exports button, .point-heading button, .table-disclosure) { --sl-button-bg:transparent; --sl-button-text:var(--sl-muted); --sl-button-line:transparent; }
+[data-visual-theme="luminous"] .analysis-screen .analysis-toast button { --sl-button-bg:transparent; --sl-button-text:var(--sl-surface); --sl-button-line:transparent; --sl-button-hover:var(--sl-primary-hover); --sl-button-pressed:var(--sl-primary-pressed); }
+[data-visual-theme="luminous"] :is(dialog, .column-filter-panel) { color:var(--sl-text); background:var(--sl-surface); border:1px solid var(--sl-line); border-radius:var(--sl-radius-dialog); box-shadow:var(--sl-shadow-dialog); font-family:var(--sl-font); }
+[data-visual-theme="luminous"] dialog { max-width:calc(-32px + 100vw); max-height:calc(100dvh - 32px); padding:var(--sl-space-6); overflow:auto; }
+[data-visual-theme="luminous"] dialog::backdrop { background:var(--sl-backdrop); }
+[data-visual-theme="luminous"] :is(.record-dialog, .saved-run-actions, .stored-event) button { border:0px; border-radius:var(--sl-radius-compact); }
+[data-visual-theme="luminous"] :is(.saved-run-actions, .stored-event) button { --sl-button-bg:transparent; --sl-button-hover:var(--sl-control-hover); }
+[data-visual-theme="luminous"] :is(.record-dialog-error, .record-condition-warning) { color:var(--sl-recording-text); }
+[data-visual-theme="luminous"] .column-filter-panel { border-radius:var(--sl-radius-popover); box-shadow:var(--sl-shadow-menu); }
+[data-visual-theme="luminous"] :is(dialog, .analysis-screen, .column-filter-panel) :is(select, input:not([type="checkbox"])) { color:var(--sl-text); background:var(--sl-surface); border-color:var(--sl-input-border); border-radius:var(--sl-radius-compact); min-height:var(--sl-target-compact); font-family:var(--sl-font); font-size:var(--sl-type-label); }
+[data-visual-theme="luminous"] :is(dialog, .analysis-screen) :is(select, input, textarea):disabled { color:var(--sl-disabled-text); background:var(--sl-disabled-bg); }
+[data-visual-theme="luminous"] :is(.calculation-preview, .file-dialog fieldset) { background:var(--sl-surface-soft); border-color:var(--sl-line); }
+[data-visual-theme="luminous"] .calculation-preview th { background:var(--sl-surface-soft); color:var(--sl-muted); }
+[data-visual-theme="luminous"] :is(#range-error, #lab-error) { color:var(--sl-recording-text); }
+@media (prefers-reduced-motion: reduce) {
+  [data-visual-theme="luminous"] *, [data-visual-theme="luminous"] ::before { transition:none; animation:auto ease 0s 1 normal none running none; }
+}
+
+/* Shared straight-tab states; each surface supplies palette and edge tokens.
+   Navigation semantics and the analysis indicator remain owned by their views. */
+:root[data-visual-theme="luminous"] button.ui-tab {
+  --sl-button-bg:transparent; --sl-button-text:var(--sl-tab-text); --sl-button-line:transparent;
+  --sl-button-hover:var(--sl-tab-hover); --sl-button-hover-line:transparent;
+  border-radius:0; background:var(--sl-button-bg); color:var(--sl-tab-text);
+  border-top-color:var(--sl-tab-edge,transparent); font-weight:var(--sl-tab-weight,550);
+}
+:root[data-visual-theme="luminous"] button.ui-tab:is([aria-current], [aria-pressed="true"]):not(:disabled) {
+  color:var(--sl-tab-selected); border-top-color:var(--sl-tab-edge-selected,transparent); font-weight:700;
+}
+:root[data-visual-theme="luminous"] button.ui-tab:hover:not(:disabled) { background:var(--sl-tab-hover); }

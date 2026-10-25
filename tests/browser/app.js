@@ -1,6 +1,6 @@
 import { composeGuideSteps } from '../../src/guide/steps.js';
 import { mountLabFixture, clickLabControl, clickVisible } from './lab-fixture.js';
-import { createController } from '../../src/app/controller.js';
+import { startApp } from '../../src/app/startup.js';
 import { createRepository } from '../../src/data/repository.js';
 import { buildExperimentJson, parseExperimentJson } from '../../src/data/files/json.js';
 import { buildCsv, parseExperimentCsv } from '../../src/data/files/csv.js';
@@ -40,7 +40,7 @@ export async function runAppTests(report=()=>{}) {
   const step=async id=>{const item=composeGuideSteps(app.getState().context).find(item=>item.id===id);await click(`[data-guide-group="${item.group}"]`);const node=$(`[data-guide-step="${id}"]`);if(node.getClientRects().length)await click(`[data-guide-step="${id}"]`);};
   const confirm=async id=>{await step(id);await click(`[data-guide-action="${id==='program'?'program-confirm':'confirm'}"]`);};
   try {
-    app=createController(host,{repository:repo,historyEnabled:false,initialUrl:new URL('../../lab.html?mock=1',import.meta.url).href});
+    app=await startApp(host,{repository:repo,historyEnabled:false,initialUrl:new URL('../../lab.html?mock=1',import.meta.url).href});
     await until(()=>!app.getState().busy,'초기 화면 준비 실패');
     check(app.getState().screen==='home'&&!app.getState().storage&&!app.getState().context,'홈에서 활성 실험 또는 Run을 만들었습니다.');
     check(!$('#experiment-title').textContent&&$('.lab-status').hidden,'홈에 이전 실험 이름 또는 장치 상태가 남았습니다.');
@@ -152,7 +152,7 @@ export async function runAppTests(report=()=>{}) {
       ['accelerometer',['accelerationX','accelerationY','accelerationZ','accelerationStrength'],'mg'],
     ]) {
       await click('[data-view="home"]');await select('sensors/'+sensorId);
-      check(composeGuideSteps(app.getState().context).map(item=>item.id).join(',')==='equipment,usb,program,connection,reception',sensorId+': 불필요한 배선·보정 안내');
+      check(composeGuideSteps(app.getState().context).map(item=>item.id).join(',')==='equipment,program,connection,reception',sensorId+': 불필요한 USB 확인·배선·보정 안내');
       check($('[data-guide-step="program"]').dataset.complete==='false',sensorId+': 다른 센서의 설치 확인을 재사용했습니다.');
       await step('connection');await click('[data-guide-action="connect"]');
       await until(()=>!$('[data-guide-action="measure"]').hidden&&!$('[data-guide-action="measure"]').disabled,sensorId+': 체크를 생략한 새 수신 확인 실패');

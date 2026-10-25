@@ -61,7 +61,7 @@ test('existing firmware can be confirmed without claiming a new install or USB c
   const { progress, observe } = fixture();
   for (const item of progress.getState().steps.filter(step => step.required)) progress.confirm(item.id);
   observe();
-  assert.equal(step(progress, 'usb').complete, false); assert.equal(progress.getState().ready, true);
+  assert.equal(progress.confirm('usb'), false); assert.equal(Object.hasOwn(progress.getState().confirmations, 'usb'), false); assert.equal(progress.getState().ready, true);
   assert.equal(progress.getState().observations.programUserConfirmed, true);
   assert.equal(progress.getState().setup.firmware, null);
 });

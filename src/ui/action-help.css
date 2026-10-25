@@ -83,3 +83,6 @@ button.help-trigger.help-trigger[data-action-help]:focus-visible {
   button.help-trigger.help-trigger[data-action-help],
   .action-help-popover[popover] { display: none !important; }
 }
+
+[data-visual-theme="luminous"] button.help-trigger.help-trigger[data-action-help]:focus-visible { outline:2px solid var(--sl-focus); outline-offset:2px; }
+[data-visual-theme="luminous"] .action-help-popover[popover] { background:var(--sl-surface); color:var(--sl-text); border-color:var(--sl-input-border); border-radius:var(--sl-radius-popover); box-shadow:var(--sl-shadow-menu); font-family:var(--sl-font); }

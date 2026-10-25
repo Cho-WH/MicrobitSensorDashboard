@@ -8,7 +8,7 @@ import { createAnalysisView } from '../../src/ui/analysis-view.js';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 export async function runCopyTests(report) {
-  const fixture=await mountLabFixture(), {host}=fixture;
+  const fixture=await mountLabFixture({component:true}), {host}=fixture;
   const guideHost=host.querySelector('#guide-host');fixture.showScreen('measure');
   const original = temperature.uiCopy;
   temperature.uiCopy = { measurement:{start:'검사용 기록', waiting:'검사용 수신 대기', namePlaceholder:'검사용 이름'}, analysis:{title:'검사용 분석'}, reflection:{progress:'검사용 질문'}, guide:{previous:'검사용 이전'}, guideSteps:{equipmentTitle:'검사용 준비물'}, accessibility:{liveChart:'검사용 그래프'} };

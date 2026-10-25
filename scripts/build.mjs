@@ -5,6 +5,7 @@ import { catalog, getExperiment } from '../src/catalog/index.js';
 import { validateChannels } from '../src/domain/contracts.js';
 import { entryRoutes } from '../src/app/routes.js';
 import { renderEntry } from './entry-pages.mjs';
+import { bundleStyles, styleEntry } from './styles.mjs';
 const ids = new Set();
 for (const sensor of catalog.sensors) {
   const key = `${sensor.id}@${sensor.version}`;
@@ -18,6 +19,7 @@ if (dirname(output) !== resolve(root) || basename(output) !== 'dist') throw new 
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 for (const file of ['lab.html','LICENSE','README.md','THIRD_PARTY_NOTICES.md','src','public','vendor','firmware','docs']) await cp(resolve(root,file), resolve(output,file), { recursive: true });
+await writeFile(resolve(output, styleEntry), await bundleStyles(root));
 const source = await readFile(resolve(root,'lab.html'), 'utf8');
 await writeFile(resolve(output,'index.html'), source);
 for (const entry of entryRoutes) {

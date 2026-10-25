@@ -182,12 +182,12 @@ export function createGuideView(host, callbacks = {}) {
     findElement(wiringNote,'p','p').textContent=content.viewer?.note??'';
     for (const step of steps) {
       if (!groupButtons.has(step.group)) {
-        const item=element('li'), node=element('button'); node.type='button'; node.dataset.guideGroup=step.group;
+        const item=element('li'), node=element('button','ui-tab'); node.type='button'; node.dataset.guideGroup=step.group;
         node.textContent=`${groupButtons.size+1} ${step.groupLabel}`;
         node.addEventListener('click',()=>select(step.id),{signal}); item.append(node); nav.append(item); groupButtons.set(step.group,node);
       }
       const item=element('li'), node=element('button'); node.type='button'; node.dataset.guideStep=step.id;
-      node.textContent=step.model?.wire ? content.wiring.find(wire=>wire.id===step.id)?.role : ({usb:labels.guide.usbLabel,program:labels.guide.programLabel,connection:labels.guide.connectionLabel,reception:labels.guide.receptionLabel,calibration:labels.guide.calibrationLabel}[step.id]??step.groupLabel);
+      node.textContent=step.model?.wire ? content.wiring.find(wire=>wire.id===step.id)?.role : ({program:labels.guide.programLabel,connection:labels.guide.connectionLabel,reception:labels.guide.receptionLabel,calibration:labels.guide.calibrationLabel}[step.id]??step.groupLabel);
       node.addEventListener('click',()=>select(step.id),{signal}); item.append(node); subnav.append(item); stepButtons.set(step.id,node);
     }
     for (const track of [nav,subnav]) track.addEventListener('keydown',event=>{
@@ -298,7 +298,7 @@ export function createGuideView(host, callbacks = {}) {
     power.hidden=!content.illustrations||quick||isSummary||!['connection','reception','battery'].includes(step?.kind);
     if(step?.kind==='battery'&&power.dataset.step!==selectedId)power.open=true;
     power.dataset.step=selectedId;
-    deviceVisual.hidden=quick||isSummary||!model.hidden||!['usb','program'].includes(step?.id);
+    deviceVisual.hidden=quick||isSummary||!model.hidden||step?.kind!=='program';
     if (!deviceVisual.hidden&&!deviceVisual.childElementCount) {
       deviceVisual.innerHTML='<p class="eyebrow" data-copy="guide.usbEyebrow"></p><div class="usb-diagram"><span data-copy="guide.computer"></span><span aria-hidden="true">⟷</span><strong>micro:bit V2</strong></div><h4 data-copy="guide.usbHeading"></h4><p data-copy="guide.usbNote"></p><small data-copy="guide.usbWireless"></small>';
       applyLabCopy(deviceVisual, labels);

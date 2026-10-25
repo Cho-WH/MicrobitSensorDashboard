@@ -130,5 +130,6 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
     return closing;
   }
   return { connect, disconnect, performAction: action => state.status === 'connected' && !closing && preparation ? preparation.act(action) : Promise.resolve(false), forgetDevice: () => { previousDevice = null; },
-    isSupported: () => ble.isSupported(), getState: snapshot };
+    isSupported: () => ble.isSupported(),
+    getSupport: () => ble.getSupport?.() ?? (ble.isSupported() ? 'supported' : 'unsupported'), getState: snapshot };
 }

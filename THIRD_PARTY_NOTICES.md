@@ -1,5 +1,14 @@
 # Source and third-party notices
 
+Official micro:bit brand reference assets are archived under
+`dev/design/reference/microbit-brand/`. Only the unmodified V2 compatibility
+PNG is included in the app at `public/assets/branding/microbit-v2-compatible.png`;
+the remaining archive is not included in the app build.
+They belong to the Micro:bit Educational Foundation and are governed by its
+[brand guidelines](https://www.microbit.org/brand-guidelines/), not this
+repository's MIT license. The archive README and manifest preserve usage
+boundaries, original download URLs, retrieval date and SHA-256 hashes.
+
 M1 ports code from `Cho-WH/bme280`, fixed commit
 `59c5c149450f970bace2deaa183857c275595853` (2026-10-19 review),
 under the user's explicit instruction to reuse the Gay-Lussac implementation.
@@ -71,7 +80,7 @@ M2's UX revision additionally ports/adapts the same pinned Gay-Lussac sources:
 
 | Original `gay-lussac/` paths | Local paths | Adaptation |
 |---|---|---|
-| `ui/guide-view.js`, `guide.css`, preparation DOM | `src/ui/guide-view.js`, `guide.css` | Grouped steps, visual/instruction columns, previous/confirm navigation; sensor/activity content and typed controller facts |
+| `ui/guide-view.js`, `guide.css`, preparation DOM | `src/ui/guide-view.js`, `guide.css`, archived `dev/design/archive/preparation-base.css` | Grouped steps, visual/instruction columns, previous/confirm navigation; sensor/activity content and typed controller facts |
 | `ui/guide-layout.js` | `src/ui/guide-layout.js` | Stable wiring text height, reduced motion, observers and cleanup retained; typed parameters |
 | `ui/action-help-content.js`, preparation lists | `src/catalog/sensors/*/content.js`, `src/catalog/activities/gay-lussac/content.js` | Contextual equipment and cable help through the already ported common help component |
 | `ui/experiment-guide.js`, `experiment-guide.css`, guide DOM | `src/ui/experiment-guide.js`, `experiment-guide.css`, activity content | Four pages, keyboard navigation, focus return, recording note; content matches explicit recording gate |

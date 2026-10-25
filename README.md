@@ -38,14 +38,32 @@ npm run dev
 ```
 
 `npm run dev`의 기본 주소는 `http://localhost:8080/`입니다.
+공통 CSS는 개발 서버와 빌드가 같은 함수로 결합합니다. 화면별 소스 CSS를 수정하면 다음 요청에 반영되며,
+`luminous.css`의 import 순서와 이미지·글꼴의 상대 주소를 보존합니다. 준비 A안은 개발 보관 경로만 사용합니다.
 작업 중에는 변경의 영향을 받는 검사만 실행합니다. 예를 들어 경로 처리를 수정하면
 `node --test tests/unit/routes.test.mjs`, 탐색 흐름을 수정하면
 `/tests/browser/?suite=navigation`에서 해당 검사를 실행합니다.
 여러 관련 묶음은 `/tests/browser/?suite=app,records`처럼 지정할 수 있습니다.
-UI 검사는 실제 앱과 같은 기본 화면 구성(`prepareLuminousShell`)을 거치며,
+UI 검사는 실제 `lab.html`의 고정 구조·스타일을 사용하며, 앱 흐름 검사는 운영과 같은 `startApp()`으로 시작합니다.
+`/tests/browser/?suite=startup`은 준비 전 조작 잠금과 자원 실패 안내를 확인합니다.
+컴포넌트 검사는 경로·Controller 초기화를 명시적으로 생략하고 해당 View만 검사하며,
 숨긴 조작을 직접 호출하지 않고 설정창·메뉴의 진입 버튼부터 사용합니다.
 장치 수신과 실패 상황은 모의 경계로 주입하므로 실물 연결 검증과 구분합니다.
 타입 검사는 타입·의존성 변경 시, 빌드는 빌드 산출물에 영향이 있을 때 실행합니다.
+
+기본 UI 전환의 자동 브라우저 검사는 독립 Chromium에서 실행합니다.
+
+```sh
+npx playwright install chromium
+npm run test:e2e -- --grep workspace
+```
+
+`npm run test:e2e`는 초기 표시·준비·측정·분석·접근성·편집·저장·이동의 기존 11개 묶음과
+실제 페이지의 높이 조절·3D 실패 복구 검사를 실행합니다. 전체 브라우저 검사를 대신하지 않습니다.
+검사마다 새 브라우저 환경과 별도 8081 서버를 사용하므로 열려 있는 앱의 실험 자료·장치 권한과 분리됩니다.
+실패하면 `test-results/`에 화면·네트워크·콘솔 추적을 남깁니다. `npx playwright show-trace <trace.zip>`으로 확인합니다.
+수동 검사 페이지는 유지하지만, 브라우저 제어 환경에서 iframe이 `about:blank`에 멈추면
+앱 준비 조건을 완화하지 말고 독립 검사와 비교합니다.
 
 커밋 직전에만 `npm run typecheck`, `npm test`, `npm run build`와
 `/tests/browser/`의 전체 브라우저 검사를 실행합니다.
@@ -63,6 +81,7 @@ GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위
 - [센서·활동 모듈 등록](src/catalog/README.md)
 - [공통 장치 3D 자산](public/assets/devices/README.md) · [장치 자산 확인 페이지](public/viewers/devices/index.html)
 - [펌웨어 빌드·프로토콜](dev/firmware/README.md)
+- [센서 프로그램 설치 개선 과제 — 모바일·무선 전송 조사](docs/sensor-program-installation-roadmap.md) (USB 안내 통합 완료 · 무선 설치 후속 과제)
 - [저장·파일 계약](docs/m1-implementation.md)
 
 ## 라이선스와 출처

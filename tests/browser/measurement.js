@@ -30,7 +30,7 @@ export async function runMeasurementTests(report=()=>{}) {
     } finally {box.remove();}
   }
   report('자기장·가속도 측정/원자료 그래프 · 공통 세로축·음수/크기 범위·동일 값 높이·사건·원자료 보존');
-  const fixture=await mountLabFixture(), {host}=fixture;fixture.showScreen('measure');
+  const fixture=await mountLabFixture({component:true}), {host}=fixture;fixture.showScreen('measure');
   const context=getExperiment('magnetometer'), databaseName='microbit.sensor-lab.measurement-tests.'+crypto.randomUUID();
   const repository=createRepository({databaseName});
   const store=await openRunStore({repository,context,source:'replay',create:true});

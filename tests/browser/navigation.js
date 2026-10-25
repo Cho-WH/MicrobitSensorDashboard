@@ -1,4 +1,4 @@
-import { createController } from '../../src/app/controller.js';
+import { startApp } from '../../src/app/startup.js';
 import { mountLabFixture, clickLabControl, clickVisible } from './lab-fixture.js';
 import { createRepository } from '../../src/data/repository.js';
 
@@ -22,7 +22,7 @@ export async function runNavigationTests(report=()=>{}) {
   const click=async selector=>{await wait(()=>!app.getState().busy&&!$(selector).disabled,selector+' 비활성');clickLabControl(host,selector);await wait(()=>!app.getState().busy,selector+' 미완료');};
   try {
     history.replaceState(null,'',url('sensors/temperature/?mock=1&view=preview'));
-    app=createController(host,{repository:repo,initialUrl:location.href});
+    app=await startApp(host,{repository:repo,initialUrl:location.href});
     await wait(()=>!app.getState().busy,'미리보기 직접 진입 실패');
     check(app.getState().screen==='preview'&&!app.getState().context&&$('#experiment-title').textContent==='내장 온도 센서','직접 진입 시 미리보기 소속 오류');
     await click('#activate-experiment');
@@ -52,7 +52,7 @@ export async function runNavigationTests(report=()=>{}) {
 
     // Recreate the controller at the same URL, as on a reload, using the same isolated database.
     await app.dispose();await fixture.reset();
-    app=createController(host,{repository:repo,initialUrl:location.href});
+    app=await startApp(host,{repository:repo,initialUrl:location.href});
     await wait(()=>!app.getState().busy,'미리보기 재진입 실패');
     check(app.getState().screen==='preview'&&!app.getState().storage&&!app.getState().context&&$('#experiment-title').textContent===$('#preview-title').textContent,'새로 진입한 미리보기가 준비·기록으로 바뀌었습니다.');
     check((await repo.readSnapshot(id)).run.status==='complete','미리보기 재진입이 이전 기록을 바꿨습니다.');

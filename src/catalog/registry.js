@@ -9,6 +9,7 @@ import { validateChannels } from '../domain/contracts.js';
  * policy?:typeof import('./activities/gay-lussac/policy.js').activityPolicy,guide:import('../guide/types.js').ActivityGuide,
  * uiCopy?:import('./ui-copy.js').LabCopy}} ActivityModule
  */
+// Keep the former USB step ID reserved so historical setup entries cannot acquire a new meaning.
 const commonIds = ['equipment', 'usb', 'program', 'connection', 'reception', 'summary', 'quick'];
 function validateSteps(steps, ids = new Set(commonIds)) {
   for (const step of steps) {

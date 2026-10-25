@@ -25,7 +25,7 @@ function extraSensor(version = 1) {
 const base = new URL('https://example.test/project/');
 
 test('screen copy inherits defaults and only registered sensor/activity overrides', () => {
-  const sensor = { ...bmp, uiCopy: { preview: { eyebrow: '센서 안내', start: '센서 준비' }, measurement:{start:'측정값 보관'}, guideSteps:{usbTitle:'케이블 준비'}, analysis:{title:'측정값 분석'} } };
+  const sensor = { ...bmp, uiCopy: { preview: { eyebrow: '센서 안내', start: '센서 준비' }, measurement:{start:'측정값 보관'}, guideSteps:{programTitle:'설치 준비'}, analysis:{title:'측정값 분석'} } };
   const activity = { ...gas, uiCopy: { preview: { eyebrow: '활동 안내' }, measurement:{start:'활동 기록'}, reflection:{title:'나의 설명'} } };
   const modules = createRegistry({ sensors: [sensor], activities: [activity] });
   const context = getExperiment('bmp280', 'gay-lussac', modules);
@@ -44,7 +44,7 @@ test('screen copy inherits defaults and only registered sensor/activity override
   assert.equal(getLabCopy(context, modules).measurement.start, '활동 기록');
   const originalSteps = composeGuideSteps(getExperiment('bmp280', 'gay-lussac'));
   const steps = composeGuideSteps(context, modules);
-  assert.equal(steps.find(step => step.id === 'usb').title, '케이블 준비');
+  assert.equal(steps.find(step => step.id === 'program').title, '설치 준비');
   const rules = steps => steps.map(({id,kind,scope,required,quickConfirm})=>({id,kind,scope,required,quickConfirm}));
   assert.deepEqual(rules(steps), rules(originalSteps));
   assert.equal(formatCopy(all.prepare.title, {name:'온도 센서'}), '온도 센서 · 장비 준비');
@@ -67,7 +67,7 @@ test('one additional module supplies catalog, route, decoder and preparation wit
   const content = getGuideContent(context, modules);
   assert.equal(content.equipment[0].id, 'board'); assert.equal(content.viewer, null);
   assert.deepEqual(content.wiring, []); assert.deepEqual(content.calibrationInstructions, []);
-  assert.deepEqual(composeGuideSteps(context, modules).map(step => step.id), ['equipment', 'usb', 'program', 'connection', 'reception']);
+  assert.deepEqual(composeGuideSteps(context, modules).map(step => step.id), ['equipment', 'program', 'connection', 'reception']);
   const progress = createGuideProgress(context, { modules });
   progress.confirm('equipment'); progress.confirm('program'); assert.equal(progress.getState().ready, false);
   progress.setAttempt(1); progress.observe({ attemptId: 1, connected: true, receptionReady: true, mock: true });

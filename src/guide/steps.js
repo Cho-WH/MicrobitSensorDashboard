@@ -15,8 +15,6 @@ export function composeGuideSteps(context, modules = registry) {
     { id: 'equipment', title: copy.equipmentTitle, description: guide.equipmentDescription, scope: 'sensor',
       kind: 'manual', action: copy.equipmentAction, required: true, quickConfirm: true, group: 'equipment', groupLabel: copy.equipmentGroup },
     ...(guide.beforeProgram ?? []),
-    { id: 'usb', title: copy.usbTitle, description: copy.usbDescription,
-      scope: 'sensor', kind: 'manual', action: copy.usbAction, required: false, group: 'program', groupLabel: copy.programGroup },
     { id: 'program', title: copy.programTitle, description: copy.programDescription,
       scope: 'firmware', kind: 'program', required: true, quickConfirm: true, group: 'program', groupLabel: copy.programGroup },
     { id: 'connection', title: copy.connectionTitle, description: copy.connectionDescription,
