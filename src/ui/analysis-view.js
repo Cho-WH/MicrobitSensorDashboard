@@ -183,7 +183,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     if (!sample) return;
     const scope = scopeMembership(state), excluded = scope.excluded.has(focusedId);
     $('point-title').textContent = (task === 'overview' && Number.isFinite(sample.receivedAt)
-      ? formatElapsedTime((sample.receivedAt - timeBounds(samples).origin) / 1000)
+      ? formatElapsedTime((sample.receivedAt - workspace.getTimeOrigin()) / 1000)
       : '자료 ' + sample.sampleId) + ' · ' + statusLabels[scope.status(focusedId)];
     $('point-time').textContent = Number.isFinite(sample.receivedAt) ? new Date(sample.receivedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }) : '시각 정보 없음';
     const sourceChannels = state.sourceColumns.filter(c => !['sampleId', 'receivedAt'].includes(c.id));
@@ -237,11 +237,13 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     $('hidden-column-filters').hidden = !hiddenFilters; $('hidden-column-filters').textContent = formatCopy(copy.analysis.hiddenFilters,{count:hiddenFilters});
     $('scope-count').textContent = formatCopy(copy.analysis.includedCount,{count:number(summary?.includedCount ?? 0)});
     $('scope-detail').textContent = formatCopy(copy.analysis.excludedCount,{count:number(summary?.excludedCount ?? 0)});
-    const bounds = timeBounds(samples), elapsed = at => formatCalculated((at - bounds.origin) / 1000);
+    $('scope-detail').hidden = !summary?.excludedCount;
+    const origin = workspace?.getTimeOrigin() ?? null;
+    const bounds = timeBounds(samples, origin), elapsed = at => formatCalculated((at - bounds.origin) / 1000);
     $('overview-title').textContent = samples.length && !bounds ? copy.analysis.orderTitle : copy.analysis.timeTitle;
     $('overview-chart').setAttribute('aria-label', bounds ? copy.accessibility.timeChart : copy.accessibility.orderChart);
     $('scope-time').textContent = state?.appliedScope === 'all' ? copy.analysis.allData : state?.analysisRange && bounds
-      ? elapsed(state.analysisRange.startAt) + '–' + elapsed(state.analysisRange.endAt) + copy.analysis.seconds : formatCopy(copy.analysis.previousData,{count:summary?.candidateCount ?? 0});
+      ? elapsed(state.analysisRange.startAt) + '–' + elapsed(state.analysisRange.endAt) + copy.analysis.seconds : copy.analysis.selectedData;
     $('edit-analysis-range').disabled = !writable || !bounds;
     $('choose-range').disabled = !writable || !bounds;
     $('use-all-data').disabled = !writable || !samples.length;
@@ -274,12 +276,12 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
         $('overview-readout').textContent = !bounds && samples.length ? copy.analysis.untimed
           : untimed ? formatCopy(copy.analysis.untimedCount,{count:untimed})
           : copy.analysis.readout;
-        overview.render(samples, 0, { range: 'all' }); overviewKey = key;
+        overview.render(samples, 0, { range: 'all', origin }); overviewKey = key;
       }
       overview.resize(); range.layout();
     }
     $('overview-empty').hidden = samples.length > 0;
-    if (state) range.update(samples, state);
+    if (state) range.update(samples, state, origin);
     renderPoint(state, rows);
     for (const button of root.querySelectorAll('[data-export]'))
       button.disabled = !workspace || (button.dataset.export === 'analysis-csv' && !summary?.includedCount) || (button.dataset.export === 'png' && !currentModel);
@@ -290,8 +292,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     reflection.updateStatus();
     if (!workspace || !store) { $('analysis-message').textContent = copy.analysis.noRun; $('apply-new-data').hidden = true; return; }
     const saved = store.getState(), loaded = workspace.getLoadedCount(), added = Math.max(0, saved.sampleCount - loaded);
-    $('analysis-message').textContent = formatCopy(copy.analysis.loaded,{count:number(loaded)}) + (!saved.writable ? ' · '+copy.common.readOnly : '');
-    $('analysis-message').title = formatCopy(copy.analysis.dataSummary,{total:number(saved.sampleCount),loaded:number(loaded)});
+    $('analysis-message').textContent = !saved.writable ? copy.common.readOnly : '';
     $('apply-new-data').textContent = formatCopy(copy.analysis.newData,{count:number(added)}); $('apply-new-data').hidden = !added; $('apply-new-data').disabled = !saved.writable || !added;
   }
   function reset() {

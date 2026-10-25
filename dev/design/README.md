@@ -10,6 +10,9 @@ V5부터 일반 홈·센서·활동 주소도 Luminous를 기본 사용한다. �
 - `index.html?state=recording`: 측정 화면의 고정 시각·모의 입력 검토. `idle`, `preview`, `paused`, `disconnected`, `error`를 지원한다. 이 페이지에서만 시계를 고정한다.
 - `index.html?state=paused&view=relationship`: V4 분석 검토. `view=overview|relationship|interpretation|saved|home`을 지원하며 기록을 마친 뒤 실제 화면 조작으로 이동한다. 빈 저장 목록은 `state=idle&view=saved`, 홈은 `state=idle&view=home`으로 연다.
 - `render-scene.html`: 기존 공통 모델의 카메라·조명으로 장치 PNG를 다시 렌더링한다.
+- `icon-study/`: 아이콘 4종·형태와 색·크기별 보기·단색형 배치로 구성한 디자인 시트. 열린 궤도 기본형과 파스텔 블루·평면·단색 파생형. 네 가지 표현은 프레임 5.35·궤도 3.1~3.6·눈금 1.2의 선 두께, 아래쪽으로 이어지고 오른쪽이 열린 궤도, 호 끝에 연결된 신호점, 짧아진 오른쪽 눈금을 공유한다. 기본형은 #B7D2FF 중심의 프레임·구체 명암과 선명한 주황 호, 노란 하이라이트가 있는 신호점으로 구성한다. 파스텔형은 이미지 A의 #DBE6FF 배경과 회청색 프레임·살구빛 신호, 평면형은 그라데이션 없는 색면, 단색형은 한 색의 농도 변화로 표현한다. 앱 이름 옆에는 두 줄 브랜드 높이에 맞춘 단색형, 탭·홈 화면 바로가기에는 남색 기본형을 적용했다. `node dev/design/icon-study/build-icons.mjs`로 기본 SVG 4종과 크기별 SVG 12종을 재생성한다.
+- `icon-study/size-study.html`: 기본형·파스텔 블루·평면형·단색형의 32·24·16px 전용 축소형과 단순 축소 비교. 선택 메뉴로 표현을 바꾸며, 메인 디자인 시트의 모든 행에도 크기별 SVG를 사용한다. 프레임·구체·궤도 개방 방향은 동일하며 내부 선 두께·대비와 신호점 크기를 조정한다. 24px는 눈금을 짧게 하고 발광 범위를 줄였다. 16px는 눈금·발광을 생략하고 궤도를 보강하며 금빛 신호점을 색면으로 표현한다. `build-icons.mjs`가 별도 `sensor-lab-{primary|light|compact|monochrome}-{32|24|16}.svg`를 생성한다. 파스텔형은 밝은 궤도와 주황의 대비, 단색형은 한 색의 농도를 보강한다. 48px 이상은 기존 기본 SVG를 사용한다.
+- `icon-study/shape-study.html`: 보관한 이전 기본형과 채택 기본형의 비교. 이전 SVG 4종은 `icon-study/archive/`에 보관한다. 별도 탐색 시안 `sensor-lab-open-orbit.svg`는 선택 당시 스냅샷이며, `build-shape-study.mjs`는 보관된 이전 기본형에서 이 시안을 재현한다. 현재 기본형·파생형의 수정은 `build-icons.mjs`에서만 한다.
 
 준비·측정 검토는 실제 DOM·Controller·기존 모의 BLE를 사용하며, 각 페이지마다 별도의 검토용 IndexedDB를 사용한다. 측정 검토의 개발 도구는 화면 높이에 영향을 주지 않는 왼쪽 아래 접힌 메뉴에 둔다. 검토를 마치면 개발 도구의 자료 정리 버튼으로 해당 DB와 실행 중인 뷰를 정리한다. 실물 USB/BLE 검증 결과로 해석하지 않는다.
 

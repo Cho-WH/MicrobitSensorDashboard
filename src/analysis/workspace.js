@@ -1,7 +1,7 @@
 // Adapted from Cho-WH/bme280 gay-lussac/analysis/workspace.js at 59c5c149450f970bace2deaa183857c275595853.
 import { DEFAULT_FILTER, tableRows, analysisScope, normalizeFilter, columnRanges } from './table-data.js';
 import { validateCalculatedColumns, validateGraph, validateImportedColumns } from '../domain/contracts.js';
-import { rangeSampleIds, validateAnalysisRange, timeBounds } from './scope.js';
+import { rangeSampleIds, validateAnalysisRange, timeBounds, timeOrigin } from './scope.js';
 import { createCalculator, presetColumns } from './calculations.js';
 import { graphData } from './graph-data.js';
 import { fitGraph, trendGeometry, graphWithTrends } from './regression.js';
@@ -34,6 +34,7 @@ const inputState = state => {
 export function createWorkspace({ store, context: suppliedContext }) {
   const snapshot = store.getSnapshot();
   let samples = snapshot.samples;
+  const getTimeOrigin = (source = samples) => timeOrigin(source, snapshot.run);
   const context = suppliedContext ?? snapshot.run.context;
   const sourceColumns = getSourceColumns(context);
   const defaultGraph = validateGraph(context?.defaultGraph ?? {
@@ -80,7 +81,7 @@ export function createWorkspace({ store, context: suppliedContext }) {
   function assertWriter() { if (!writable) throw new Error('다른 탭에서 작성 중인 실험은 읽기 전용이에요.'); }
   function updateRegression(next, source = samples, force = false) {
     if (next.graph?.right?.view === 'extended') {
-      const right = graphData(projected(next, source), next, imported, context).right;
+      const right = graphData(projected(next, source), next, imported, context, getTimeOrigin(source)).right;
       if (!right.trendEnabled || !trendGeometry(fitGraph(right, next.analysisInputRevision), true).intercept.length) next.graph.right.view = 'measured';
     }
     if (!next.graph || !next.regression?.enabled) {
@@ -89,7 +90,7 @@ export function createWorkspace({ store, context: suppliedContext }) {
       return;
     }
     if (force || next.regression.inputRevision !== next.analysisInputRevision || !next.regression.result)
-      next.regression = fitGraph(graphData(projected(next, source), next, imported, context), next.analysisInputRevision);
+      next.regression = fitGraph(graphData(projected(next, source), next, imported, context, getTimeOrigin(source)), next.analysisInputRevision);
     if (next.graph.view === 'extended' && !trendGeometry(next.regression, true).intercept.length) next.graph.view = 'measured';
   }
   // Derived numbers from older saves are never trusted as current results.
@@ -274,13 +275,13 @@ export function createWorkspace({ store, context: suppliedContext }) {
   }
   function getGraphData() {
     const graph = state.graph ?? defaultGraph;
-    const model = graphData(projected(), { ...state, graph }, imported, context), regression = state.regression;
+    const model = graphData(projected(), { ...state, graph }, imported, context, getTimeOrigin()), regression = state.regression;
     return graphWithTrends(model,copy(regression));
   }
   function getReflectionModel() {
     const evidence = state.reflection.evidence, key = evidenceKey(evidence);
     if (!evidence) return null;
-    if (reflectionCache?.key !== key) reflectionCache = { key, model: evidenceGraph(samples, evidence, imported, context) };
+    if (reflectionCache?.key !== key) reflectionCache = { key, model: evidenceGraph(samples, evidence, imported, context, getTimeOrigin()) };
     return copy(reflectionCache.model);
   }
   function captureReflection() {
@@ -295,7 +296,7 @@ export function createWorkspace({ store, context: suppliedContext }) {
     getRows: () => copy(rowsFor()),
     getImportedColumns: () => copy(imported), getSourceColumns: () => copy(sourceColumns),
     getSamples: () => copy(projected().filter(s => s.sampleId <= state.tableLastSampleId)),
-    getGraphData, getReflectionModel, captureReflection,
+    getGraphData, getReflectionModel, captureReflection, getTimeOrigin,
     reflectionChanged: () => Boolean(state.reflection.evidence) && evidenceKey(state.reflection.evidence) !== evidenceKey(captureEvidence(state, defaultGraph)),
     setReflectionAnswers(answers) { return commit({ ...copy(state), reflection: { ...copy(state.reflection), answers: validateAnswers(answers, questions) } }); },
     getSummary() {

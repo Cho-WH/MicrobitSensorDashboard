@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>센서 실험실 · 아이콘 디자인 시트</title>
+  <link rel="stylesheet" href="../../../src/ui/tokens.css">
+  <style>
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--sl-navy); background:var(--sl-bg); font-family:var(--sl-font); -webkit-font-smoothing:antialiased; }
+    main { max-width:1264px; margin:auto; padding:36px 32px 28px; }
+    header { margin-bottom:28px; }
+    .eyebrow { margin:0 0 8px; color:var(--sl-muted); font-size:11px; letter-spacing:.17em; font-weight:650; }
+    h1 { margin:0; font-size:30px; letter-spacing:-.045em; }
+    h2 { margin:0; font-size:20px; letter-spacing:-.035em; }
+    h3 { margin:0; font-size:14px; }
+    p { line-height:1.7; }
+    .intro { max-width:52em; margin:12px 0 0; color:var(--sl-muted); font-size:14px; }
+    .panel { background:var(--sl-surface); border:1px solid var(--sl-line); border-radius:18px; padding:26px 28px; margin-top:20px; }
+    .section-heading { display:flex; justify-content:space-between; align-items:baseline; gap:16px; }
+    .section-heading p { margin:0; color:var(--sl-muted); font-size:12px; }
+    a { color:var(--sl-selection-text); text-underline-offset:4px; text-decoration-color:#b7d2ff; }
+    a:focus-visible { outline:2px solid var(--sl-focus); outline-offset:5px; border-radius:2px; }
+    .family-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:24px; margin-top:26px; }
+    .variant { min-width:0; display:flex; flex-direction:column; }
+    .variant img { display:block; width:100%; height:auto; aspect-ratio:1; margin-bottom:18px; }
+    .variant p { color:var(--sl-muted); font-size:12px; margin:8px 0 14px; }
+    .variant a { font-size:12px; margin-top:auto; width:fit-content; }
+    .detail-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin-top:24px; }
+    figure { margin:0; min-width:0; }
+    .detail-grid svg { display:block; width:100%; height:156px; border-radius:12px; background:#0b1f3b; margin-bottom:14px; }
+    figcaption { font-size:13px; font-weight:650; }
+    figcaption small { display:block; font-size:12px; font-weight:400; line-height:1.7; color:var(--sl-muted); margin-top:6px; }
+    .palette { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin-top:26px; padding-top:22px; border-top:1px solid var(--sl-line); }
+    .swatch { height:8px; border-radius:4px; margin-bottom:10px; background:var(--swatch); }
+    .palette b { display:block; font-size:12px; margin-bottom:5px; }
+    .palette code { color:var(--sl-muted); font-size:11px; }
+    .size-scroll { overflow-x:auto; margin-top:20px; }
+    table { width:100%; min-width:530px; border-collapse:collapse; text-align:center; }
+    th,td { padding:10px 12px; }
+    thead th { font-size:11px; font-weight:400; color:var(--sl-muted); }
+    tbody th { text-align:left; font-size:12px; font-weight:600; width:150px; }
+    td img { display:block; margin:auto; }
+    .note { margin:18px 0 0; padding-top:14px; border-top:1px solid var(--sl-line); color:var(--sl-muted); font-size:12px; }
+    .context-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:22px; }
+    .context-card { padding:24px; border-radius:12px; background:#f6f8fc; }
+    .context-card.dark { color:#fff; background:#0b1f3b; }
+    .brand-row { display:flex; align-items:center; gap:12px; }
+    .brand-row strong { font-size:20px; letter-spacing:-.04em; }
+    .brand-row small { display:block; margin-bottom:3px; font-size:11px; color:var(--sl-muted); }
+    .dark .brand-row small { color:#b7d2ff; }
+    .mono-mark { display:block; flex:none; width:40px; height:40px; background:currentColor; mask:url(sensor-lab-monochrome.svg) center/contain no-repeat; }
+    .context-card p { font-size:12px; margin:18px 0 0; color:var(--sl-muted); }
+    .dark p { color:#cad7e8; }
+    footer { display:flex; justify-content:space-between; gap:16px; margin-top:22px; color:var(--sl-muted); font-size:11px; line-height:1.7; }
+    footer a { color:inherit; }
+    @media(max-width:760px) {
+      main { padding:24px 16px; }
+      h1 { font-size:26px; }
+      .panel { padding:22px 18px; }
+      .section-heading { flex-direction:column; gap:8px; }
+      .family-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px 18px; }
+      .detail-grid { grid-template-columns:1fr; gap:24px; }
+      .detail-grid svg { height:180px; }
+      .palette { gap:14px; }
+      .palette code { font-size:10px; overflow-wrap:anywhere; }
+      .context-grid { grid-template-columns:1fr; gap:14px; }
+      footer { flex-direction:column; gap:6px; }
+    }
+    @media print { body { background:white; } main { padding:0; } .panel { break-inside:avoid; } }
+  </style>
+</head>
+<body><main>
+  <header>
+    <p class="eyebrow">LUMINOUS LAB / ICON SYSTEM</p>
+    <h1>관측 대상에 초점을 맞추다.</h1>
+    <p class="intro">프레임과 십자 눈금은 관측 대상을 짚고, 열린 궤도와 빛나는 신호점은 측정과 발견을 상징합니다.</p>
+  </header>
+  <section class="panel" aria-labelledby="family-title">
+    <div class="section-heading"><h2 id="family-title">아이콘 4종</h2><p>같은 형태, 서로 다른 색과 명암</p></div>
+    <div class="family-grid">
+      <article class="variant"><img src="sensor-lab-primary.svg" width="240" height="240" alt="기본형 아이콘"><h3>기본형</h3><p>남색 바탕과 청백색 명암, 황금빛 신호점으로 관측의 순간을 표현합니다.</p><a href="sensor-lab-primary.svg" target="_blank" rel="noopener" aria-label="기본형 SVG 열기">SVG 열기 ↗</a></article>
+      <article class="variant"><img src="sensor-lab-light.svg" width="240" height="240" alt="파스텔 블루 아이콘"><h3>파스텔 블루</h3><p>파스텔 블루 바탕에 회청색 프레임과 따뜻한 살구빛 신호를 담았습니다.</p><a href="sensor-lab-light.svg" target="_blank" rel="noopener" aria-label="파스텔 블루 SVG 열기">SVG 열기 ↗</a></article>
+      <article class="variant"><img src="sensor-lab-compact.svg" width="240" height="240" alt="평면형 아이콘"><h3>평면형</h3><p>그라데이션 없이 청백색·주황·금빛 색면으로 형태를 또렷하게 표현합니다.</p><a href="sensor-lab-compact.svg" target="_blank" rel="noopener" aria-label="평면형 SVG 열기">SVG 열기 ↗</a></article>
+      <article class="variant"><img src="sensor-lab-monochrome.svg" width="240" height="240" alt="단색형 아이콘"><h3>단색형</h3><p>투명 배경 위에 한 색의 농도로 입체감을 표현합니다. 밝고 어두운 바탕에 사용할 수 있습니다.</p><a href="sensor-lab-monochrome.svg" target="_blank" rel="noopener" aria-label="단색형 SVG 열기">SVG 열기 ↗</a></article>
+    </div>
+  </section>
+  <section class="panel" aria-labelledby="detail-title">
+    <div class="section-heading"><h2 id="detail-title">형태와 색</h2><p>부드러운 프레임 · 선명한 초점 · 따뜻한 신호</p></div>
+    <div class="detail-grid">
+      <figure><svg viewBox="16 16 47 43" role="img" aria-label="프레임의 곡률과 절단면 확대"><image href="sensor-lab-primary.svg" width="128" height="128"/></svg><figcaption>관측 프레임<small>넓고 부드러운 코너와 평평한 끝면. 절단면의 작은 둥근 모서리가 단정한 인상을 만듭니다.</small></figcaption></figure>
+      <figure><svg viewBox="25 27 78 73" role="img" aria-label="열린 궤도와 중앙 구체, 네 방향 초점 눈금 확대"><image href="sensor-lab-primary.svg" width="128" height="128"/></svg><figcaption>궤도와 초점<small>아래쪽으로 이어지고 오른쪽이 열린 궤도. 네 방향 눈금이 청백색 구체를 관측 대상으로 강조합니다.</small></figcaption></figure>
+      <figure><svg viewBox="64 30 36 35" role="img" aria-label="주황 호와 노란 하이라이트가 있는 신호점 확대"><image href="sensor-lab-primary.svg" width="128" height="128"/></svg><figcaption>빛나는 신호<small>선명한 주황 호가 황금빛 점으로 이어집니다. 노란 하이라이트와 주변의 은은한 빛이 시선을 모읍니다.</small></figcaption></figure>
+    </div>
+    <div class="palette" aria-label="기본형의 색 구성">
+      <div><div class="swatch" style="--swatch:#0b1f3b"></div><b>남색 · 바탕</b><code>#0B1F3B</code></div>
+      <div><div class="swatch" style="--swatch:#b7d2ff"></div><b>청백색 · 프레임과 구체</b><code>#B7D2FF</code></div>
+      <div><div class="swatch" style="--swatch:linear-gradient(90deg,#ff934f,#ffd36b)"></div><b>주황 → 금빛 · 신호 호</b><code>#FF934F → #FFD36B</code></div>
+    </div>
+  </section>
+  <section class="panel" aria-labelledby="size-title">
+    <div class="section-heading"><h2 id="size-title">크기별 보기</h2><p>브라우저 100% 기준 · 표시 크기(CSS px)</p></div>
+    <div class="size-scroll" role="region" aria-label="아이콘 크기 비교표" tabindex="0"><table>
+      <thead><tr><th scope="col">아이콘</th><th scope="col">64 px</th><th scope="col">48 px</th><th scope="col">32 px</th><th scope="col">24 px</th><th scope="col">16 px</th></tr></thead>
+      <tbody><tr><th scope="row">기본형</th><td><img src="sensor-lab-primary.svg" width="64" height="64" alt="기본형 64픽셀"></td><td><img src="sensor-lab-primary.svg" width="48" height="48" alt="기본형 48픽셀"></td><td><img src="sensor-lab-primary-32.svg" width="32" height="32" alt="기본형 32픽셀 전용 축소형"></td><td><img src="sensor-lab-primary-24.svg" width="24" height="24" alt="기본형 24픽셀 전용 축소형"></td><td><img src="sensor-lab-primary-16.svg" width="16" height="16" alt="기본형 16픽셀 전용 축소형"></td></tr>
+      <tr><th scope="row">파스텔 블루</th><td><img src="sensor-lab-light.svg" width="64" height="64" alt="파스텔 블루 64픽셀"></td><td><img src="sensor-lab-light.svg" width="48" height="48" alt="파스텔 블루 48픽셀"></td><td><img src="sensor-lab-light-32.svg" width="32" height="32" alt="파스텔 블루 32픽셀 전용 축소형"></td><td><img src="sensor-lab-light-24.svg" width="24" height="24" alt="파스텔 블루 24픽셀 전용 축소형"></td><td><img src="sensor-lab-light-16.svg" width="16" height="16" alt="파스텔 블루 16픽셀 전용 축소형"></td></tr>
+      <tr><th scope="row">평면형</th><td><img src="sensor-lab-compact.svg" width="64" height="64" alt="평면형 64픽셀"></td><td><img src="sensor-lab-compact.svg" width="48" height="48" alt="평면형 48픽셀"></td><td><img src="sensor-lab-compact-32.svg" width="32" height="32" alt="평면형 32픽셀 전용 축소형"></td><td><img src="sensor-lab-compact-24.svg" width="24" height="24" alt="평면형 24픽셀 전용 축소형"></td><td><img src="sensor-lab-compact-16.svg" width="16" height="16" alt="평면형 16픽셀 전용 축소형"></td></tr>
+      <tr><th scope="row">단색형</th><td><img src="sensor-lab-monochrome.svg" width="64" height="64" alt="단색형 64픽셀"></td><td><img src="sensor-lab-monochrome.svg" width="48" height="48" alt="단색형 48픽셀"></td><td><img src="sensor-lab-monochrome-32.svg" width="32" height="32" alt="단색형 32픽셀 전용 축소형"></td><td><img src="sensor-lab-monochrome-24.svg" width="24" height="24" alt="단색형 24픽셀 전용 축소형"></td><td><img src="sensor-lab-monochrome-16.svg" width="16" height="16" alt="단색형 16픽셀 전용 축소형"></td></tr></tbody>
+    </table></div>
+    <p class="note">네 가지 표현 모두 48px 이상에서 기본 SVG, 32px에서 선명도를 보강한 축소형, 24px에서 눈금이 짧은 축소형, 16px에서 눈금·발광을 생략한 축소형을 사용합니다. 파스텔 블루는 색 대비를, 단색형은 한 색의 농도를 보강합니다.<br><a href="size-study.html">표현별 축소형 상세 보기 · SVG ↗</a></p>
+  </section>
+  <section class="panel" aria-labelledby="context-title">
+    <div class="section-heading"><h2 id="context-title">단색형 배치</h2><p>배경에 맞춰 남색 또는 흰색으로 표현</p></div>
+    <div class="context-grid">
+      <div class="context-card"><div class="brand-row"><span class="mono-mark" role="img" aria-label="남색 단색형"></span><div><small>micro:bit</small><strong>센서 실험실</strong></div></div><p>밝은 바탕 · 남색 심벌</p></div>
+      <div class="context-card dark"><div class="brand-row"><span class="mono-mark" role="img" aria-label="흰색 단색형"></span><div><small>micro:bit</small><strong>센서 실험실</strong></div></div><p>남색 바탕 · 흰색 심벌</p></div>
+    </div>
+  </section>
+  <footer><span><a href="../../../public/assets/branding/sensor-lab-social.png">링크 대표 이미지 ↗</a> · 센서 실험실 아이콘 · 기본 SVG 4종 · 크기별 SVG 12종</span><a href="../../../docs/design/visual-language.md">시각 디자인 기준 ↗</a></footer>
+</main></body>
+</html>

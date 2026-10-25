@@ -184,6 +184,69 @@ test('analysis CSV cannot export more fixed columns than the importer can restor
   assert.equal(parseExperimentCsv(buildAnalysisCsv(snapshot, allowed), options).run.importedColumns.length, 14);
 });
 
+test('subset CSV restores the original elapsed origin through CSV, JSON and workspace reopening', () => {
+  const snapshot = parseExperimentJson(legacy2);
+  snapshot.workspace = null;
+  const origin = snapshot.samples[0].receivedAt;
+  snapshot.samples.forEach((sample, index) => { sample.receivedAt = origin + [0, 1000, 60125, 61250, 70000, 80000][index]; });
+  const store = { getSnapshot: () => structuredClone(snapshot), getState: () => ({writable:true}),
+    saveWorkspace(value) { snapshot.workspace = structuredClone(value); } };
+  const workspace = createWorkspace({store});
+  workspace.setGraph({xColumnId:'receivedAt', yColumnId:'temperatureC', type:'line'});
+  workspace.applyTimeRange({startAt:origin+60125,endAt:origin+61250});
+  workspace.setTrendEnabled(true);
+  const before = structuredClone(snapshot), csv = buildAnalysisCsv(snapshot);
+  const imported = parseExperimentCsv(csv, options);
+  assert.equal(imported.run.timeOrigin, origin);
+  assert.deepEqual(imported.samples.map(sample => (sample.receivedAt - imported.run.timeOrigin) / 1000), [60.125, 61.25]);
+  assert.deepEqual(imported.samples.map(sample => sample.values), snapshot.samples.slice(2,4).map(sample => sample.values));
+  const reopened = open(imported);
+  assert.equal(reopened.getTimeOrigin(), origin);
+  assert.equal(reopened.getGraphData().timeOrigin, origin);
+  const again = parseExperimentCsv(buildCsv(imported), options);
+  assert.equal(again.run.timeOrigin, origin);
+  assert.deepEqual(again.samples, imported.samples);
+  const rows = globalThis.Papa.parse(csv.replace(/^\uFEFF/, '')).data;
+  const reordered = parseExperimentCsv(globalThis.Papa.unparse([rows[0], ...rows.slice(1).reverse()]), options);
+  assert.equal(reordered.run.timeOrigin, origin);
+  const json = prepareImportedSnapshot(parseExperimentJson(buildExperimentJson(imported)), {newId:()=> 'imported-again'});
+  assert.equal(open(json).getTimeOrigin(), origin);
+  assert.deepEqual(snapshot, before);
+});
+
+test('CSV validates paired times, millisecond precision and one origin, retaining blanks and backwards clocks', () => {
+  const snapshot = parseExperimentJson(legacy2); snapshot.workspace = null;
+  const origin = snapshot.samples[0].receivedAt;
+  snapshot.samples[1].receivedAt = origin - 125;
+  snapshot.samples[2].receivedAt = null;
+  const text = buildCsv(snapshot), parsed = globalThis.Papa.parse(text.replace(/^\uFEFF/, '')).data;
+  const stamp = parsed[0].indexOf('timestamp'), elapsed = parsed[0].indexOf('elapsed_seconds');
+  assert.equal(parsed[2][elapsed], '-0.125');
+  assert.equal(parsed[3][stamp], ''); assert.equal(parsed[3][elapsed], '');
+  assert.equal(parseExperimentCsv(text, options).run.timeOrigin, origin);
+  const change = (row, column, value) => {
+    const data = structuredClone(parsed); data[row][column] = value;
+    return globalThis.Papa.unparse(data);
+  };
+  const conflict = change(2, elapsed, '0');
+  assert.throws(() => parseExperimentCsv(conflict, options), error => error.code === 'CSV_TIME_CONFLICT');
+  const restored = parseExperimentCsv(conflict, {...options,restoreFromTimestamp:true});
+  assert.equal(restored.run.timeOrigin, origin);
+  assert.equal(restored.run.csvImport.timeRestoredFromTimestamp, true);
+  assert.deepEqual(restored.samples.map(sample=>sample.receivedAt), snapshot.samples.map(sample=>sample.receivedAt));
+  assert.deepEqual(restored.samples.map(sample=>sample.values), snapshot.samples.map(sample=>sample.values));
+  assert.equal(parseExperimentCsv(buildCsv(restored), options).run.timeOrigin, origin);
+  assert.throws(() => parseExperimentCsv(change(2, stamp, 'bad date'), {...options,restoreFromTimestamp:true}), /시각/);
+  assert.throws(() => parseExperimentCsv(change(2, parsed[0].indexOf('temperatureC'), 'bad number'), {...options,restoreFromTimestamp:true}), /숫자/);
+  assert.throws(() => parseExperimentCsv(change(2, elapsed, ''), options), /함께/);
+  assert.throws(() => parseExperimentCsv(change(3, elapsed, '1'), options), /함께/);
+  assert.throws(() => parseExperimentCsv(change(2, elapsed, '-0.1251'), options), /밀리초/);
+  assert.throws(() => parseExperimentCsv(change(2, elapsed, 'Infinity'), options), /숫자/);
+  assert.throws(() => parseExperimentCsv(globalThis.Papa.unparse(parsed.map(row => row.filter((_, i) => i !== elapsed))), options), /elapsed_seconds/);
+  const bad = structuredClone(snapshot); bad.run.timeOrigin = 1.5;
+  assert.throws(() => validateExperimentSnapshot(bad), /기준 시각/);
+});
+
 test('unknown CSV requires confirmed column mapping with real timestamps and explicit units; bad rows fail as a whole', () => {
   const text = 'when,reading\n2026-10-12T10:00:00Z,-2.5';
   assert.throws(() => parseExperimentCsv(text, options), e => e.code === 'CSV_MAPPING_REQUIRED' && e.headers.includes('reading'));

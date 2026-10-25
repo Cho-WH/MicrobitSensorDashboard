@@ -1,6 +1,11 @@
 // Real iframe viewports keep layout checks independent of the test runner's window.
 const check=(value,message)=>{if(!value)throw new Error(message);};
 const settle=()=>new Promise(resolve=>setTimeout(resolve,260));
+const until=async(predicate,label)=>{
+  const deadline=performance.now()+10000;
+  while(!predicate()&&performance.now()<deadline)await settle();
+  check(predicate(),label);
+};
 // Exercise changing text in the real app's cells synchronously, before the next
 // mock tick. Compare boxes, not implementation classes or exact copy.
 export function stableText(doc,selector,targets,variants,label,{noScroll=false}={}) {
@@ -98,7 +103,17 @@ export async function runLayoutTests(report=()=>{}) {
         stableText(doc,'.lab-card strong','.lab-card,.lab-chart',['-123,456,789.123456','—'],label+' 긴 가져온 값');
         if(sensor==='magnetometer'){
           // Shared status/readout text has no sensor-specific layout.
-          stableText(doc,'.luminous-record-state strong','.luminous-overview,.luminous-record',['준비','기록 마감 중','기록 시작 전'],label+' 상태');
+          // Mobile preview omits the status, and its record wrapper uses display:contents.
+          // Exercise a visible paused recording and measure the actual control panel.
+          await until(()=>!doc.querySelector('#start-recording').disabled,label+': 기록 시작 준비 시간 초과');
+          doc.querySelector('#start-recording').click();
+          await until(()=>doc.querySelector('[data-screen="measure"]').dataset.recordingState==='recording'&&!doc.querySelector('#pause-recording').disabled,label+': 기록 시작 시간 초과');
+          doc.querySelector('#pause-recording').click();
+          await until(()=>doc.querySelector('[data-screen="measure"]').dataset.recordingState==='paused',label+': 일시정지 시간 초과');
+          await settle();
+          check(doc.querySelector('#resume-recording').getBoundingClientRect().width>0,label+': 일시정지 기록 조작 누락');
+          const recordPanel=width<=760?'.measurement-command':'.luminous-record';
+          stableText(doc,'.luminous-record-state strong',`.luminous-overview,${recordPanel},.recording-controls,.lab-chart`,['준비','기록 마감 중','기록 시작 전'],label+' 상태');
           doc.querySelector('[data-view="analysis"]').click();await settle();
           stableText(doc,'#overview-readout','.overview-readout,.overview-actions',[
             '00:00 · 값 0 mg','00:12 · X 성분 -1,024 mg · Y 성분 999 mg · Z 성분 -9,999 mg · 가속도 크기 1,234 mg',

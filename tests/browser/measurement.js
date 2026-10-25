@@ -2,8 +2,12 @@ import { mountLabFixture, clickVisible } from './lab-fixture.js';
 import {createMeasurementView} from '../../src/ui/measurement-view.js';
 import {createRepository} from '../../src/data/repository.js';
 import {openRunStore} from '../../src/data/run-store.js';
-import {getExperiment} from '../../src/catalog/index.js';
+import {getExperiment,getSensorRuntime,resolveExperiment} from '../../src/catalog/index.js';
 import {createChartView} from '../../src/ui/chart-view.js';
+import {buildExperimentJson,parseExperimentJson} from '../../src/data/files/json.js';
+import {buildCsv,parseExperimentCsv} from '../../src/data/files/csv.js';
+import {canResumeImportedRun} from '../../src/data/files/recording-source.js';
+import {createWorkspace} from '../../src/analysis/workspace.js';
 
 const check=(value,message)=>{if(!value)throw new Error(message);};
 export async function runMeasurementTests(report=()=>{}) {
@@ -46,7 +50,7 @@ export async function runMeasurementTests(report=()=>{}) {
     const range=host.querySelector('#live-range'), chart=()=>Chart.getChart(host.querySelector('canvas'));
     check(chart().data.datasets[0].data.filter(p=>p.sampleId).length===301,'최근 60초가 저장 시각 기준과 다릅니다.');
     check(chart().data.datasets[0].data.every(p=>Number.isFinite(p.x)),'보관된 원자료에 없는 monotonicAt을 사용했습니다.');
-    range.value='all';range.dispatchEvent(new Event('change'));
+    clickVisible(range.querySelector('summary'));clickVisible(range.querySelector('[data-live-range="all"]'));
     check(chart().data.datasets[0].data.filter(p=>p.sampleId).length===1000,'전체 기록이 600개 미리보기 버퍼에 잘렸습니다.');
     check(chart().data.datasets[0].data.some(p=>p.y===null),'5초보다 짧은 일시정지를 선으로 연결했습니다.');
     for(let id=1001;id<=1010;id++)add(id);view.render(options);
@@ -58,4 +62,59 @@ export async function runMeasurementTests(report=()=>{}) {
     check(host.querySelector('#measurement-reception').dataset.fresh==='false','보관된 값을 실시간 수신처럼 표시했습니다.');
     report('실제 측정 그래프 · 최근/전체 1,010개·UTC 시각·짧은 기록 공백·채널 선택과 원자료 보존');
   }finally{view?.dispose();await store.close();repository.close();fixture.dispose();await globalThis.idb.deleteDB(databaseName);}
+  await checkAccelerationUnits(report);
+}
+
+async function checkAccelerationUnits(report) {
+  const fixture=await mountLabFixture({component:true}),{host}=fixture;fixture.showScreen('measure');
+  const context=getExperiment('accelerometer'),decode=getSensorRuntime(context).decode;
+  const databaseName='microbit.sensor-lab.acceleration-tests.'+crypto.randomUUID();
+  const repository=createRepository({databaseName});
+  let store=await openRunStore({repository,context,source:'device',create:true}),view;
+  const add=(id,line)=>{
+    const reading=decode(line,{receivedAt:1700000000000+id*100});
+    store.appendSample({sampleId:id,receivedAt:reading.receivedAt,values:reading.values,validity:reading.validity});
+  };
+  const options={context,store,latest:null,previewPoints:[],device:{status:'disconnected',confirmed:false},recording:false};
+  const $=selector=>host.querySelector(selector),chart=()=>Chart.getChart($('#live-chart'));
+  try {
+    add(1,'-1000,0,1000,1414');
+    view=createMeasurementView(host,()=>view.render(options));view.render(options);
+    const before=JSON.stringify(store.getSamples());
+    for(const input of host.querySelectorAll('#display-channels input:not(:checked)'))clickVisible(input);
+    clickVisible($('#live-range summary'));clickVisible($('[data-live-range="all"]'));
+    const toggle=$('#acceleration-unit-toggle');
+    check(toggle.checkVisibility()&&toggle.getAttribute('aria-pressed')==='false','가속도 SI 기본 표시 또는 토글 누락');
+    clickVisible(toggle);
+    check($('[data-channel="accelerationX"] strong').textContent==='-1'&&$('[data-channel="accelerationX"] small').textContent==='g','실시간 숫자와 단위가 함께 바뀌지 않았습니다.');
+    check(chart().data.datasets[0].data[0].y===-1,'g 그래프의 수치 환산 누락');
+    const axes=Object.values(chart().scales).filter(axis=>axis.axis==='y');
+    check(axes.length===1&&axes[0].options.title.text.includes('(g)'),'g 표시에서 공통 축·단위가 유지되지 않습니다.');
+    check(JSON.stringify(store.getSamples())===before,'g 전환이 원자료를 바꿨습니다.');
+    add(2,'-2000,0,2000,2828');view.render(options);
+    check(chart().data.datasets[0].data[1].y===-2,'g 표시 중 새 기록을 표시하지 못했습니다.');
+    check(store.getSamples()[1].values.accelerationX===-19.6133,'g 표시 중 기록 단위가 바뀌었습니다.');
+    const snapshot=store.getSnapshot();
+    for(const restored of [parseExperimentJson(buildExperimentJson(snapshot)),parseExperimentCsv(buildCsv(snapshot))]) {
+      check(restored.run.context.channels.every(c=>c.unit==='m/s²'),'내보내기에 표시 단위가 저장되었습니다.');
+      check(restored.samples[1].values.accelerationX===-19.6133,'내보내기·가져오기에서 SI 수치가 바뀌었습니다.');
+    }
+    const graph=createWorkspace({store}).getGraphData();
+    check(graph.yUnit==='m/s²'&&graph.points[0].y>13,'분석에 g 표시가 섞였습니다.');
+    clickVisible(toggle);
+    check(chart().data.datasets[0].data[0].y===-9.80665&&$('[data-channel="accelerationX"] small').textContent==='m/s²','정지된 기록의 SI 복귀가 그려지지 않았습니다.');
+    const id=store.getState().id;await store.close();store=await openRunStore({repository,id});
+    check(store.getSamples()[1].values.accelerationX===-19.6133,'DB 재열기에서 SI 수치가 바뀌었습니다.');
+
+    const old=structuredClone(snapshot);old.run.context=resolveExperiment({sensor:{id:'accelerometer',version:1}});
+    old.samples=old.samples.map(row=>({...row,values:{accelerationX:-1000,accelerationY:0,accelerationZ:1000,accelerationStrength:1414}}));
+    const restoredOld=parseExperimentJson(buildExperimentJson(old));
+    check(restoredOld.samples[0].values.accelerationX===-1000&&restoredOld.run.context.channels.every(c=>c.unit==='mg'),'기존 mg 파일이 변환되거나 단위를 잃었습니다.');
+    check(!canResumeImportedRun({...restoredOld.run,source:'import',importedFrom:{source:'device'}}),'기존 mg 기록에 SI 기록을 이어 붙일 수 있습니다.');
+    view.render({...options,context:getExperiment('temperature'),store:null});
+    check(toggle.hidden,'다른 물리량에 g 토글이 노출되었습니다.');
+    view.render({...options,store});
+    check(toggle.getAttribute('aria-pressed')==='false','실험 변경 후 g 표시 상태가 남았습니다.');
+    report('가속도 SI 기록 · g 표시 토글·공통 축·새 수신·DB/JSON/CSV·분석 분리·이전 mg 파일 보존');
+  } finally {view?.dispose();await store.close();repository.close();fixture.dispose();await globalThis.idb.deleteDB(databaseName);}
 }

@@ -1,6 +1,6 @@
 // Adapted from Cho-WH/bme280 gay-lussac/analysis/reflection.js at 59c5c149450f970bace2deaa183857c275595853.
 import { validateCalculatedColumns, validateGraph } from '../domain/contracts.js';
-import { validateAnalysisRange } from './scope.js';
+import { validateAnalysisRange, timeBounds } from './scope.js';
 import { createCalculator } from './calculations.js';
 import { graphData } from './graph-data.js';
 import { fitGraph, graphWithTrends } from './regression.js';
@@ -79,11 +79,11 @@ export function validateReflection(value, samples, imported = [], context) {
 }
 
 // Reuse the same graph and regression engines. No derived values are trusted from files.
-export function evidenceGraph(samples, evidence, imported = [], context) {
+export function evidenceGraph(samples, evidence, imported = [], context, origin = timeBounds(samples)?.origin ?? null) {
   if (!evidence) return null;
   const calculate = createCalculator(evidence.calculatedColumns, imported, context), ids = new Set(evidence.appliedIds);
   const rows = samples.filter(s => ids.has(s.sampleId)).map(s => ({ ...s, calculations: calculate(s) }));
-  const model = graphData(rows, evidence, imported, context);
+  const model = graphData(rows, evidence, imported, context, origin);
   const regression = evidence.regression.enabled ? fitGraph(model, 0) : { enabled: false };
   return graphWithTrends(model,regression);
 }

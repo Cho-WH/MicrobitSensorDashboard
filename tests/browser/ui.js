@@ -49,6 +49,10 @@ export async function runUiTests(report = (_message) => {}) {
   });
   let exported;
   const exportObserver = {id:'analysis-export-parity', beforeDestroy(chart) {
+    if (chart.data.datasets[0]?.seriesModel?.xColumnId === 'receivedAt') {
+      check(chart.scales.x.options.title.text === '경과 시간' && chart.scales.x.ticks.every(tick => /[초분시]/.test(tick.label)),
+        '출력 그래프가 경과 시간과 공통 단위 표기를 사용하지 않습니다.');
+    }
     if (!chart.canvas.isConnected) exported = presentation(chart);
   }};
   globalThis.Chart.register(exportObserver);
@@ -91,8 +95,10 @@ export async function runUiTests(report = (_message) => {}) {
     $('#exclusion-reason').value = '장치를 옮긴 순간'; await click('#apply-selection-exclusion');
     check(same(view.getWorkspace().getState().exclusions, [{ sampleId: 1, reason: '장치를 옮긴 순간' }]), '제외 사유가 분석 작업에 보존되지 않았습니다.');
     check(same(first.data.samples, original), 'UI의 제외 작업이 원자료를 변경했습니다.');
+    check(!$('#scope-detail').hidden, '분석에서 제외한 자료 안내가 숨겨졌습니다.');
     await click('[data-select="1"]'); await click('#restore-selection');
     check(view.getWorkspace().getState().exclusions.length === 0, '제외한 자료를 다시 포함할 수 없습니다.');
+    check($('#scope-detail').hidden, '제외를 복원한 뒤 0개 안내가 남았습니다.');
     await click('#undo-analysis');
     check(view.getWorkspace().getState().exclusions[0]?.reason === '장치를 옮긴 순간', '복원 취소에서 이전 제외 사유가 사라졌습니다.');
     if (!$('#clear-selection').disabled) await click('#clear-selection');
@@ -164,6 +170,13 @@ export async function runUiTests(report = (_message) => {}) {
     await click('#add-right-axis');
     check(!$('#right-axis-controls').hidden && $('#add-right-axis').hidden && document.activeElement===$('#graph-y-right'),'추가 축의 개수 제한 또는 초점 이동이 잘못되었습니다.');
     const dualChart=globalThis.Chart.getChart($('#analysis-chart'));
+    check(dualChart.scales.x.ticks.every(tick => /초$/.test(tick.label) && !tick.label.includes('시')),
+      '짧은 경과 시간 눈금에서 불필요한 시간 단위를 표시합니다.');
+    check(dualChart.scales.x.options.title.text === '경과 시간', '축 제목이 경과 시간이 아닙니다.');
+    check(dualChart.data.datasets[0].data[0].x === 0, '시간 그래프가 첫 수신부터의 경과 초로 표시되지 않습니다.');
+    const timedSeries = dualChart.data.datasets[0], timedPoint = timedSeries.data.find(point => point.sampleId);
+    const tooltip = dualChart.options.plugins.tooltip.callbacks.label({dataset:timedSeries,raw:timedPoint});
+    check(tooltip.some(line => /\d{2}:\d{2}:\d{2}\.\d{3}/.test(line)), '상세 수신 시각의 정밀도가 사라졌습니다.');
     check(dualChart.scales.yRight && dualChart.data.datasets.filter(d=>d.legendSeries).length===2,'오른쪽 축에 별도 자료가 그려지지 않았습니다.');
     const pick=async(selector,value)=>{const input=$(selector);input.value=value;input.dispatchEvent(new Event('change',{bubbles:true}));await settle();};
     await pick('#graph-y-right','b');
@@ -173,6 +186,15 @@ export async function runUiTests(report = (_message) => {}) {
     const menu=$('#graph-shape-menu'); await click('#graph-shape-menu summary');
     await click('[data-graph-type="scatter"]');
     check(!menu.open && document.activeElement===menu.querySelector('summary') && view.getWorkspace().getState().graph.type==='scatter','그래프 모양 선택 후 적용·메뉴 닫힘·초점 복귀가 잘못되었습니다.');
+    const beforeFold=structuredClone(dual.data), axesBeforeFold=structuredClone(view.getWorkspace().getState());
+    await click('#toggle-axis-settings');
+    check($('#axis-settings-panel').inert && $('#toggle-axis-settings').getAttribute('aria-expanded')==='false', '접힌 축 설정이 키보드 조작에서 제외되지 않았습니다.');
+    check(!$('#axis-summary').hidden && $('#axis-summary').textContent.includes('세로 성분'), '접힌 범례에서 비교 축을 확인할 수 없습니다.');
+    await click('#tab-overview'); await click('#tab-relationship');
+    check($('#axis-settings-panel').inert, '탭 이동이 접힌 축 설정을 초기화했습니다.');
+    await click('#toggle-axis-settings');
+    check(!$('#axis-settings-panel').inert && same(view.getWorkspace().getState(),axesBeforeFold) && same(dual.data,beforeFold),
+      '축 설정을 접고 펼치는 동작이 분석 상태나 저장 자료를 바꿨습니다.');
     await click('#graph-shape-menu summary');
     menu.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
     check(!menu.open,'Escape로 그래프 모양 메뉴를 닫지 못했습니다.');
@@ -192,6 +214,33 @@ export async function runUiTests(report = (_message) => {}) {
     const shared=globalThis.Chart.getChart($('#analysis-chart'));
     check(!shared.scales.yRight && shared.data.datasets.every(d=>d.yAxisID==='y') && shared.scales.y.options.title.text==='자기장 (µT)','동일 물리량·단위의 두 방향/크기가 서로 다른 스케일로 표시됩니다.');
     report('실제 DOM/Canvas · 오른쪽 축 추가·제거·독립 추세선·메뉴·되돌리기·재열기·출력·동일 물리량 공유 스케일');
+
+    const missing = fixture({ count: 6 });
+    missing.data.samples[0].values.b = null; missing.data.samples[0].validity.b = 'missing';
+    view.reset(); view.open(missing.store); await settle(); await click('#tab-relationship');
+    check($('#graph-count').hidden && $('#scope-detail').hidden && !$('#analysis-message').textContent,
+      '범위와 같은 그래프 개수 또는 제외 0개를 중복 안내합니다.');
+    await click('#add-right-axis'); await pick('#graph-y-right','b');
+    check(!$('#graph-count').hidden && $('#graph-count').textContent.includes('값 없음 1개'),
+      '두 축의 유효 자료 수가 다른데 결측 안내를 숨겼습니다.');
+    check(view.getWorkspace().getGraphData().points.length===6 && view.getWorkspace().getGraphData().right.points.length===5,
+      '안내 정리가 그래프에 포함되는 자료를 바꿨습니다.');
+    await click('#remove-right-axis');
+    check($('#graph-count').hidden, '결측이 없는 축으로 돌아온 뒤 중복 개수가 남았습니다.');
+    report('분석 범위 안내 · 제외 복원·중복 개수 생략·축별 결측 안내 유지');
+
+    const offset = fixture({count:4});
+    offset.data.run.timeOrigin = offset.data.samples[0].receivedAt - 60125;
+    view.reset(); view.open(offset.store); await settle();
+    const offsetOverview = globalThis.Chart.getChart($('#overview-chart'));
+    check(offsetOverview.data.datasets[0].data[0].x === 60.125, '복원한 기준이 원자료 그래프에서 사라졌습니다.');
+    await click('#choose-range');
+    check($('#time-range-start').valueAsNumber === 60.125, '구간 선택이 첫 행을 0초로 바꿨습니다.');
+    await click('#cancel-time-range'); await click('#tab-relationship');
+    check(globalThis.Chart.getChart($('#analysis-chart')).data.datasets[0].data[0].x === 60.125, '관계 그래프가 복원한 경과 시간을 사용하지 않습니다.');
+    await click('#use-graph-for-reflection');
+    check(globalThis.Chart.getChart($('#reflection-chart')).data.datasets[0].data[0].x === 60.125, '보관 근거에서 원래 경과 시간이 사라졌습니다.');
+    report('복원한 경과 시간 기준 · 원자료/관계/해석 그래프와 구간 선택 일치');
 
     const undated = fixture({ count: 3, dated: false, temporary: true });
     view.reset(); view.open(undated.store); await settle();

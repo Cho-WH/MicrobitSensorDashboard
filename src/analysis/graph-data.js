@@ -2,10 +2,10 @@
 import { graphColumns } from '../domain/contracts.js';
 import { columnLabel } from './calculations.js';
 import { readCell } from '../domain/columns.js';
-import { scopeMembership } from './scope.js';
+import { scopeMembership, timeBounds } from './scope.js';
 
 // Uses analysis candidates, never the table's filter, sort or transient checks.
-export function graphData(samples, state, imported = [], context = state.context) {
+export function graphData(samples, state, imported = [], context = state.context, timeOrigin = timeBounds(samples)?.origin ?? null) {
   if (!state.graph) return null;
   const graph = state.graph, columns = graphColumns(state.calculatedColumns, imported, context);
   const { candidates, excluded } = scopeMembership(state);
@@ -30,11 +30,12 @@ export function graphData(samples, state, imported = [], context = state.context
   }
   const yColumn = columns.find(c => c.id === graph.yColumnId);
   const right = graph.right ? graphData(samples,{...state,graph:{...graph,right:undefined,yColumnId:graph.right.yColumnId,
-    view:graph.right.view,trendEnabled:graph.right.trendEnabled}},imported,context) : null;
+    view:graph.right.view,trendEnabled:graph.right.trendEnabled}},imported,context,timeOrigin) : null;
   return { ...graph, ...(right ? {right} : {}), points, excludedPoints, line, invalidCount, candidateCount, excludedCount, includedCount: candidateCount - excludedCount,
     yQuantity:yColumn?.quantity, yQuantityLabel:yColumn?.quantityLabel,
     xUnit: graph.xColumnId === 'receivedAt' ? '초' : columns.find(c => c.id === graph.xColumnId)?.unit,
     yUnit: columns.find(c => c.id === graph.yColumnId)?.unit,
-    xLabel: columnLabel(columns.find(c => c.id === graph.xColumnId)),
+    ...(graph.xColumnId === 'receivedAt' ? {timeOrigin} : {}),
+    xLabel: graph.xColumnId === 'receivedAt' ? '경과 시간' : columnLabel(columns.find(c => c.id === graph.xColumnId)),
     yLabel: columnLabel(columns.find(c => c.id === graph.yColumnId)) };
 }

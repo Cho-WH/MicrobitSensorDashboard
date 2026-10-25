@@ -1,3 +1,4 @@
+import { createUuid } from '../../domain/uuid.js';
 import { validateExperimentSnapshot, checkFileSize, checkJson, requireValue } from './validation.js';
 import { parseLegacyGayLussac } from './legacy-gay-lussac.js';
 
@@ -21,7 +22,7 @@ export function parseExperimentJson(text) {
 
 // Pure preparation: callers acquire the new Run lock and write this result atomically.
 /** @param {any} snapshot @param {{newId?:()=>string,now?:()=>number}} [options] */
-export function prepareImportedSnapshot(snapshot, { newId = () => crypto.randomUUID(), now = () => Date.now() } = {}) {
+export function prepareImportedSnapshot(snapshot, { newId = () => createUuid(), now = () => Date.now() } = {}) {
   const data = validateExperimentSnapshot(snapshot), original = data.run, id = newId();
   requireValue(typeof id === 'string' && id.length > 0 && id !== original.id, '가져올 실험에 새로운 ID가 필요합니다.');
   const remap = value => {

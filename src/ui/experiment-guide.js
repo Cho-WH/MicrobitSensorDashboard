@@ -1,3 +1,4 @@
+import { createUuid } from '../domain/uuid.js';
 // Adapted from G/ui/experiment-guide.js: page navigation, motion preference and focus return.
 import { getGuideContent } from '../guide/steps.js';
 import { createExperimentGuidePreferences } from '../guide/experiment-guide-preferences.js';
@@ -28,7 +29,7 @@ export function createExperimentGuide(host) {
     controller.abort(); controller=new AbortController(); const signal=controller.signal;
     guide=next; preferences=createExperimentGuidePreferences(next.id,next.version);
     dialog.innerHTML=`<header class="experiment-guide-header"><div><p class="experiment-guide-label">실험 방법</p><h2 tabindex="-1"></h2></div><button type="button" class="experiment-guide-close" aria-label="실험 방법 닫기">✕</button></header><nav class="experiment-guide-pages" aria-label="실험 방법 단계"></nav><div class="experiment-guide-body"></div><footer class="experiment-guide-footer"><div class="experiment-guide-paging"><button type="button" data-guide-previous>이전</button><span class="experiment-guide-count" data-guide-count></span><button type="button" class="primary" data-guide-next>다음 →</button></div><div class="experiment-guide-options"><label class="experiment-guide-preference"><input type="checkbox" data-suppress-guide>이 안내 자동으로 열지 않기</label><p class="experiment-guide-recording" data-guide-recording>안내를 보는 동안에도 측정값은 기록돼요.</p></div></footer>`;
-    const heading=findElement(dialog,'h2','h2'); heading.id='experiment-guide-'+crypto.randomUUID(); heading.textContent=next.title; dialog.setAttribute('aria-labelledby',heading.id);
+    const heading=findElement(dialog,'h2','h2'); heading.id='experiment-guide-'+createUuid(); heading.textContent=next.title; dialog.setAttribute('aria-labelledby',heading.id);
     const body=findElement(dialog,'div','.experiment-guide-body'), nav=findElement(dialog,'nav','nav');
     pages=[]; pageButtons=[];
     next.pages.forEach((page,index)=>{

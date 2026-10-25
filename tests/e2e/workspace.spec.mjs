@@ -3,6 +3,82 @@ import { test, expect } from '@playwright/test';
 const fitsWidth = page => expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
 const fitsHeight = page => expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(2);
 
+test('elapsed time ticks reflow without changing coordinates and restore numeric axes', async ({ page }) => {
+  await page.goto('/dev/design/?sensor=bmp280&state=paused&view=relationship');
+  await expect(page.locator('html')).toHaveAttribute('data-review-ready', 'paused');
+  await page.selectOption('#graph-x', 'receivedAt');
+  const readAxis = () => page.evaluate(() => {
+    const chart = globalThis.Chart.getChart(document.querySelector('#analysis-chart'));
+    return { title:chart.scales.x.options.title.text, labels:chart.scales.x.ticks.map(tick => tick.label),
+      points:chart.data.datasets[0].data.map(point => [point.x, point.y, point.receivedAt]) };
+  });
+  const before = await readAxis();
+  expect(before.points[0][0]).toBe(0);
+  for (const width of [320, 390, 1366]) {
+    await page.setViewportSize({width,height:844});
+    await expect.poll(() => page.evaluate(() => {
+      const chart = globalThis.Chart.getChart(document.querySelector('#analysis-chart'));
+      return Math.abs(chart.width - chart.canvas.parentElement.clientWidth);
+    })).toBeLessThanOrEqual(1);
+    const current = await readAxis();
+    expect(current.title).toBe('경과 시간');
+    expect(current.labels.every(label => /[초분]/.test(label) && !label.includes('시'))).toBe(true);
+    expect(new Set(current.labels).size).toBe(current.labels.length);
+    expect(current.points).toEqual(before.points);
+    await fitsWidth(page);
+  }
+  await page.selectOption('#graph-x', 'temperatureC');
+  const numeric = await readAxis();
+  expect(numeric.title).toContain('온도');
+  expect(numeric.labels.every(label => !/[초분시]/.test(label))).toBe(true);
+});
+
+test('axis settings collapse without hidden focus targets across screen sizes and reduced motion', async ({ page }) => {
+  await page.goto('/dev/design/?sensor=bmp280&state=paused&view=relationship');
+  await expect(page.locator('html')).toHaveAttribute('data-review-ready', 'paused');
+  const toggle=page.locator('#toggle-axis-settings'), panel=page.locator('#axis-settings-panel');
+  for (const width of [390, 1366, 320]) {
+    await page.setViewportSize({width,height:844});
+    await toggle.focus(); await toggle.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-expanded','false');
+    await expect(panel).toHaveCSS('grid-template-rows','0px');
+    await expect(page.locator('#axis-summary')).toBeVisible();
+    await page.keyboard.press('Tab');
+    expect(await panel.evaluate(node=>node.contains(document.activeElement))).toBe(false);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded','true');
+    await expect(panel).not.toHaveAttribute('inert','');
+    await fitsWidth(page);
+  }
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await toggle.click(); await toggle.click(); await toggle.click();
+  await expect(panel).toHaveCSS('grid-template-rows','0px');
+  await expect(panel).toHaveCSS('transition-duration','0s');
+});
+
+test('actual page: shell reflow preserves file-button focus and preview guidance', async ({ page }) => {
+  await page.goto('/sensors/temperature/?mock=1&view=measure');
+  await expect(page.locator('html')).toHaveAttribute('data-app-state', 'ready');
+  const open = page.locator('#open-file');
+  await open.focus();
+  for (const width of [390, 1280, 320, 1366]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(page.locator(width <= 760 ? '.mobile-file-slot #open-file' : '#file-tools #open-file')).toHaveCount(1);
+    await expect(open).toBeFocused();
+    await expect(open).toHaveCount(1);
+    if (width <= 760) await expect(page.locator('#sample-count')).toBeHidden();
+    else await expect(page.locator('#sample-count')).toBeVisible();
+  }
+  const chooser = page.waitForEvent('filechooser');
+  await open.press('Enter');
+  await chooser;
+  const settings = page.locator('.luminous-settings');
+  await settings.focus();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.mobile-file-slot #open-file')).toHaveCount(1);
+  await expect(settings).toBeFocused();
+});
+
 // Other viewport combinations, original samples and analysis navigation are
 // covered by the existing workspace suite. Keep this regression on reflection.
 test('actual page: reflection height and answers survive reflow', async ({ page }) => {

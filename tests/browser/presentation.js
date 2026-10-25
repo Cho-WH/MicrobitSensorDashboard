@@ -86,10 +86,12 @@ export async function runPresentationAccessibility(report=()=>{}) {
         if(dialog.childElementCount)check(dialog.getAttribute('aria-label') || doc.getElementById(dialog.getAttribute('aria-labelledby')),'이름 연결이 없는 대화상자');
       }
       if($('.luminous-settings')?.getClientRects().length) {
-        for(const selector of ['#event-note','#live-range']) {
+        for(const selector of ['#event-note']) {
           const style=win.getComputedStyle($(selector));
           check(contrast(style.borderTopColor,style.backgroundColor)>=3,selector+' 입력 경계 대비 부족');
         }
+        const rangeStyle=win.getComputedStyle($('#live-range summary'));
+        check(contrast(rangeStyle.color,rangeStyle.backgroundColor)>=4.5,'표시 구간 버튼 글자 대비 부족');
         $('.luminous-settings').click();await settle();
         const dialog=$('#measurement-settings');
         check(dialog.open&&dialog.contains(doc.activeElement),'설정 창 진입 초점 누락');

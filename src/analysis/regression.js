@@ -47,9 +47,10 @@ export function predict(fit, x) {
   return fit.originY + fit.meanDy + fit.slope * ((x - fit.originX) - fit.meanDx);
 }
 
-// Time fits use seconds from the first used point, while the chart keeps UTC ms.
+// Time fits share the first-reception origin with the displayed elapsed axis.
+// Geometry keeps UTC ms so source coordinates and stored graph definitions stay intact.
 export function fitGraph(model, inputRevision) {
-  const timeOrigin = model.xColumnId === 'receivedAt' ? model.points[0]?.x ?? 0 : null;
+  const timeOrigin = model.xColumnId === 'receivedAt' ? model.timeOrigin ?? model.points[0]?.x ?? 0 : null;
   const points = timeOrigin === null ? model.points : model.points.map(p => ({ x: (p.x - timeOrigin) / 1000, y: p.y }));
   return { enabled: true, inputRevision, timeOrigin, result: linearFit(points) };
 }

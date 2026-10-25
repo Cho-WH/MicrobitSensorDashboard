@@ -1,3 +1,4 @@
+import { createUuid } from '../domain/uuid.js';
 // Adapted from Cho-WH/bme280 gay-lussac/analysis/calculations.js at 59c5c149450f970bace2deaa183857c275595853.
 import { validateCalculatedColumns } from '../domain/contracts.js';
 import { getSourceColumns, readCell } from '../domain/columns.js';
@@ -47,7 +48,7 @@ export function createCalculator(definitions, imported = [], context) {
 
 // Activity templates use the same expressions as manually created columns.
 // Substitute fresh IDs and reuse matching prerequisite expressions, never sensor branches.
-export function presetColumns(kind, existing, nextId = () => 'calc-' + crypto.randomUUID(), templates = []) {
+export function presetColumns(kind, existing, nextId = () => 'calc-' + createUuid(), templates = []) {
   const template = templates.find(t => t.id === kind);
   if (!template?.columns?.length) throw new Error('이 활동에서 사용할 계산 예시를 선택하세요.');
   const remap = new Map(), added = [];

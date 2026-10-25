@@ -41,8 +41,8 @@ export const labDefaults = {
     interceptHelp: 'x절편은 직선의 세로축 값이 0이 되는 지점입니다. 측정 범위 밖으로 연장했다면 실제 측정값과 구분해서 해석하세요.',
     fitHelp: 'R²는 선형 모형이 자료의 변화를 얼마나 설명하는지 나타냅니다. 높은 값만으로 비례 관계나 측정의 정확성이 입증되지는 않습니다.',
     explain: '발견한 관계를 내 말로 정리해 볼까요?', useGraph: '이 그래프로 해석하기', png: '그래프 이미지 저장', csv: '분석 자료 CSV 저장', exclusionReason: '제외 사유 (선택)', reasonPlaceholder: '비워 두어도 괜찮아요', applyExclusion: '제외하기',
-    noRun: '저장된 실험을 열거나 먼저 측정해 주세요.', loaded: '자료 {count}개', newData: '새 자료 {count}개 반영', dataSummary: '실험 전체 원자료 {total}개 · 분석에 불러온 자료 {loaded}개',
-    includedCount: '분석 포함 {count}개', excludedCount: '제외 {count}개', selectedCount: '{count}개 선택', allData: '전체 자료', previousData: '이전에 지정한 자료 {count}개', hiddenFilters: '표 필터 {count}개 적용 중 · 상단의 ‘표’ 보기에서 확인',
+    noRun: '저장된 실험을 열거나 먼저 측정해 주세요.', newData: '새 자료 {count}개 반영',
+    includedCount: '분석 {count}개', excludedCount: '제외 {count}개', selectedCount: '{count}개 선택', allData: '전체', selectedData: '선택한 자료', hiddenFilters: '표 필터 {count}개 적용 중 · 상단의 ‘표’ 보기에서 확인',
   },
   reflection: {
     title: '발견한 관계를 설명해요', staleTitle: '관계 그래프의 분석이 바뀌었어요.', staleNote: '아래에는 설명을 작성할 때 가져온 그래프가 남아 있어요.', refresh: '현재 그래프로 바꾸기',

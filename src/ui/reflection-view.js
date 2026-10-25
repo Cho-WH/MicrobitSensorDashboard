@@ -3,7 +3,6 @@ import { ANSWER_LIMIT, REFLECTION_QUESTIONS, evidenceKey } from '../analysis/ref
 import { graphColumns, CALCULATION_OPERATORS } from '../domain/contracts.js';
 import { columnLabel, formatCalculated } from '../analysis/calculations.js';
 import { createAnalysisChart, exportAnalysisPng } from './chart-view.js';
-import { timeBounds } from '../analysis/scope.js';
 import { trendSummary } from './trend-summary.js';
 import { getLabCopy, formatCopy } from './lab-copy.js';
 
@@ -127,7 +126,7 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
       }
       for (const { input } of inputs.values()) input.disabled = !workspace?.isWritable();
       evidence = reflection?.evidence; model = workspace?.getReflectionModel() ?? null;
-      origin = timeBounds(workspace?.getSamples() ?? [])?.origin ?? null;
+      origin = workspace?.getTimeOrigin() ?? null;
       $('reflection-print-button').disabled = !workspace || printing;
       $('reflection-empty').hidden = Boolean(model); $('reflection-evidence-body').hidden = !model;
       $('reflection-stale').hidden = !workspace?.reflectionChanged();

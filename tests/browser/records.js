@@ -4,7 +4,7 @@ import { openRunStore } from '../../src/data/run-store.js';
 import { parseExperimentJson } from '../../src/data/files/json.js';
 import { mountLabFixture, clickLabControl, clickVisible } from './lab-fixture.js';
 import { createRecordDialogs } from '../../src/ui/record-dialogs.js';
-import { buildAnalysisCsv, parseExperimentCsv } from '../../src/data/files/csv.js';
+import { buildCsv, buildAnalysisCsv, parseExperimentCsv } from '../../src/data/files/csv.js';
 
 const check=(value,message)=>{if(!value)throw new Error(message);};
 const equal=(a,b,message)=>check(JSON.stringify(a)===JSON.stringify(b),message);
@@ -97,6 +97,43 @@ export async function runRecordTests(report=()=>{}) {
     check(exported.run.importedColumns.length===1,'선택하지 않은 계산 열까지 CSV에 포함');
     equal(snapshot,added,'CSV 선택이 분석을 변경');dialogs.dispose();
     report('분석 CSV · 선택한 계산 열만 실제 CSV로 왕복, 분석 상태 보존');
+    exported.run.timeOrigin = exported.samples[0].receivedAt - 60125;
+    const csvFiles = new DataTransfer();
+    csvFiles.items.add(new File([buildCsv(exported)], '경과 시간.csv', {type:'text/csv'}));
+    $('#file-input').files = csvFiles.files; $('#file-input').dispatchEvent(new Event('change'));
+    await until(() => app.getState().storage?.source === 'import' && app.getState().storage.id !== id, '경과 시간 CSV 가져오기 실패'); await idle();
+    const restoredId = app.getState().storage.id, restored = await repo.readSnapshot(restoredId);
+    check(restored.run.timeOrigin === exported.run.timeOrigin, 'CSV 기준 시각이 DB에 보관되지 않았습니다.');
+    reader = await openRunStore({repository:repo,id:restoredId});
+    check(reader.getSnapshot().run.timeOrigin === exported.run.timeOrigin && reader.getState().timeOrigin === exported.run.timeOrigin,
+      '다시 연 실험에서 경과 시간 기준이 사라졌습니다.');
+    reader.dispose(); reader = null;
+    report('실제 CSV 업로드 · 경과 시간 기준의 DB 저장·재열기 보존');
+    const conflicted = globalThis.Papa.parse(buildCsv(exported).replace(/^\uFEFF/, '')).data;
+    const elapsedColumn = conflicted[0].indexOf('elapsed_seconds');
+    conflicted[2][elapsedColumn] = String(Number(conflicted[2][elapsedColumn]) + 1);
+    const conflictingCsv = globalThis.Papa.unparse(conflicted), beforeRecovery = await repo.readSnapshot(restoredId);
+    const runCount = (await repo.listRuns()).length;
+    const uploadConflict = () => {
+      const files = new DataTransfer(); files.items.add(new File([conflictingCsv], '시간 확인.csv', {type:'text/csv'}));
+      $('#file-input').files = files.files; $('#file-input').dispatchEvent(new Event('change'));
+    };
+    uploadConflict(); await until(() => $('#csv-time-dialog')?.open, '시간 복원 선택이 표시되지 않았습니다.');
+    check($('#csv-time-dialog').querySelectorAll('button').length === 2, '시간 복원에 불필요한 선택지가 있습니다.');
+    clickVisible($('#csv-time-dialog button[type=button]')); await idle();
+    check(app.getState().storage.id === restoredId && (await repo.listRuns()).length === runCount, '복원 취소가 현재 실험을 바꾸거나 새 실험을 만들었습니다.');
+    equal(await repo.readSnapshot(restoredId), beforeRecovery, '복원 취소가 기존 자료를 변경했습니다.');
+    uploadConflict(); await until(() => $('#csv-time-dialog')?.open, '취소 후 다시 복원할 수 없습니다.');
+    submit('#csv-time-dialog');
+    await until(() => $('#leave-dialog').open || !app.getState().busy, '복원 후 가져오기 전환 대기');
+    if ($('#leave-dialog').open) clickVisible($('#leave-save'));
+    await idle();
+    const recovered = await repo.readSnapshot(app.getState().storage.id);
+    check(recovered.run.timeOrigin === exported.samples[0].receivedAt && recovered.run.csvImport.timeRestoredFromTimestamp,
+      '원본 시각 복원이 파일 첫 수신을 0초로 삼지 않았습니다.');
+    equal(recovered.samples.map(sample=>[sample.receivedAt,sample.values]), exported.samples.map(sample=>[sample.receivedAt,sample.values]),
+      '시간 복원이 원본 수신 시각이나 측정값을 변경했습니다.');
+    report('시간 불일치 · 두 선택지·취소 시 원자료/DB 유지·원본 시각 기준 복원');
   } finally {
     failSave=failDelete=false;reader?.dispose();
     host.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());

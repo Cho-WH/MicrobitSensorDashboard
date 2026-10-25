@@ -50,6 +50,10 @@ export function createRecordDialogs(host) {
     input.value = value; row.append(element('span', '', label), input); body.append(row); return input;
   }
   return {
+    restoreCsvTime(save) { return formDialog({id:'csv-time-dialog',title:'시간 정보가 서로 맞지 않아요',
+      submit:'원본 시각 기준으로 복원',
+      description:'원본 수신 시각을 기준으로 경과 시간을 다시 계산합니다. 파일의 첫 수신이 0초가 됩니다.',
+      save, build() { return () => undefined; } }); },
     rename(run, save) { return formDialog({id:'rename-run-dialog', title:'실험 이름 변경', save,
       build(body) { const input = field(body,'runName','실험 이름',{value:run.name,required:true,maxLength:120}); return () => input.value.trim(); } }); },
     remove(run, save) { return formDialog({id:'delete-run-dialog', title:'저장된 실험 삭제', submit:'실험 삭제',

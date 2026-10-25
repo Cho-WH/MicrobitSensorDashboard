@@ -10,12 +10,16 @@ export function scopeMembership(state, fallbackIds = []) {
 
 export const statusLabels = Object.freeze({ included: '분석 포함', excluded: '제외', outside: '범위 밖' });
 
-export function timeBounds(samples) {
+export function timeOrigin(samples, run = {}) {
+  return run.timeOrigin ?? samples.find(sample => Number.isFinite(sample.receivedAt))?.receivedAt ?? null;
+}
+
+export function timeBounds(samples, origin = timeOrigin(samples)) {
   const timed = samples.filter(s => Number.isFinite(s.receivedAt));
   if (!timed.length) return null;
   let startAt = Infinity, endAt = -Infinity;
   for (const s of timed) { startAt = Math.min(startAt, s.receivedAt); endAt = Math.max(endAt, s.receivedAt); }
-  return { startAt, endAt, origin: timed[0].receivedAt };
+  return { startAt, endAt, origin };
 }
 
 export function rangeSampleIds(samples, range) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getExperiment, getSensorRuntime } from '../../src/catalog/index.js';
+import { getExperiment, getSensorRuntime, resolveExperiment } from '../../src/catalog/index.js';
 import { getFirmwareArtifact } from '../../src/device/firmware.js';
 import { createMockBleClient } from '../../src/device/mock-client.js';
 import { createGuideProgress } from '../../src/guide/progress.js';
@@ -16,10 +16,11 @@ test('new built-in codecs preserve signs, zero, partial errors and finite range 
   assert.equal(light('0').values.lightLevel, 0); assert.equal(light('255').validity.lightLevel, 'valid');
   for (const value of [-1, 256]) { const input = light(String(value)); assert.equal(input.values.lightLevel, value); assert.equal(input.validity.lightLevel, 'out-of-range'); }
   const input = acceleration('0,-2.5,+3e1,1000', { receivedAt: 123, monotonicAt: 4, attemptId: 8 });
-  assert.deepEqual(input.values, { accelerationX: 0, accelerationY: -2.5, accelerationZ: 30, accelerationStrength: 1000 });
+  assert.equal(input.values.accelerationX, 0);
+  for (const [id,expected] of Object.entries({accelerationY:-0.024516625,accelerationZ:0.2941995,accelerationStrength:9.80665})) assert.ok(Math.abs(input.values[id]-expected)<1e-12);
   assert.equal(input.receivedAt, 123); assert.equal(input.monotonicAt, 4); assert.equal(input.attemptId, 8);
   const partial = acceleration(',0x10,-1000,-1');
-  assert.deepEqual(partial.values, { accelerationX: null, accelerationY: null, accelerationZ: -1000, accelerationStrength: -1 });
+  assert.deepEqual(partial.values, { accelerationX: null, accelerationY: null, accelerationZ: -9.80665, accelerationStrength: -0.00980665 });
   assert.deepEqual(partial.validity, { accelerationX: 'missing', accelerationY: 'error', accelerationZ: 'valid', accelerationStrength: 'out-of-range' });
   for (const id of sensors) {
     const { decode, definition } = getSensorRuntime(getExperiment(id));
@@ -52,7 +53,8 @@ test('new built-ins use common preparation, require current reception, and never
   assert.equal(getExperiment('temperature').channels[0].unit, getExperiment('bmp280').channels[0].unit);
   assert.equal(getExperiment('light-level').channels[0].unit, '상대값');
   const context = getExperiment('accelerometer');
-  assert.ok(context.channels.every(channel => channel.unit === 'mg'));
+  assert.ok(context.channels.every(channel => channel.unit === 'm/s²'));
+  assert.equal(context.sensor.version, 2);
   assert.deepEqual(context.sensor.defaultVisibleChannelIds, ['accelerationStrength']);
   assert.equal(context.channels.length, 4);
 });
@@ -69,7 +71,16 @@ test('simulated BLE honors trusted sampling intervals, repeated starts and disco
     job.fn();
     const reading = getSensorRuntime(context).decode(readings[0]);
     assert.ok(Object.values(reading.validity).every(value => value === 'valid'));
-    if (id === 'accelerometer') assert.equal(reading.values.accelerationStrength, 1000);
+    if (id === 'accelerometer') assert.equal(reading.values.accelerationStrength, 9.80665);
     await client.disconnect(); job.fn(); assert.equal(jobs.size, 0); assert.equal(readings.length, 1);
   }
+});
+
+test('historical acceleration definitions keep mg and cannot resume with SI samples', () => {
+  const legacy = resolveExperiment({sensor:{id:'accelerometer',version:1}});
+  const current = getExperiment('accelerometer');
+  assert.ok(legacy.channels.every(channel => channel.unit === 'mg'));
+  assert.deepEqual(legacy.firmware, current.firmware);
+  assert.throws(() => getSensorRuntime(legacy), { code:'unsupported-sensor-runtime' });
+  assert.equal(getSensorRuntime(current).decode('0,0,1000,1000').values.accelerationZ, 9.80665);
 });

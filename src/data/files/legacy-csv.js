@@ -1,3 +1,4 @@
+import { createUuid } from '../../domain/uuid.js';
 // Adapted from Cho-WH/bme280 59c5c149450f970bace2deaa183857c275595853.
 import { getExperiment } from '../../catalog/index.js';
 import { papa } from './papa.js';
@@ -31,7 +32,7 @@ function timestamp(text, row) {
 const inferredValidity = (value, min, max) => value === null ? 'missing' : value < min || value > max ? 'out-of-range' : 'valid';
 
 // Supported, named schemas only. Do not infer arbitrary spreadsheet columns or drop bad rows.
-export function parseLegacyCsv(text, { filename = '가져온 자료.csv', id = crypto.randomUUID(), now = Date.now() } = {}) {
+export function parseLegacyCsv(text, { filename = '가져온 자료.csv', id = createUuid(), now = Date.now() } = {}) {
   papa();
   if (text.includes('\uFFFD')) fail('UTF-8 형식으로 저장한 CSV 파일을 선택하세요.');
   const parsed = papa().parse(text.replace(/^\uFEFF/, ''), { delimiter: ',', skipEmptyLines: true, dynamicTyping: false });

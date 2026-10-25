@@ -6,6 +6,7 @@ import { formatCalculated } from '../analysis/calculations.js';
 import { trendSummary } from './trend-summary.js';
 import { channelColor as resolveChannelColor, channelTextColor, analysisSeriesColors } from './visual-theme.js';
 import { groupChartAxes } from './chart-axes.js';
+import { createElapsedAxis } from './elapsed-axis.js';
 
 // Keep axis lettering at its original size; only the plot bitmap stretches.
 function captureLayoutPreview(chart) {
@@ -48,6 +49,7 @@ function captureLayoutPreview(chart) {
 export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, responsive = true, theme = null } = {}) {
   if (!globalThis.Chart) throw new Error('그래프 도구를 불러오지 못했어요. 화면을 새로 열어 주세요.');
   let model = null, preview = null, pendingRender = null;
+  let elapsedTick = createElapsedAxis();
   const clock = value => formatClockTime(clockTime(value));
   const chart = new globalThis.Chart(canvas, {
     type: 'scatter', data: { datasets: [] },
@@ -66,10 +68,11 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
           title: items => items[0].dataset.isIntercept ? 'x절편' : '자료 ' + items[0].raw.sampleId,
           label: item => {
             const series=item.dataset.seriesModel??model;
-            const coordinates = [series.xLabel + ': ' + (series.xColumnId === 'receivedAt' ? clock(item.raw.x) : formatCalculated(item.raw.x)),
+            const time = series.xColumnId === 'receivedAt';
+            const coordinates = [series.xLabel + ': ' + formatCalculated(item.raw.x) + (time ? '초' : ''),
               series.yLabel + ': ' + formatCalculated(item.raw.y)];
+            if (time && !item.dataset.isIntercept) coordinates.push('수신 시각: ' + clock(item.raw.receivedAt));
             if (!item.dataset.isIntercept) return [item.dataset.label, ...coordinates];
-            if (series.xColumnId === 'receivedAt') coordinates.push('경과 시간: ' + formatCalculated(series.regression.result.xIntercept) + '초');
             return coordinates;
           },
         } },
@@ -78,6 +81,10 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
         ...Object.fromEntries(['x','y'].map(axis => [axis, {
           type:'linear', title:{display:true, ...(theme ? {color:theme.text, font:{family:theme.font,size:13}} : {})},
           ticks:{...(axis === 'x' ? {maxTicksLimit:6} : {}), ...(theme ? {maxTicksLimit:6,color:theme.text, font:{family:theme.font,size:12}} : {})},
+          ...(axis === 'x' ? { afterBuildTicks(scale) {
+            if (model?.xColumnId !== 'receivedAt') return;
+            elapsedTick = createElapsedAxis(scale.ticks.map(tick => tick.value));
+          } } : {}),
           grid:{color:theme?.grid ?? '#edf1f2'}, ...(theme ? {border:{color:theme.grid}} : {}),
         }])),
       },
@@ -152,6 +159,12 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
         }
         return datasets;
       });
+      if (model.xColumnId === 'receivedAt') {
+        const origin = model.timeOrigin ?? 0;
+        for (const dataset of chart.data.datasets) dataset.data = dataset.data.map(point => ({
+          ...point, receivedAt: point.x, x: (point.x - origin) / 1000,
+        }));
+      }
       chart.options.plugins.legend={display:Boolean(model.right),position:'top',onClick:()=>{},labels:{usePointStyle:true,boxWidth:8,
         color:theme?.text??'#53657d',font:{family:theme?.font,size:12},filter:(_item,data)=>data.datasets[_item.datasetIndex].legendSeries===true}};
       if(model.right&&!shared){
@@ -161,7 +174,7 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
       chart.options.scales.x.title.text = model.xLabel;
       chart.options.scales.y.title.text = shared ? axisGroups[0].label : model.yLabel;
       chart.options.scales.y.title.color = shared?theme?.text??'#53657d':palettes[0].pointText??palettes[0].point;
-      chart.options.scales.x.ticks.callback = model.xColumnId === 'receivedAt' ? clock : value => formatCalculated(value);
+      chart.options.scales.x.ticks.callback = model.xColumnId === 'receivedAt' ? value => elapsedTick(value) : value => formatCalculated(value);
       if (!resize()) chart.update('none');
     },
     dispose() { observer?.disconnect(); window.removeEventListener('resize', resize); clearPreview(); pendingRender = null; chart.destroy(); },
@@ -208,7 +221,7 @@ export function exportAnalysisPng(model, { name = '', selectedIds = [], theme = 
 }
 
 /** @param {HTMLCanvasElement} canvas @param {any} options */
-export function createChartView(canvas, { context, channels, inspect = false, legendToggle = true, theme = null, eventMarkers = true, onCursor = () => {}, onLayout = () => {} } = {}) {
+export function createChartView(canvas, { context, channels, displayValue = (value, _channel) => value, inspect = false, legendToggle = true, theme = null, eventMarkers = true, onCursor = () => {}, onLayout = () => {} } = {}) {
   if (!globalThis.Chart) throw new Error('그래프 도구를 불러오지 못했어요. 화면을 새로 열어 주세요.');
   const sourceChannels = getSourceColumns(channels ?? context).filter(c => !['sampleId', 'receivedAt'].includes(c.id) && c.supported !== false);
   const colors = ['#d67b40', '#197f88', '#8d65b1', '#43854d'];
@@ -225,6 +238,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
     grid: { drawOnChartArea: i === 0, color: theme?.grid ?? '#edf1f2' },
   }]));
   let currentPoints = [], timeOrigin = 0, cursor = null, hasTime = false;
+  let elapsedTick = createElapsedAxis();
   const chart = new globalThis.Chart(canvas, {
     type: 'line',
     plugins: inspect ? [{ id: 'shared-time-cursor',
@@ -248,7 +262,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
     data: { datasets: sourceChannels.map((c, i) => ({ label: columnLabel(c), yAxisID: axisIds.get(c.id), borderColor: channelColor(c, i), backgroundColor: channelColor(c, i), data: [] })) },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
-      layout: {padding: {top: !eventMarkers ? 52 : 0}},
+      layout: {padding: {bottom: 0}},
       parsing: false, spanGaps: false,
       elements: { point: { radius: 0, hitRadius: 8 }, line: { borderWidth: 2 } },
       plugins: { tooltip: { enabled: !inspect, callbacks: {
@@ -256,8 +270,11 @@ export function createChartView(canvas, { context, channels, inspect = false, le
       } }, legend: { display: !inspect && !theme, position: 'bottom', labels: { usePointStyle: true, boxWidth: 7, font: { size: 13 } } } },
       scales: {
         x: { type: 'linear', min: -60, max: 0,
-          title: { display: true, text: '지금으로부터 (초)', ...(theme ? {color:theme.text,font:{family:theme.font,size:12}} : {}) },
-          ...(theme ? {ticks:{color:theme.text,font:{family:theme.font,size:11},maxTicksLimit:7},border:{color:theme.grid}} : {}),
+          title: { display: true, text: '지금으로부터', ...(theme ? {color:theme.text,font:{family:theme.font,size:12}} : {}) },
+          ticks: { callback: value => hasTime ? elapsedTick(value) : formatCalculated(value),
+            ...(theme ? {color:theme.text,font:{family:theme.font,size:11},maxTicksLimit:7} : {}) },
+          afterBuildTicks(scale) { elapsedTick = createElapsedAxis(scale.ticks.map(tick => tick.value)); },
+          ...(theme ? {border:{color:theme.grid}} : {}),
           grid: { color: theme?.grid ?? '#edf1f2' } },
         ...scales,
       },
@@ -265,7 +282,8 @@ export function createChartView(canvas, { context, channels, inspect = false, le
   });
   if (!legendToggle) chart.options.plugins.legend.onClick = () => {};
   return {
-    render(points, now, { range = 'recent', events = [], origin = undefined, connectGaps = false, nowUtc = Date.now() } = {}) {
+    render(points, now, { range = 'recent', events = [], origin = undefined, connectGaps = false, nowUtc = Date.now(), bottomPadding = 0 } = {}) {
+      chart.options.layout.padding.bottom = bottomPadding;
       const relative = point => Number.isFinite(point.monotonicAt) ? (point.monotonicAt - now) / 1000 : (point.receivedAt - nowUtc) / 1000;
       const timedPoints = points.filter(p => Number.isFinite(p.receivedAt));
       hasTime = timedPoints.length > 0; currentPoints = hasTime ? timedPoints : points;
@@ -279,7 +297,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
         || (event.type==='reception-change'&&event.payload?.state==='stale')).map(event=>event.receivedAt).filter(Number.isFinite).sort((a,b)=>a-b);
       chart.options.scales.x.min = whole ? undefined : -60;
       chart.options.scales.x.max = whole ? undefined : 0;
-      chart.options.scales.x.title.text = !hasTime ? '자료 번호 · 시각 정보 없음' : whole ? '첫 수신으로부터 (초)' : '지금으로부터 (초)';
+      chart.options.scales.x.title.text = !hasTime ? '자료 번호 · 시각 정보 없음' : whole ? '경과 시간' : '지금으로부터';
       for (const [index, channel] of sourceChannels.entries()) {
         const data = [];
         let previous, breakIndex=0;
@@ -295,7 +313,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
           const eventGap=previous&&breakTimes[breakIndex]<=point.receivedAt;
           if (hasTime && previous && (delta < 0 || (!connectGaps && (eventGap || delta >= (context?.connectionPolicy?.staleMs ?? context?.connection?.staleMs ?? 5000))))) data.push({ x, y: null });
           const cell = readCell(point, channel.id);
-          data.push({ x, y: cell.reason ? null : cell.value, sampleId: point.sampleId,
+          data.push({ x, y: cell.reason ? null : displayValue(cell.value,channel), sampleId: point.sampleId,
             elapsedSeconds: hasTime ? (point.receivedAt - origin) / 1000 : null });
           previous = point;
         }
@@ -309,7 +327,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
           if (!nearest) return [];
           const x = whole ? (e.receivedAt - origin) / 1000
             : relative(nearest) - (nearest.receivedAt - e.receivedAt) / 1000;
-          return x < -60 && !whole ? [] : [{ x, y: readCell(nearest, sourceChannels[0]?.id).value, elapsedSeconds: (e.receivedAt - origin) / 1000 }];
+          return x < -60 && !whole ? [] : [{ x, y: displayValue(readCell(nearest, sourceChannels[0]?.id).value,sourceChannels[0]), elapsedSeconds: (e.receivedAt - origin) / 1000 }];
         }) };
       chart.update('none');
     },
@@ -317,7 +335,7 @@ export function createChartView(canvas, { context, channels, inspect = false, le
     timeGeometry() {
       if (!hasTime || !chart.chartArea || !chart.scales?.x) return null;
       const { left, top, right, bottom } = chart.chartArea;
-      return { left, top, width: right - left, height: bottom - top,
+      return { left, top, width: right - left, height: bottom - top, labelTop: chart.scales.x.bottom + 4,
         pixel: time => chart.scales.x.getPixelForValue((time - timeOrigin) / 1000),
         time: pixel => chart.scales.x.getValueForPixel(pixel) * 1000 + timeOrigin };
     },

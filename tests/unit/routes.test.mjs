@@ -16,9 +16,11 @@ test('home has no selected context; sensor/activity links resolve independently 
     assert.equal(preview.searchParams.get('view'),'preview');
     assert.equal(parseRoute(preview,base).screen,'preview');
     assert.ok(sameExperiment(parseRoute(preview,base).context,expected));
-    const shell=renderEntry('<html><head></head></html>',entry);
+    const shell=renderEntry(`<html><head><meta property="og:url" content="${base.href}"><meta property="og:image" content="${base.href}public/assets/branding/sensor-lab-social.png"></head></html>`,entry);
     const relative=shell.match(/base href="([^"]+)"/)[1];
     assert.equal(new URL(relative,url).href,base.href);
+    assert.equal(shell.match(/property="og:url" content="([^"]+)"/)[1],url.href);
+    assert.equal(shell.match(/property="og:image" content="([^"]+)"/)[1],new URL('public/assets/branding/sensor-lab-social.png',base).href);
   }
 });
 test('navigation preserves trusted sensor/activity only and rejects unsupported configuration',()=>{

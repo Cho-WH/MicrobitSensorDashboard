@@ -7,7 +7,7 @@ export function getSensorRuntime(context, modules = registry) {
   const module = modules.getSensor(context?.sensor), definition = module?.definition;
   const activity = context?.activity;
   const compatibleActivity = !activity || Boolean(modules.getActivity(activity, context?.sensor));
-  if (!definition || (context.sensor.codecId != null && context.sensor.codecId !== definition.codecId)
+  if (!definition || module.recording === false || (context.sensor.codecId != null && context.sensor.codecId !== definition.codecId)
     || context.firmware?.id !== definition.firmware.id || context.firmware?.version !== definition.firmware.version
     || (context.firmware?.codecId != null && context.firmware.codecId !== definition.codecId) || !compatibleActivity
     || !Array.isArray(context.channels) || context.channels.length !== definition.channels.length

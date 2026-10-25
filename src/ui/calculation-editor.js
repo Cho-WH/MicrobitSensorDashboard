@@ -1,3 +1,4 @@
+import { createUuid } from '../domain/uuid.js';
 // Adapted from Cho-WH/bme280 gay-lussac/ui/calculation-editor.js at 59c5c149450f970bace2deaa183857c275595853.
 import { calculationInputs, columnLabel, formatCalculated } from '../analysis/calculations.js';
 import { positionPopover } from './anchored-popover.js';
@@ -70,7 +71,7 @@ export function createCalculationEditor(root, { getWorkspace, render, signal }) 
     const prepared = preset ? getWorkspace().preparePreset(preset) : [];
     const initial = existing ?? prepared.at(-1);
     prerequisites = prepared.slice(0, -1); templateName = !!preset;
-    editingId = id; draftId = initial?.id ?? 'calc-' + crypto.randomUUID(); nameEdited = !!initial;
+    editingId = id; draftId = initial?.id ?? 'calc-' + createUuid(); nameEdited = !!initial;
     const inputs = calculationInputs([...state.calculatedColumns, ...prerequisites], getWorkspace().getImportedColumns(), state.context).filter(c => c.id !== id);
     name.value = initial?.name ?? ''; unit.value = initial?.unit ?? ''; op.value = initial?.op ?? '+';
     for (const f of fields) {

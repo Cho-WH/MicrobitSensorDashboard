@@ -1,3 +1,4 @@
+import { createUuid } from '../domain/uuid.js';
 import { positionPopover } from './anchored-popover.js';
 
 // Display-only help. It never reads or writes experiment / Workspace state.
@@ -6,7 +7,7 @@ export function createActionHelp(root, { messages }) {
   const doc = root.ownerDocument ?? root, win = doc.defaultView;
   const controller = new AbortController(), { signal } = controller;
   const panel = doc.createElement('div');
-  panel.id = 'action-help-' + crypto.randomUUID();
+  panel.id = 'action-help-' + createUuid();
   panel.className = 'action-help-popover';
   panel.setAttribute('role', 'tooltip');
   // An auto popover would dismiss open tool menus even on hover or focus.

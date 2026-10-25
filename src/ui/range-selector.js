@@ -73,7 +73,7 @@ export function createRangeSelector(root, { getChart, onApply, onClose, signal }
   $('cancel-time-range').addEventListener('click', () => { active = false; draft = null; paint(); onClose(); }, { signal });
   return {
     layout,
-    update(nextSamples, state) { samples = nextSamples; bounds = timeBounds(samples); excluded = new Set(state.exclusions.map(e => e.sampleId)); paint(); },
+    update(nextSamples, state, origin) { samples = nextSamples; bounds = timeBounds(samples, origin); excluded = new Set(state.exclusions.map(e => e.sampleId)); paint(); },
     open(state) {
       if (!bounds) return;
       legacy = state.appliedScope === 'selection' && !state.analysisRange;

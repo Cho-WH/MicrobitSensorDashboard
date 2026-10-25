@@ -265,11 +265,22 @@ export function createController(root = document, { repository = null, deviceTra
     if (file.size > LIMITS.fileBytes) throw new Error('32 MiB 이하의 실험 파일을 선택하세요.');
     const text = await file.text();
     try {
-      const snapshot = file.name.toLowerCase().endsWith('.csv') ? parseExperimentCsv(text, { filename:file.name }) : parseExperimentJson(text);
-      await importSnapshot(snapshot);
+      const snapshot = file.name.toLowerCase().endsWith('.csv') ? await readCsv(text, { filename:file.name }) : parseExperimentJson(text);
+      if (snapshot) await importSnapshot(snapshot);
     } catch(error) {
       if (error.code !== 'CSV_MAPPING_REQUIRED') throw error;
       await mapCsv(text, file.name, error.headers);
+    }
+  }
+  async function readCsv(text, options) {
+    try { return parseExperimentCsv(text, options); }
+    catch (error) {
+      if (error.code !== 'CSV_TIME_CONFLICT') throw error;
+      let restored;
+      const accepted = await dialogs.restoreCsvTime(() => {
+        restored = parseExperimentCsv(text, {...options, restoreFromTimestamp:true});
+      });
+      return accepted ? restored : null;
     }
   }
   async function mapCsv(text, filename, headers) {
@@ -293,7 +304,8 @@ export function createController(root = document, { repository = null, deviceTra
       else if (role === 'ignore') mapping.ignoredHeaders.push(row.dataset.header);
       else mapping.columns.push({header:row.dataset.header,id:'column'+(index+1),name:name.value,unit:unit.value || null});
     }
-    await importSnapshot(parseExperimentCsv(text, {filename,mapping}));
+    const snapshot = await readCsv(text, {filename,mapping});
+    if (snapshot) await importSnapshot(snapshot);
   }
   async function exportFile(kind) {
     if (!store || !analysis.flush()) return;
@@ -405,9 +417,13 @@ export function createController(root = document, { repository = null, deviceTra
       item.disabled = busy || !!programmerState.busy || (!context && ['prepare','measure','analysis'].includes(item.dataset.view));
     }
     input('run-name').disabled = !!store || busy;
-    button('connect').disabled = recording || connected || connecting || busy || !canUseDevice() || (!mock && !transport.isSupported()) || !!programmerState.busy;
-    $('reconnect').hidden=!deviceState.canReconnect||connected||connecting;
-    button('reconnect').disabled=button('connect').disabled;
+    const connectionDisabled = recording || connected || connecting || busy || !canUseDevice() || (!mock && !transport.isSupported()) || !!programmerState.busy;
+    const reconnectHidden = !deviceState.canReconnect || connected || connecting;
+    button('connect').disabled = connectionDisabled;
+    for (const id of ['reconnect', 'measurement-reconnect']) {
+      button(id).hidden = reconnectHidden;
+      button(id).disabled = connectionDisabled;
+    }
     $('connect').textContent=deviceState.canReconnect?copy.common.chooseDevice:mock?copy.common.mockConnect:copy.common.connect;
     button('disconnect').disabled = (!connected && !connecting) || !!programmerState.busy;
     button('start-recording').disabled = !!store || busy || !readyToRecord() || !navigator.locks;
@@ -429,6 +445,7 @@ export function createController(root = document, { repository = null, deviceTra
     $('show-experiment-guide').hidden=!getGuideContent(context).experimentGuide;
     experimentGuide.setRecording(Boolean(recording));
     $('sample-count').textContent = saved ? formatCopy(copy.measurement.count, {count:saved.sampleCount.toLocaleString('ko-KR')}) : copy.measurement.previewNote;
+    $('sample-count').dataset.preview=String(!saved);
     $('lab-notice').textContent = saved?.temporary ? '이 환경에서는 브라우저에 저장할 수 없습니다. 분석 결과는 전체 실험 JSON으로 보관하세요.' : saved?.error ? saved.error + ' 메모리의 자료는 유지됩니다. 다시 저장하거나 전체 실험 JSON을 보관하세요.'
       : saved?.nearLimit ? '보관 한도에 가까워졌습니다. 전체 실험 JSON으로 보관하고 새 실험을 준비하세요.'
       : current?.problem ? current.problem : !navigator.locks ? '이 브라우저에서는 새 실험을 기록할 수 없습니다. 저장된 자료를 열어 분석할 수 있어요.'
@@ -462,7 +479,7 @@ export function createController(root = document, { repository = null, deviceTra
     if (button.disabled || busy || programmerState.busy) return;
     if (button.dataset.view === 'home') void act(()=>exitToHome()); else navigate(button.dataset.view);
   },{signal});
-  listen('connect',()=>connect()); listen('reconnect',()=>connect({reuseDevice:true})); $('disconnect').addEventListener('click',()=>disconnect().catch(showError),{signal}); listen('start-recording',start);
+  listen('connect',()=>connect()); listen('reconnect',()=>connect({reuseDevice:true})); listen('measurement-reconnect',()=>connect({reuseDevice:true})); $('disconnect').addEventListener('click',()=>disconnect().catch(showError),{signal}); listen('start-recording',start);
   listen('pause-recording',()=>session.pause()); listen('resume-recording',()=>{requireReady();session.resume();});
   listen('finish-recording',async()=>{await session.finish();await store.flush();});
   listen('additional-recording',async()=>{requireReady();await dialogs.additional(policy(),confirmation=>{requireReady();session.startAdditional(confirmation);});});

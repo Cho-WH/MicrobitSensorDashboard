@@ -4,6 +4,7 @@ import { findElement } from './dom.js';
 // Bind the static shell. The controller's signal owns these listeners' lifetime.
 // No markup, styles, experiment state or recording permissions are created here.
 export function bindAppShell(root, { signal }) {
+  bindFileButtonPlacement(root, signal);
   bindCompatibilityFit(findElement(root, 'header', '.lab-identity'), signal);
   bindDisclosureMenu(findElement(root, 'details', '.luminous-export'), { signal });
   const settings = findElement(root, 'button', '.luminous-settings');
@@ -14,6 +15,32 @@ export function bindAppShell(root, { signal }) {
   dialog.addEventListener('close', () => {
     if (!measure.hidden && settings.getClientRects().length) settings.focus({ preventScroll: true });
   }, { signal });
+}
+
+// Move the existing control so focus order follows the visible mobile header.
+function bindFileButtonPlacement(root, signal) {
+  const button = findElement(root, 'button', '#open-file');
+  const tools = findElement(root, 'div', '#file-tools');
+  const slot = findElement(root, 'div', '.mobile-file-slot');
+  const doc = button.ownerDocument;
+  const media = doc.defaultView.matchMedia('(max-width:760px)');
+  // CSS may hide the old parent and blur the button before matchMedia fires.
+  // Remember its focus until the user moves focus or points elsewhere.
+  let focused = doc.activeElement === button;
+  doc.addEventListener('focusin', event => { focused = event.target === button; }, { signal });
+  doc.addEventListener('pointerdown', event => {
+    if (!button.contains(/** @type {Node} */ (event.target))) focused = false;
+  }, { signal });
+  function place(mobile = media.matches) {
+    const target = mobile ? slot : tools;
+    if (button.parentElement === target) return;
+    if (mobile) slot.append(button);
+    else tools.prepend(button);
+    if (focused) button.focus({ preventScroll: true });
+  }
+  media.addEventListener('change', () => place(), { signal });
+  signal.addEventListener('abort', () => place(false), { once: true });
+  place();
 }
 
 // Only show the optional mark when the actual title, status and tools fit on

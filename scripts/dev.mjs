@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { entryRoutes } from '../src/app/routes.js';
 import { renderEntry } from './entry-pages.mjs';
 import { bundleStyles, styleEntry } from './styles.mjs';
-export function serve({ root = resolve(fileURLToPath(new URL('..', import.meta.url))), port = 8080 } = {}) {
+export function serve({ root = resolve(fileURLToPath(new URL('..', import.meta.url))), port = 8080, host = '127.0.0.1' } = {}) {
   const types = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.csv':'text/csv' };
   const server = createServer(async (req, res) => {
     try {
@@ -30,8 +30,8 @@ export function serve({ root = resolve(fileURLToPath(new URL('..', import.meta.u
       res.writeHead(200, { 'Content-Type': types[extname(target)] ?? 'application/octet-stream', 'Cache-Control':'no-store' }); res.end(content);
     } catch { res.writeHead(404); res.end('Not found'); }
   });
-  return new Promise(resolve => server.listen(port, '127.0.0.1', () => {
+  return new Promise(resolve => server.listen(port, host, () => {
     console.log(`http://localhost:${server.address().port}/${process.argv.includes('--browser-tests') ? 'tests/browser/' : 'lab.html'}`); resolve(server);
   }));
 }
-if (process.argv[1] === fileURLToPath(import.meta.url)) await serve({ port: Number(process.env.PORT ?? 8080) });
+if (process.argv[1] === fileURLToPath(import.meta.url)) await serve({ port: Number(process.env.PORT ?? 8080), host: process.env.LAB_HOST ?? '127.0.0.1' });

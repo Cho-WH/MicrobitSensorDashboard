@@ -38,6 +38,8 @@ npm run dev
 ```
 
 `npm run dev`의 기본 주소는 `http://localhost:8080/`입니다.
+같은 네트워크의 다른 기기에서도 접속하려면 PowerShell에서 `$env:LAB_HOST='0.0.0.0'`을 설정하고 실행한 뒤 `http://<PC의 내부 IP>:8080/lab.html`을 엽니다.
+내부 IP의 HTTP 접속은 화면 확인과 파일의 임시 분석에 사용할 수 있습니다. Bluetooth 측정·USB 설치는 HTTPS가 필요하며, Web Locks가 없는 환경에서는 영구 저장을 사용하지 않습니다.
 공통 CSS는 개발 서버와 빌드가 같은 함수로 결합합니다. 화면별 소스 CSS를 수정하면 다음 요청에 반영되며,
 `luminous.css`의 import 순서와 이미지·글꼴의 상대 주소를 보존합니다. 준비 A안은 개발 보관 경로만 사용합니다.
 작업 중에는 변경의 영향을 받는 검사만 실행합니다. 예를 들어 경로 처리를 수정하면
@@ -58,15 +60,15 @@ npx playwright install chromium
 npm run test:e2e -- --grep workspace
 ```
 
-`npm run test:e2e`는 초기 표시·준비·측정·분석·접근성·편집·저장·이동의 기존 11개 묶음과
-실제 페이지의 높이 조절·3D 실패 복구 검사를 실행합니다. 전체 브라우저 검사를 대신하지 않습니다.
+`npm run test:e2e`는 `/tests/browser/`의 전체 16개 검사 묶음과
+실제 페이지의 높이 조절·3D 실패 복구 검사를 독립 Chromium에서 실행합니다.
 검사마다 새 브라우저 환경과 별도 8081 서버를 사용하므로 열려 있는 앱의 실험 자료·장치 권한과 분리됩니다.
 실패하면 `test-results/`에 화면·네트워크·콘솔 추적을 남깁니다. `npx playwright show-trace <trace.zip>`으로 확인합니다.
 수동 검사 페이지는 유지하지만, 브라우저 제어 환경에서 iframe이 `about:blank`에 멈추면
 앱 준비 조건을 완화하지 말고 독립 검사와 비교합니다.
 
 커밋 직전에만 `npm run typecheck`, `npm test`, `npm run build`와
-`/tests/browser/`의 전체 브라우저 검사를 실행합니다.
+`npm run test:e2e`의 전체 브라우저 검사를 실행합니다. `/tests/browser/`에서도 같은 기본 검사 묶음을 수동 실행할 수 있습니다.
 정적 빌드 결과는 `dist/`에 생성됩니다. 자세한 검사 원칙은 [AGENTS.md](AGENTS.md)를 따릅니다.
 
 GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위 검사·빌드가 성공한 뒤

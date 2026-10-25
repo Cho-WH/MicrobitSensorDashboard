@@ -9,6 +9,7 @@ export function createTrendControls(root, { act, signal, prefix = '', onEnabled,
     render(model, writable) {
       const enabled = model?.regression?.enabled === true, fit = enabled ? model.regression.result : null;
       toggle.checked = enabled; toggle.disabled = !writable || !model;
+      extended.closest('label').hidden = !enabled;
       extended.checked = enabled && model?.view === 'extended'; extended.disabled = !writable || !enabled || fit?.xIntercept == null;
       extended.title = !enabled ? '추세선을 먼저 켜 주세요.' : fit?.xIntercept == null ? trendReasons[fit?.reason ?? fit?.xInterceptReason] ?? 'x절편을 계산할 수 없어요.' : '';
       const summary = trendSummary(model);

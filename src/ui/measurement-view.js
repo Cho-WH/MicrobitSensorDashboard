@@ -1,3 +1,4 @@
+import { bindDisclosureMenu } from './disclosure-menu.js';
 // D's channel selection and live cards, using the shared G chart adapter and RunStore.
 import { createChartView } from './chart-view.js';
 import { readCell } from '../domain/columns.js';
@@ -7,11 +8,14 @@ import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 import { readVisualTheme, channelColor, channelTextColor } from './visual-theme.js';
 import { createMeasurementEvents } from './measurement-events.js';
 import { createViewportLayout } from './viewport-layout.js';
+import { STANDARD_GRAVITY, isSIAcceleration } from '../domain/acceleration-units.js';
+import { timeOrigin } from '../analysis/scope.js';
 
 /** @param {ParentNode} root @param {()=>void} onChange @param {(event:any)=>void} [onEditNote] */
 export function createMeasurementView(root,onChange,onEditNote = null) {
-  const fields=findElement(root,'div','#display-channels'), range=findElement(root,'select','#live-range');
+  const fields=findElement(root,'div','#display-channels'), range=findElement(root,'details','#live-range');
   const cards=findElement(root,'div','#live-cards'), chartSummary=findElement(root,'p','#live-chart-summary');
+  const unitToggle=findElement(root,'button','#acceleration-unit-toggle');
   const reception=findElement(root,'p','#measurement-reception'), abort=new AbortController();
   createViewportLayout(findElement(root,'section','[data-screen="measure"]'), {
     regions:[findElement(root,'div','.luminous-graph')], signal:abort.signal,
@@ -23,12 +27,26 @@ export function createMeasurementView(root,onChange,onEditNote = null) {
   let copy = getLabCopy(null);
   let theme = null;
   let painted = null;
+  let inG = false;
   const eventView = root.querySelector('.luminous-overview') ? createMeasurementEvents(root.querySelector('#lab-events'), root.querySelector('.lab-chart'),onEditNote) : null;
-  range.addEventListener('change',onChange,{signal:abort.signal});
+  let rangeValue='recent';
+  bindDisclosureMenu(range,{signal:abort.signal});
+  range.addEventListener('click',event=>{
+    const button=event.target instanceof Element ? event.target.closest('[data-live-range]') : null;
+    if(!button)return;
+    rangeValue=button.getAttribute('data-live-range');onChange();
+  },{signal:abort.signal});
+  unitToggle.addEventListener('click',()=>{
+    inG=!inG;unitToggle.setAttribute('aria-pressed',String(inG));onChange();
+  },{signal:abort.signal});
+  const displayValue=(value,channel)=>inG&&channel.quantity==='acceleration' ? value/STANDARD_GRAVITY : value;
   function configure(next) {
     if(context===next)return;
     contentAbort.abort();contentAbort=new AbortController();
-    context=next;chart?.dispose();chart=null;chartKey='';runId=null;rows=[];events=[];eventCount=-1;range.value='recent';
+    context=next;chart?.dispose();chart=null;chartKey='';runId=null;rows=[];events=[];eventCount=-1;rangeValue='recent';
+    range.open=false;
+    inG=false;unitToggle.setAttribute('aria-pressed','false');
+    unitToggle.hidden=!next.channels.every(isSIAcceleration);
     copy = getLabCopy(next);
     theme = readVisualTheme(root,next.channels);
     applyLabCopy(root.querySelector('[data-screen="measure"]') ?? root, copy);
@@ -59,12 +77,16 @@ export function createMeasurementView(root,onChange,onEditNote = null) {
   return {
     render({context:next,store,latest,previewPoints,device,recording}) {
       configure(next);
+      unitToggle.textContent='m/s² | g';
+      unitToggle.setAttribute('aria-label',inG?'현재 g 단위, m/s²로 보기':'현재 m/s² 단위, g로 보기');
+      const displayChannels=inG?next.channels.map(channel=>({...channel,unit:'g',digits:3})):next.channels;
       const saved=store?.getState(), stored=Boolean(saved?.sampleCount), reading=latest??store?.getLatestSample();
-      for(const channel of next.channels){
+      for(const channel of displayChannels){
         const card=cards.querySelector(`[data-channel="${channel.id}"]`), value=card.querySelector('strong');
         const cell=reading?readCell(reading,channel.id):{value:null,reason:'값 없음'};
-        const text=cell.reason?'—':cell.value.toLocaleString('ko-KR',{maximumFractionDigits:channel.digits??2});
+        const text=cell.reason?'—':displayValue(cell.value,channel).toLocaleString('ko-KR',{maximumFractionDigits:channel.digits??2});
         if(value.textContent!==text)value.textContent=text;
+        setText(card.querySelector('small'),channel.unit??'');
       }
       const fresh=device.status==='connected'&&device.confirmed;
       reception.dataset.fresh=String(fresh);
@@ -76,25 +98,31 @@ export function createMeasurementView(root,onChange,onEditNote = null) {
       if(stored&&saved.lastSampleId!==(rows.at(-1)?.sampleId??0))rows.push(...store.readSamples({afterId:rows.at(-1)?.sampleId??0}));
       if(saved&&saved.eventsVersion!==eventCount){eventCount=saved.eventsVersion;events=store.getEvents(Number.MAX_SAFE_INTEGER);}
       const source=stored?rows:previewPoints, end=recording||!stored?Date.now():source.at(-1)?.receivedAt??Date.now();
-      const points=range.value==='all'?source:source.filter(point=>!Number.isFinite(point.receivedAt)||point.receivedAt>=end-60000);
-      const channels=next.channels.filter(channel=>selected.has(channel.id)), key=channels.map(channel=>channel.id).join('|');
+      const points=rangeValue==='all'?source:source.filter(point=>!Number.isFinite(point.receivedAt)||point.receivedAt>=end-60000);
+      const channels=displayChannels.filter(channel=>selected.has(channel.id)), key=channels.map(channel=>channel.id).join('|')+':'+inG;
       eventView?.render(events,next,saved?.writable===true);
-      if(chartKey!==key||!chart){chart?.dispose();chart=createChartView(findElement(root,'canvas','#live-chart'),{context:next,channels,legendToggle:false,theme,eventMarkers:!eventView,onLayout:()=>eventView?.layout(chart?.timeGeometry())});chartKey=key;painted=null;}
+      if(chartKey!==key||!chart){chart?.dispose();chart=createChartView(findElement(root,'canvas','#live-chart'),{context:next,channels,displayValue,legendToggle:false,theme,eventMarkers:!eventView,onLayout:()=>eventView?.layout(chart?.timeGeometry())});chartKey=key;painted=null;}
       // Frozen stored data need no redraw while fresh device readings still update
       // the cards. Recording/preview retain their moving time axis.
       const unchanged = stored && !recording && !painted?.recording && painted?.source===source && painted.count===source.length
-        && painted.last===source.at(-1) && painted.events===events && painted.range===range.value;
+        && painted.last===source.at(-1) && painted.events===events && painted.range===rangeValue;
       if(!unchanged){
-        chart.render(points,performance.now(),{range:range.value,events,origin:source[0]?.receivedAt,nowUtc:end});
-        painted={source,count:source.length,last:source.at(-1),events,range:range.value,recording};
+        const from=rangeValue==='all'?source[0]?.receivedAt:end-60000;
+        const bottomPadding=eventView?.hasVisibleMarkers(from,end)?48:0;
+        chart.render(points,performance.now(),{range:rangeValue,events,origin:timeOrigin(source,saved??{}),nowUtc:end,bottomPadding});
+        painted={source,count:source.length,last:source.at(-1),events,range:rangeValue,recording};
       }
       eventView?.layout(chart.timeGeometry());
-      chartSummary.textContent=formatCopy(copy.measurement.chartSummary,{range:range.value==='all'?copy.measurement.all:copy.measurement.recent,count:points.length.toLocaleString('ko-KR')});
-      range.querySelector('option[value="all"]').textContent=stored?copy.measurement.allRecords:copy.measurement.allPreview;
+      chartSummary.textContent=formatCopy(copy.measurement.chartSummary,{range:rangeValue==='all'?copy.measurement.all:copy.measurement.recent,count:points.length.toLocaleString('ko-KR')});
+      range.querySelector('[data-live-range="all"]').textContent=stored?copy.measurement.allRecords:copy.measurement.allPreview;
+      for(const button of range.querySelectorAll('[data-live-range]'))button.setAttribute('aria-pressed',String(button.getAttribute('data-live-range')===rangeValue));
+      setText(root.querySelector('#live-range-label'),range.querySelector('[data-live-range="'+rangeValue+'"]').textContent);
+      range.querySelector('summary').setAttribute('aria-label','그래프 표시 구간: '+root.querySelector('#live-range-label').textContent);
     },
     reset(){
       contentAbort.abort();chart?.dispose();chart=null;context=null;chartKey='';runId=null;
       rows=[];events=[];eventCount=-1;selected.clear();fields.replaceChildren();cards.replaceChildren();
+      inG=false;unitToggle.hidden=true;unitToggle.setAttribute('aria-pressed','false');
       chartSummary.textContent='';receptionState.textContent='';receptionTime.textContent='';
       eventView?.render([],null);eventView?.layout(null);
     },

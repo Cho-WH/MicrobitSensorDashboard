@@ -1,3 +1,4 @@
+import { createUuid } from '../domain/uuid.js';
 // Adapted from Cho-WH/bme280 59c5c149450f970bace2deaa183857c275595853,
 // gay-lussac/data/run-store.js. Pending queues, revision acknowledgements and locks retained.
 import { DATABASE, withEventNote, validateSample } from '../domain/contracts.js';
@@ -25,7 +26,7 @@ function checkSerializable(value, depth = 0) {
 /** @param {{repository?:any,id?:string,context?:any,source?:string,name?:string,create?:boolean,
  * importSnapshot?:any,locks?:any,timers?:any,now?:()=>number,saveDelay?:number,
  * onChange?:(state:any)=>void,temporary?:boolean}} options */
-export async function openRunStore({ repository, id = crypto.randomUUID(), context, source = 'device',
+export async function openRunStore({ repository, id = createUuid(), context, source = 'device',
   name, create = false, importSnapshot = null, locks = globalThis.navigator?.locks, timers = globalThis,
   now = () => Date.now(), saveDelay = 1000, onChange = (_state) => {}, temporary = false }) {
   if (temporary && !importSnapshot) throw fail('temporary-import-only', '임시 분석은 가져온 실험 파일에서만 시작할 수 있어요.');
@@ -91,6 +92,7 @@ export async function openRunStore({ repository, id = crypto.randomUUID(), conte
   const assertWriter = () => { if (!writable || closed || removing) throw fail('read-only', '이 실험은 읽기 전용입니다.'); };
   function getState() {
     return { id, name: run.name, source: run.source, writable: writable && !closed && !removing, temporary, runStatus: run.status,
+      timeOrigin: run.timeOrigin ?? null,
       status: saving ? 'saving' : error ? 'error' : dirty() ? 'pending' : 'clean',
       error: error?.message ?? '', errorCode: error?.code ?? '', sampleCount: samples.length, eventCount: events.length, eventsVersion,
       pendingSamples: lastSampleId - saved.sampleId,

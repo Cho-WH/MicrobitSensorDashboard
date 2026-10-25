@@ -53,6 +53,9 @@ export function createMeasurementEvents(list, plot, onEditNote = null) {
     item.append(content); return item;
   }
   return {
+    hasVisibleMarkers(from, to) {
+      return records.some(event => Number.isFinite(event.receivedAt) && event.receivedAt >= from && event.receivedAt <= to);
+    },
     render(events, context, canEdit = false) {
       if (lastEvents === events && lastContext === context && writable === canEdit) return;
       writable=canEdit;
@@ -99,7 +102,7 @@ export function createMeasurementEvents(list, plot, onEditNote = null) {
       }
       groups.forEach((group, index) => {
         const {button, line} = markers[index];
-        button.style.cssText = `left:${group.left}px;top:${Math.max(0, geometry.top - 48)}px;width:${width}px`;
+        button.style.cssText = `left:${group.left}px;top:${geometry.labelTop}px;width:${width}px`;
         line.style.cssText = `left:${group.items[0].x}px;top:${geometry.top}px;height:${geometry.height}px`;
       });
     },

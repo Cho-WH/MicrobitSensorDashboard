@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>센서 실험실 · 링크 대표 이미지</title>
+<link rel="stylesheet" href="../../../src/ui/tokens.css">
+<style>
+* { box-sizing:border-box; }
+html,body { margin:0; width:1200px; height:630px; overflow:hidden; }
+body { font-family:var(--sl-font); color:var(--sl-navy); background:radial-gradient(ellipse at 94% 84%,#b7d2ff80,transparent 58%),linear-gradient(135deg,#f7fbff,#dbe6ff); }
+.tagline { position:absolute; top:92px; left:64px; margin:0; font-size:27px; font-weight:550; color:var(--sl-muted); letter-spacing:-.6px; }
+.brand { position:absolute; top:220px; left:64px; display:flex; align-items:center; gap:22px; }
+.brand img { width:112px; height:112px; }
+.wordmark { display:block; margin-bottom:9px; color:var(--sl-muted); font-size:33px; line-height:1.2; font-weight:650; letter-spacing:-.025em; }
+h1 { margin:0; font-size:54px; line-height:1.2; font-weight:750; letter-spacing:-1.8px; white-space:nowrap; }
+.description { position:absolute; top:378px; left:64px; margin:0; font-size:23px; line-height:1.65; color:var(--sl-muted); letter-spacing:-.4px; }
+.features { position:absolute; left:64px; bottom:62px; margin:0; font-size:17px; font-weight:500; color:#607fae; letter-spacing:.3px; }
+.photo { position:absolute; margin:0; padding:9px; border:1px solid #fff; border-radius:15px; background:#f9fbff; box-shadow:0 18px 34px #264a8024,0 3px 8px #264a8012; }
+.photo figcaption { display:flex; align-items:center; gap:8px; padding:3px 4px 10px; font-size:13px; font-weight:650; color:#53657d; }
+.photo figcaption span { font-size:11px; color:#9a7152; font-weight:600; }
+.photo img { display:block; width:100%; height:auto; border-radius:8px; }
+.photo-prepare { left:558px; top:70px; width:365px; transform:rotate(-7deg); z-index:1; }
+.photo-measure { left:782px; top:130px; width:390px; transform:rotate(6deg); z-index:2; }
+.photo-analysis { left:625px; top:326px; width:410px; transform:rotate(-3deg); z-index:3; }
+.orbit { position:absolute; width:780px; height:270px; right:-190px; bottom:-88px; border:1px solid #ffffffd9; border-radius:50%; transform:rotate(-24deg); }
+</style>
+</head>
+<body>
+<div class="orbit" aria-hidden="true"></div>
+<p class="tagline">측정에서 발견까지.</p>
+<div class="brand"><img src="sensor-lab-primary.svg" alt="센서 실험실 아이콘"><div><span class="wordmark" lang="en">micro:bit</span><h1>센서 실험실</h1></div></div>
+<p class="description">센서로 측정하고, 그래프로 분석하며<br>실험 결과를 해석하는 과학 실험실</p>
+<p class="features">센서 측정&nbsp; / &nbsp;데이터 저장&nbsp; / &nbsp;그래프 분석</p>
+<figure class="photo photo-prepare"><figcaption><span>01</span> 장비 준비</figcaption><img src="preparation-ui.png" alt="실제 앱의 장비 준비 화면"></figure>
+<figure class="photo photo-measure"><figcaption><span>02</span> 측정·기록</figcaption><img src="measurement-ui.png" alt="모의 측정 데이터로 표시한 앱의 측정값과 시간 변화 그래프"></figure>
+<figure class="photo photo-analysis"><figcaption><span>03</span> 자료 분석</figcaption><img src="analysis-ui.png" alt="모의 측정 데이터로 표시한 온도·기압 관계 그래프와 추세선 분석"></figure>
+</body>
+</html>

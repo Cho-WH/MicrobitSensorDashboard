@@ -39,7 +39,7 @@ export function validateGraph(graph, calculated = [], imported = [], context = u
   if (graph == null) return null;
   const ids = new Set(graphColumns(calculated, imported, context).map(c => c.id));
   if (!ids.has(graph.xColumnId) || !ids.has(graph.yColumnId) || ['receivedAt','sampleId'].includes(graph.yColumnId)) throw new Error('그래프에 사용할 X축과 Y축을 선택하세요.');
-  if (!['scatter', 'line'].includes(graph.type) || (graph.type === 'line' && graph.xColumnId !== 'receivedAt')) throw new Error('꺾은선 그래프는 가로축이 수신 시각일 때 사용할 수 있어요.');
+  if (!['scatter', 'line'].includes(graph.type) || (graph.type === 'line' && graph.xColumnId !== 'receivedAt')) throw new Error('꺾은선 그래프는 가로축이 경과 시간일 때 사용할 수 있어요.');
   const right = graph.right;
   if (right != null && (typeof right !== 'object' || Array.isArray(right) || !ids.has(right.yColumnId)
     || ['receivedAt','sampleId',graph.yColumnId].includes(right.yColumnId) || right.right != null

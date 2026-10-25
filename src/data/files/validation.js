@@ -85,6 +85,7 @@ export function validateExperimentSnapshot(input) {
     && ['open', 'paused', 'complete', 'interrupted'].includes(run.status)
     && ['device', 'replay', 'import'].includes(run.source) && object(run.context), '실험 정보·버전을 확인하세요.');
   const context = run.context, channels = validateChannels(context.channels);
+  if (run.timeOrigin != null) requireValue(Number.isSafeInteger(run.timeOrigin) && date(run.timeOrigin), '경과 시간의 기준 시각을 확인하세요.');
   requireValue(object(context.sensor) && string(context.sensor.id) && integer(context.sensor.version)
     && context.sensor.version > 0 && (context.activity == null || (object(context.activity)
       && string(context.activity.id) && integer(context.activity.version) && context.activity.version > 0)), '센서·활동 정보를 확인하세요.');

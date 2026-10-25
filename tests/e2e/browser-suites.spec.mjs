@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 // Preserve the existing assertions while separating browser execution from an
 // interactive extension session. Each suite receives a fresh BrowserContext.
-const suites = ['startup', 'guide', 'preparation', 'luminous', 'workspace', 'accessibility',
-  'ui', 'app', 'records', 'measurement', 'navigation'];
+const suites = ['startup', 'copy', 'storage', 'files', 'guide', 'preparation', 'luminous',
+  'workspace', 'accessibility', 'ui', 'app', 'records', 'measurement', 'navigation', 'layout', 'devices'];
 for (const suite of suites) {
   test(`browser suite: ${suite}`, async ({ page }, testInfo) => {
     try {

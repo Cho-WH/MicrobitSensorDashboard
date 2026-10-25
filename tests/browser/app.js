@@ -129,6 +129,7 @@ export async function runAppTests(report=()=>{}) {
     await click('#display-channels input[value="magneticX"]');await click('#display-channels input[value="magneticStrength"]');
     check(visible().join(',')==='magneticX','표시 채널 선택을 바꾸지 못했습니다.');
     await click('#disconnect');check($('#connect').disabled,'기록 중 재연결이 새 보정을 시작할 수 있습니다.');
+    check($('#reconnect').disabled&&$('#measurement-reconnect').disabled,'재연결 진입 위치에 따라 기록 중 연결 제한이 달라졌습니다.');
     await click('#pause-recording');await click('#prepare-device');
     await step('connection');await click('[data-guide-action="reconnect"]');
     check($('[data-guide-step="calibration"]').dataset.complete==='false','재연결에서 이전 보정 근거가 복원됐습니다.');
@@ -149,7 +150,7 @@ export async function runAppTests(report=()=>{}) {
     for(const [sensorId,channelIds,unit] of [
       ['temperature',['temperatureC'],'℃'],
       ['light-level',['lightLevel'],'상대값'],
-      ['accelerometer',['accelerationX','accelerationY','accelerationZ','accelerationStrength'],'mg'],
+      ['accelerometer',['accelerationX','accelerationY','accelerationZ','accelerationStrength'],'m/s²'],
     ]) {
       await click('[data-view="home"]');await select('sensors/'+sensorId);
       check(composeGuideSteps(app.getState().context).map(item=>item.id).join(',')==='equipment,program,connection,reception',sensorId+': 불필요한 USB 확인·배선·보정 안내');
@@ -169,7 +170,7 @@ export async function runAppTests(report=()=>{}) {
       check(csv.samples.length===snapshot.samples.length&&csv.samples.every((sample,index)=>JSON.stringify(sample.values)===JSON.stringify(snapshot.samples[index].values)),sensorId+': CSV 값 손실');
       check([json,csv].every(data=>data.run.context.channels.every(channel=>channel.unit===unit)),sensorId+': 파일 단위 변경');
       await click('[data-view="analysis"]');
-      check($('#analysis-message').textContent.includes('자료 '+snapshot.samples.length+'개'),sensorId+': 저장 자료 분석 실패');
+      check($('#scope-count').textContent.includes(snapshot.samples.length+'개'),sensorId+': 저장 자료 분석 실패');
       report(`내장 센서 통합 · ${sensorId} 준비·기록·DB 저장, ${channelIds.length}채널 JSON/CSV·단위·분석`);
     }
 

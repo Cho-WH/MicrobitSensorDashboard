@@ -219,7 +219,7 @@ test('invalid axes, read-only graph edits and graph save failures leave state an
   const f = fixture(), w = f.workspace, before = w.getState();
   const graph = { xColumnId: 'temperatureC', yColumnId: 'pressureHpa', type: 'scatter' };
   assert.throws(() => w.setGraph({ ...graph, xColumnId: 'missing' }), /X축/);
-  assert.throws(() => w.setGraph({ ...graph, type: 'line' }), /가로축이 수신 시각/);
+  assert.throws(() => w.setGraph({ ...graph, type: 'line' }), /가로축이 경과 시간/);
   assert.deepEqual(w.getState(), before);
   const reader = fixture({ snapshot: f.store.getSnapshot(), writable: false }).workspace;
   assert.throws(() => reader.setGraph(graph), /읽기 전용/);
@@ -586,6 +586,36 @@ test('legacy segment filters and sorting are ignored without losing other filter
   assert.equal(JSON.stringify(saved.table).includes('segment'), false);
   assert.deepEqual(saved.appliedIds, snapshot.workspace.appliedIds);
   assert.deepEqual(restored.store.getSnapshot().samples, snapshot.samples);
+});
+
+test('elapsed axis and both regressions keep the run origin across scope, exclusions, evidence and reopening', () => {
+  const f = fixture(), w = f.workspace, original = f.store.getSnapshot().samples;
+  const origin = original[0].receivedAt;
+  w.setGraph({ xColumnId: 'receivedAt', yColumnId: 'temperatureC', type: 'line' });
+  w.applyTimeRange({ startAt: original[10].receivedAt, endAt: original[20].receivedAt });
+  w.exclude([11]); w.setTrendEnabled(true);
+  w.setRightAxis({ yColumnId: 'pressureHpa', trendEnabled: true, view: 'measured' });
+  const model = w.getGraphData();
+  for (const series of [model, model.right]) {
+    assert.equal(series.timeOrigin, origin);
+    assert.equal(series.regression.timeOrigin, origin);
+    assert.equal(series.xLabel, '경과 시간');
+    assert.equal(series.points[0].x, original[11].receivedAt);
+  }
+  assert.ok(Math.abs(model.regression.result.intercept - 20.1) < 1e-10);
+  w.captureReflection();
+  const evidence = w.getReflectionModel();
+  for (const [captured, current] of [[evidence, model], [evidence.right, model.right]]) {
+    assert.equal(captured.timeOrigin, current.timeOrigin);
+    assert.equal(captured.regression.timeOrigin, current.regression.timeOrigin);
+    assert.deepEqual(captured.regression.result, current.regression.result);
+    assert.deepEqual(captured.points, current.points);
+    assert.deepEqual(captured.trend, current.trend);
+  }
+  const reopened = fixture({ snapshot: f.store.getSnapshot() }).workspace;
+  assert.deepEqual(reopened.getReflectionModel(), evidence);
+  assert.deepEqual(reopened.getGraphData(), model);
+  assert.deepEqual(f.store.getSnapshot().samples, original);
 });
 
 test('clock-only filters match the table time across dates, retain milliseconds and support midnight', async () => {

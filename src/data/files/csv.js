@@ -1,6 +1,7 @@
+import { createUuid } from '../../domain/uuid.js';
 // CSV schema checks and typed cells adapted from the original Gay-Lussac file adapters.
 import { createCalculator, columnLabel } from '../../analysis/calculations.js';
-import { scopeMembership } from '../../analysis/scope.js';
+import { scopeMembership, timeOrigin } from '../../analysis/scope.js';
 import { LIMITS } from '../../domain/limits.js';
 import { validateExperimentSnapshot, checkFileSize, object } from './validation.js';
 import { parseLegacyCsv } from './legacy-csv.js';
@@ -39,7 +40,8 @@ export function analysisExportInfo(snapshot) {
 
 function exportCsv(snapshot, rows, calculated = []) {
   const channels = snapshot.run.context.channels, imported = snapshot.run.importedColumns ?? [];
-  const fields = ['sample_id', 'timestamp', ...channels.flatMap(c => [c.id, c.id + ':validity', c.id + ':meta'])];
+  const origin = timeOrigin(snapshot.samples, snapshot.run);
+  const fields = ['sample_id', 'timestamp', 'elapsed_seconds', ...channels.flatMap(c => [c.id, c.id + ':validity', c.id + ':meta'])];
   const extras = [...imported, ...calculated];
   if (channels.length + extras.length > LIMITS.maxChannels)
     fail('다시 가져올 수 있도록 숫자 열을 16개 이하로 선택하세요. 모든 계산식은 전체 실험 JSON으로 보관할 수 있어요.');
@@ -50,6 +52,7 @@ function exportCsv(snapshot, rows, calculated = []) {
   const data = rows.map(s => {
     const values = { ...s.importedValues, ...calculate(s) };
     return [s.sampleId, s.receivedAt === null ? '' : new Date(s.receivedAt).toISOString(),
+      s.receivedAt === null ? '' : (s.receivedAt - origin) / 1000,
       ...channels.flatMap(c => [s.values[c.id], s.validity[c.id], JSON.stringify({ name: c.name, unit: c.unit ?? null })]),
       ...extras.flatMap(c => { const r = values[c.id]; return [r.value, r.reason ? 'invalid' : 'valid', r.reason ?? '', JSON.stringify({ name: c.name, unit: c.unit ?? null })]; }),
       ...(sourceIds ? [s.sourceSampleId ?? s.sampleId] : [])];
@@ -88,7 +91,7 @@ function readMeta(get, row, key, label) {
 }
 
 /** Unknown CSVs require an explicit confirmed mapping; timestamp:null keeps absent times as null. */
-export function parseExperimentCsv(text, { filename = '가져온 자료.csv', id = crypto.randomUUID(), now = Date.now(), mapping = null } = {}) {
+export function parseExperimentCsv(text, { filename = '가져온 자료.csv', id = createUuid(), now = Date.now(), mapping = null, restoreFromTimestamp = false } = {}) {
   const { headers, rows, get } = parseRows(text);
   const legacyCore = ['timestamp', 'temperature_c', 'pressure_hpa'].every(h => headers.includes(h));
   const legacySchema = legacyCore && (headers.includes('humidity_pct')
@@ -101,13 +104,15 @@ export function parseExperimentCsv(text, { filename = '가져온 자료.csv', id
     }
   }
   const dashboard = headers.length === 5 && ['timestamp', 'x', 'y', 'z', 'strength'].every(h => headers.includes(h));
+  const hasElapsed = headers.includes('elapsed_seconds');
   let descriptors = [], timeHeader = 'timestamp', idHeader = headers.includes('sample_id') ? 'sample_id' : null;
-  const known = new Set(['timestamp', 'sample_id', 'source_sample_id']);
+  const known = new Set(['timestamp', 'sample_id', 'source_sample_id', 'elapsed_seconds']);
   if (mapping) {
     if (mapping.confirmed !== true || !Array.isArray(mapping.columns) || (mapping.timestamp !== null && !headers.includes(mapping.timestamp)))
       fail('시간 열과 숫자 열의 대응을 확인하세요.', null, 'CSV_MAPPING_REQUIRED', { headers });
     timeHeader = mapping.timestamp; idHeader = mapping.sampleId ?? null;
     known.clear(); known.add(timeHeader); if (idHeader) known.add(idHeader);
+    if (hasElapsed) known.add('elapsed_seconds');
     if (idHeader && !headers.includes(idHeader)) fail('자료 번호 열을 확인하세요.');
     descriptors = mapping.columns.map(c => {
       if (!headers.includes(c.header)) fail('대응할 열을 찾지 못했어요.');
@@ -136,14 +141,28 @@ export function parseExperimentCsv(text, { filename = '가져온 자료.csv', id
   const unknown = headers.filter(h => !known.has(h));
   if (!descriptors.length || (timeHeader !== null && !headers.includes(timeHeader)) || unknown.length)
     fail('열의 뜻과 단위를 확인한 뒤 가져오세요.', null, 'CSV_MAPPING_REQUIRED', { headers, unknownHeaders: unknown });
+  if (!mapping && !dashboard && !hasElapsed) fail('경과 시간 열(elapsed_seconds)이 없습니다. 앱에서 CSV를 다시 저장해 주세요.');
   if (descriptors.length > LIMITS.maxChannels || new Set(descriptors.map(d => d.id)).size !== descriptors.length)
     fail('숫자 열은 중복 없이 16개 이하여야 합니다.');
   const channelDefinitions = descriptors.filter(d => !d.imported).map(d => ({ id: d.id, name: d.name, unit: d.unit ?? null,
     quantity: 'imported', supported: true, calculable: true, graphable: true, digits: 3 }));
   const imported = descriptors.filter(d => d.imported).map(({ id: key, name, unit }) => ({ id: key, name, unit }));
   const seenIds = new Set();
+  let origin = null, conflictRow = null;
   const samples = rows.map((row, i) => {
     const ordinal = i + 1, sample = { runId: id, sampleId: ordinal, receivedAt: timeHeader === null ? null : timestamp(get(row, timeHeader), ordinal), values: {}, validity: {} };
+    if (hasElapsed && !restoreFromTimestamp) {
+      const elapsed = number(get(row, 'elapsed_seconds'), '경과 시간', ordinal);
+      if ((elapsed === null) !== (sample.receivedAt === null)) fail('수신 시각과 경과 시간을 함께 입력하거나 함께 비워 주세요.', ordinal);
+      if (elapsed !== null) {
+        const ms = Math.round(elapsed * 1000), candidate = sample.receivedAt - ms;
+        if (!Number.isSafeInteger(ms) || Math.abs(elapsed * 1000 - ms) > 1e-6
+          || !Number.isSafeInteger(candidate) || Math.abs(candidate) > 8640000000000000)
+          fail('경과 시간은 밀리초까지의 유효한 초 단위 숫자여야 합니다.', ordinal);
+        if (origin !== null && origin !== candidate) conflictRow ??= ordinal;
+        origin ??= candidate;
+      }
+    }
     if (idHeader) {
       const source = number(get(row, idHeader), idHeader, ordinal, false);
       if (!Number.isSafeInteger(source) || source <= 0 || seenIds.has(source)) fail('자료 번호는 중복 없는 양의 정수여야 합니다.', ordinal);
@@ -173,13 +192,17 @@ export function parseExperimentCsv(text, { filename = '가져온 자료.csv', id
     }
     return sample;
   });
+  if (restoreFromTimestamp) origin = timeOrigin(samples);
   const missingTimestamps = samples.some(s => s.receivedAt === null);
   const context = { sensor: { id: 'csv-import', version: 1, name: dashboard ? '기존 자기장 자료' : 'CSV 자료' }, activity: null,
     channels: channelDefinitions, firmware: null, classConfig: null, setup: {}, analysisTemplates: [],
     defaultGraph: { xColumnId: missingTimestamps ? 'sampleId' : 'receivedAt', yColumnId: channelDefinitions[0]?.id, type: missingTimestamps ? 'scatter' : 'line', connectGaps: false, view: 'measured' } };
-  return validateExperimentSnapshot({ run: { id, schemaVersion: 1, runRevision: 1,
+  const snapshot = validateExperimentSnapshot({ run: { id, schemaVersion: 1, runRevision: 1,
     name: filename.replace(/\.csv$/i, '').slice(0, 100) || '가져온 CSV 자료', createdAt: now, updatedAt: now,
-    status: 'complete', source: 'import', context, importedColumns: imported,
-    csvImport: { filename, format: dashboard ? 'microbit-dashboard-csv' : mapping ? 'mapped-csv' : 'microbit-sensor-lab-csv', missingTimestamps },
+    status: 'complete', source: 'import', context, importedColumns: imported, ...(hasElapsed ? {timeOrigin: origin} : {}),
+    csvImport: { filename, format: dashboard ? 'microbit-dashboard-csv' : mapping ? 'mapped-csv' : 'microbit-sensor-lab-csv', missingTimestamps,
+      ...(restoreFromTimestamp ? {timeRestoredFromTimestamp:true} : {}) },
     lastSavedSampleId: samples.length, lastSavedEventId: 0 }, samples, events: [], workspace: null });
+  if (conflictRow !== null) fail('수신 시각과 경과 시간의 기준이 다른 행과 일치하지 않습니다.', conflictRow, 'CSV_TIME_CONFLICT');
+  return snapshot;
 }

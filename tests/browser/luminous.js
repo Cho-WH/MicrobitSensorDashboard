@@ -110,6 +110,12 @@ export async function runLuminousTests(report=()=>{}) {
         check(doc.documentElement.scrollWidth<=width+1,`${sensor} ${width}px 페이지가 가로로 넘칩니다.`);
         stableText(doc,'.lab-card strong','.lab-card,.lab-chart',['—','0',sensor==='magnetometer'?'-1,000.1':sensor==='light-level'?'255':'1,000.01'],`${sensor} ${width}px 측정값`,{noScroll:true});
         const chart=()=>win.Chart.getChart($('#live-chart'));
+        const canvasBox=$('#live-chart').getBoundingClientRect();
+        for(const marker of doc.querySelectorAll('.measurement-event-marker button')) {
+          const box=marker.getBoundingClientRect();
+          check(box.top>=canvasBox.top+chart().scales.x.bottom && box.bottom<=canvasBox.bottom+1,
+            `${width}px 사건 표찰이 시간축과 겹치거나 그래프 영역 밖에서 잘립니다.`);
+        }
         const colors=chart().data.datasets.filter(item=>item.yAxisID&&item.type!=='scatter').map(item=>item.borderColor);
         const checked=[...doc.querySelectorAll('#display-channels input:checked')];
         const cardColors=checked.map(input=>doc.querySelector(`.lab-card[data-channel="${input.value}"]`).style.getPropertyValue('--channel-color'));
@@ -139,11 +145,11 @@ export async function runLuminousTests(report=()=>{}) {
           const eventLine=()=>parseFloat($('.measurement-event-marker i').style.left);
           const expectedRecent=chart().scales.x.getPixelForValue(-36);
           check(Math.abs(eventLine()-expectedRecent)<1,'최근 구간의 사건 표찰이 저장 시각과 다른 위치에 있습니다.');
-          $('#live-range').value='all';$('#live-range').dispatchEvent(new win.Event('change'));await settle();
+          $('#live-range summary').click();$('[data-live-range="all"]').click();await settle();
           const firstPoint=chart().data.datasets[0].data.find(point=>point.sampleId);
           const expectedAll=chart().scales.x.getPixelForValue(firstPoint.x+23.9);
           check(Math.abs(eventLine()-expectedAll)<1,'전체 기록의 사건 표찰이 첫 수신 기준과 다릅니다.');
-          $('#live-range').value='recent';$('#live-range').dispatchEvent(new win.Event('change'));await settle();
+          $('#live-range summary').click();$('[data-live-range="recent"]').click();await settle();
           report('새 화면 · 저장 메뉴 키보드 조작·동시 사건 묶기·긴 메모 상세·시스템 이력과 원자료 보존');
           $('#pause-recording').focus();$('#pause-recording').click();
           await until(()=>doc.activeElement===$('#resume-recording'),'일시정지 뒤 키보드 초점이 재개로 이어지지 않습니다.');
