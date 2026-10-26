@@ -1,4 +1,5 @@
 # The build verifies the exact frozen native runtime bytes.
 runtime-cache/*.hex -text
+runtime-cache-pairing/*.hex -text
 targets.json text eol=lf
 pxt-template.json text eol=lf

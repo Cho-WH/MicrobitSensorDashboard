@@ -83,7 +83,7 @@ GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위
 - [센서·활동 모듈 등록](src/catalog/README.md)
 - [공통 장치 3D 자산](public/assets/devices/README.md) · [장치 자산 확인 페이지](public/viewers/devices/index.html)
 - [펌웨어 빌드·프로토콜](dev/firmware/README.md)
-- [센서 프로그램 설치 개선 조사](docs/sensor-program-installation-roadmap.md) (M6 외부 설치 경로 · 앱 내부 무선 설치는 별도 검토)
+- [센서 프로그램 설치 개선 설계](docs/sensor-program-installation-roadmap.md) (M6 Bluetooth 부분 교체 · 개발 시험 중, 제품 미통합)
 - [저장·파일 계약](docs/unified-sensor-lab-architecture.md#8-저장복원파일) · [구현·검증 이력](docs/history/README.md)
 
 ## 라이선스와 출처

@@ -38,6 +38,23 @@
       "source": "firmware/examples/accelerometer.js",
       "protocol": { "codecId": "accelerometer-csv-v1", "startCommand": "start", "sampleIntervalMs": 100 }
     },
+    "bmp280": {
+      "id": "bmp280-uart",
+      "version": 2,
+      "name": "sensor-lab-bmp280-v2",
+      "description": "Build-only BMP280 compensation and coherent sampling candidate",
+      "source": "firmware/examples/bmp280.js",
+      "additionalSources": { "bmp280-driver.ts": "firmware/drivers/bmp280.ts" },
+      "protocol": { "codecId": "bmp280-csv-v1", "startCommand": "bme", "sampleIntervalMs": 100 }
+    },
+    "analog-raw": {
+      "id": "analog-raw-uart",
+      "version": 1,
+      "name": "sensor-lab-analog-raw-v1",
+      "description": "Build-only three-channel P0 P1 P2 raw ADC foundation",
+      "source": "firmware/examples/analog-raw.js",
+      "protocol": { "codecId": "analog-raw-csv-v1", "startCommand": "start", "sampleIntervalMs": 100 }
+    },
     "temperature-light": {
       "id": "temperature-light-uart",
       "version": 1,

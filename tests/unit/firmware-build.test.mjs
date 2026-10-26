@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { createPairingTrial } from '../../dev/firmware/pairing-trial.mjs';
 import { hash, inside, readJson, normalizeText, parseArgs, createPlans, prepareToolchain, buildCandidate } from '../../dev/firmware/build-support.mjs';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
@@ -41,6 +42,47 @@ test('bad build identities, output collisions, source traversal and remote depen
   const duplicate = structuredClone(config); duplicate.targets.temperature.id = duplicate.targets.magnetometer.id; duplicate.targets.temperature.version=duplicate.targets.magnetometer.version;
   assert.throws(() => createPlans(duplicate, template, repository), /Duplicate/);
   assert.throws(() => createPlans(config, { ...template, dependencies: { core: '*', remote: 'github:some/package' } }, repository), /bundled/);
+  for (const files of [{ 'main.ts': 'firmware/drivers/bmp280.ts' }, { '../driver.ts': 'firmware/drivers/bmp280.ts' }, { 'driver.ts': '../outside.ts' }, { 'driver.cpp': 'firmware/drivers/bmp280.ts' }]) {
+    const next = structuredClone(config); next.targets.bmp280.additionalSources = files;
+    assert.throws(() => createPlans(next, template, repository));
+  }
+});
+
+test('pairing trial changes only the mode setting and isolates outputs from the baseline', () => {
+  const original = JSON.stringify(template);
+  const baseline = createPlans(config, template, repository).get('temperature');
+  const trial = createPairingTrial(config, template, repository);
+  const modified = JSON.parse(trial.config);
+  assert.equal(modified.yotta.config['microbit-dal'].bluetooth.pairing_mode, 1);
+  modified.yotta.config['microbit-dal'].bluetooth.pairing_mode = 0;
+  assert.deepEqual(modified, JSON.parse(baseline.config));
+  assert.equal(JSON.stringify(template), original);
+  assert.equal(trial.sourcePath, baseline.sourcePath);
+  assert.deepEqual(trial.protocol, baseline.protocol);
+  assert.notEqual(trial.key, baseline.key);
+  assert.notEqual(trial.artifact, baseline.artifact);
+  for (const target of ['accelerometer', 'magnetometer', 'bmp280', 'analog-raw', 'temperature-light']) {
+    const candidate = createPairingTrial(config, template, repository, target);
+    assert.equal(JSON.parse(candidate.config).yotta.config['microbit-dal'].bluetooth.open, 1);
+  }
+  assert.throws(() => createPairingTrial(config, template, repository, 'unknown'), /Unknown/);
+});
+
+test('additional local source is embedded, hashed and included in the standalone download; a mismatch preserves the candidate', async t => {
+  const root = await fixture(t), input = join(root, 'firmware/examples'), drivers = join(root, 'firmware/drivers');
+  await mkdir(input, { recursive: true }); await mkdir(drivers, { recursive: true });
+  const main = 'readSensor()\n', driver = 'function readSensor() {}\n', hex = ':00000001FF\n';
+  await writeFile(join(input, 'bmp280.js'), main); await writeFile(join(drivers, 'bmp280.ts'), driver);
+  const plan = createPlans(config, template, root).get('bmp280');
+  const options = { root, toolchain: config.toolchain, runtime: { files: [] }, readV2: async () => hex,
+    compile: async project => { await mkdir(join(project,'built'), { recursive: true }); await writeFile(join(project,'built/binary.hex'),hex); },
+    unpack: async () => ({ source: JSON.stringify({ 'main.ts': main, 'bmp280-driver.ts': driver, 'pxt.json': plan.config }) }) };
+  const { output, record } = await buildCandidate(plan, options), download = await readFile(join(output, `${plan.artifact}.ts`), 'utf8');
+  assert.equal(record.sourceFiles[0].sha256, hash(driver)); assert.equal(record.downloadSourceSha256, hash(download));
+  assert.ok(download.indexOf(driver) < download.indexOf(main));
+  await buildCandidate(plan, { ...options, pinned: { artifact: { id: plan.id, version: plan.version, ...plan.protocol, sha256: hash(hex) }, hex, source: download } });
+  await assert.rejects(buildCandidate(plan, { ...options, unpack: async () => ({ source: JSON.stringify({ 'main.ts': main, 'bmp280-driver.ts': 'stale', 'pxt.json': plan.config }) }) }), /source mismatch/);
+  assert.equal(await readFile(join(output, `${plan.artifact}.ts`), 'utf8'), download);
 });
 
 test('native provider returns only hash-verified frozen compile keys, never unrelated cached images', async t => {

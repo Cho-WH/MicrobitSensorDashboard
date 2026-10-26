@@ -60,8 +60,9 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     // Deliberately no await before the chooser: the caller's click remains the activation boundary.
     return bluetooth.requestDevice({ filters: deviceFilters, optionalServices: [UART_SERVICE] });
   }
-  async function connect(selectedDevice) {
+  async function connect(selectedDevice, { reuseConnection = false } = {}) {
     checkAvailable();
+    if (reuseConnection && device) throw new Error('이전 측정 연결의 제어권을 먼저 정리하세요.');
     if (device) await disconnect();
     const token = ++epoch;
     device = selectedDevice; framer.reset();
@@ -72,7 +73,8 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
       ++epoch; clearReferences(); disconnectListener?.();
     };
     device.addEventListener('gattserverdisconnected', gattListener);
-    const server = await device.gatt?.connect(); assertCurrent();
+    if (reuseConnection && !device.gatt?.connected) throw new DOMException('넘겨받을 GATT 연결이 끊겼습니다.', 'NetworkError');
+    const server = reuseConnection ? device.gatt : await device.gatt?.connect(); assertCurrent();
     if (!server) throw new Error('장치의 Bluetooth 서비스에 연결하지 못했습니다.');
     service = await server.getPrimaryService(UART_SERVICE); assertCurrent();
     const characteristics = await service.getCharacteristics(); assertCurrent();
@@ -114,12 +116,21 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     else throw new Error('장치에 시작 명령을 보낼 수 없습니다.');
   }
   async function disconnect() {
-    const previousDevice = device, previousNotifier = notifier;
+    const previousDevice = device;
     ++epoch; clearReferences();
-    try { await previousNotifier?.stopNotifications(); } catch { /* A disconnected device has no active subscription to stop. */ }
+    // Disconnect ends subscriptions too. Never defer this across another owner's connect.
     if (previousDevice?.gatt?.connected) previousDevice.gatt.disconnect();
   }
-  return { requestDevice, connect, startNotifications, sendStartCommand, disconnect, isSupported, getSupport,
+  async function releaseConnection() {
+    const previousDevice = device, previousNotifier = notifier, token = ++epoch;
+    clearReferences();
+    // The caller must await subscription cleanup before giving the GATT to its next owner.
+    await previousNotifier?.stopNotifications();
+    if (token !== epoch || !previousDevice?.gatt?.connected)
+      throw new DOMException('측정 연결의 제어권을 넘기기 전에 연결이 끝났습니다.', 'AbortError');
+    return previousDevice;
+  }
+  return { requestDevice, connect, startNotifications, sendStartCommand, disconnect, releaseConnection, isSupported, getSupport,
     setDisconnectedListener(listener) { disconnectListener = listener; },
     getContext: () => ({ device, service, txCharacteristic: writer, rxCharacteristic: notifier }),
   };

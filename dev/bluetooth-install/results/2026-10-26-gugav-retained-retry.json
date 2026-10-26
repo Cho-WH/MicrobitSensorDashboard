@@ -1,0 +1,1075 @@
+{
+  "format": "sensor-lab-retained-reconnect-retry-v1",
+  "environment": {
+    "url": "http://localhost:8080/dev/bluetooth-install/",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "secure": true,
+    "bluetooth": "supported",
+    "connectionHandoff": "same-gatt-v1",
+    "connectionTimingTrial": "disconnect-event",
+    "transferDisconnectTrial": 1,
+    "independentConnectionTrace": 1,
+    "retainSuccessfulTrialConnection": 1,
+    "reconnectReadRetry": 1
+  },
+  "initialCondition": "Initial selected board was mode 0 with temperature identity; first quick run starts by flashing from installation mode.",
+  "first": {
+    "status": "passed",
+    "plan": "quick",
+    "device": {
+      "id": "KTkRh2zE8GLoKePtgDbKDQ==",
+      "name": "BBC micro:bit [gugav]"
+    },
+    "startedAt": "2026-10-26T14:30:33.857Z",
+    "steps": [
+      {
+        "id": "light-level",
+        "status": "passed",
+        "programHash": "6300a600dd008a00",
+        "sha256": "61f012e38501bc3a43b587f94ce5cd3315ea72e193dd4fb8f05ee58a7123f1f7",
+        "samples": [
+          {
+            "raw": "0",
+            "values": {
+              "lightLevel": 0
+            }
+          },
+          {
+            "raw": "0",
+            "values": {
+              "lightLevel": 0
+            }
+          },
+          {
+            "raw": "0",
+            "values": {
+              "lightLevel": 0
+            }
+          }
+        ],
+        "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+      },
+      {
+        "id": "temperature",
+        "status": "passed",
+        "programHash": "570021009100fc00",
+        "sha256": "3dfab7aa1391eb562d4b3adc9a0d5df218c372a1dfc8788deda9e662e7c1a2ae",
+        "samples": [
+          {
+            "raw": "27",
+            "values": {
+              "temperatureC": 27
+            }
+          },
+          {
+            "raw": "27",
+            "values": {
+              "temperatureC": 27
+            }
+          },
+          {
+            "raw": "27",
+            "values": {
+              "temperatureC": 27
+            }
+          }
+        ],
+        "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+      }
+    ],
+    "stage": "왕복 교체·수신 확인",
+    "target": "temperature",
+    "progress": 100,
+    "samples": 3,
+    "lastLine": "27",
+    "endedAt": "2026-10-26T14:31:04.139Z",
+    "connectionRetained": true,
+    "milestones": [
+      {
+        "at": "2026-10-26T14:30:42.470Z",
+        "sequence": 603,
+        "kind": "flash-sent",
+        "latestConnectionId": 1,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 44665.4,
+        "id": "light-level",
+        "sent": 4544,
+        "retries": 0,
+        "verified": false
+      },
+      {
+        "at": "2026-10-26T14:30:44.394Z",
+        "sequence": 637,
+        "kind": "trial-program-verified",
+        "latestConnectionId": 2,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 46589,
+        "id": "light-level",
+        "programHash": "6300a600dd008a00",
+        "sha256": "61f012e38501bc3a43b587f94ce5cd3315ea72e193dd4fb8f05ee58a7123f1f7"
+      },
+      {
+        "at": "2026-10-26T14:30:49.309Z",
+        "sequence": 686,
+        "kind": "reset-device-disconnected",
+        "latestConnectionId": 2,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 51504.4,
+        "mode": 0,
+        "elapsedMs": 4074
+      },
+      {
+        "at": "2026-10-26T14:30:59.720Z",
+        "sequence": 1238,
+        "kind": "flash-sent",
+        "latestConnectionId": 3,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 61914.9,
+        "id": "temperature",
+        "sent": 4352,
+        "retries": 0,
+        "verified": false
+      },
+      {
+        "at": "2026-10-26T14:31:01.659Z",
+        "sequence": 1272,
+        "kind": "trial-program-verified",
+        "latestConnectionId": 4,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 63854.2,
+        "id": "temperature",
+        "programHash": "570021009100fc00",
+        "sha256": "3dfab7aa1391eb562d4b3adc9a0d5df218c372a1dfc8788deda9e662e7c1a2ae"
+      }
+    ],
+    "trace": [
+      {
+        "at": "2026-10-26T14:31:04.136Z",
+        "sequence": 1315,
+        "kind": "trace-trial-connection-retained",
+        "latestConnectionId": 4,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 66330.6,
+        "ownerConnectionId": 4
+      }
+    ]
+  },
+  "second": {
+    "status": "failed",
+    "plan": "quick",
+    "device": {
+      "id": "KTkRh2zE8GLoKePtgDbKDQ==",
+      "name": "BBC micro:bit [gugav]"
+    },
+    "startedAt": "2026-10-26T14:31:07.859Z",
+    "steps": [
+      {
+        "id": "light-level",
+        "status": "passed",
+        "programHash": "6300a600dd008a00",
+        "sha256": "61f012e38501bc3a43b587f94ce5cd3315ea72e193dd4fb8f05ee58a7123f1f7",
+        "samples": [
+          {
+            "raw": "0",
+            "values": {
+              "lightLevel": 0
+            }
+          },
+          {
+            "raw": "0",
+            "values": {
+              "lightLevel": 0
+            }
+          },
+          {
+            "raw": "0",
+            "values": {
+              "lightLevel": 0
+            }
+          }
+        ],
+        "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+      }
+    ],
+    "stage": "중단 · 현재 보드 상태를 진단하고 필요하면 USB로 복구하세요.",
+    "target": "temperature",
+    "progress": 100,
+    "samples": 0,
+    "lastLine": null,
+    "error": "연결 작업이 취소되었습니다.",
+    "endedAt": "2026-10-26T14:31:48.858Z",
+    "connectionRetained": false,
+    "milestones": [
+      {
+        "at": "2026-10-26T14:31:12.125Z",
+        "sequence": 1351,
+        "kind": "reset-device-disconnected",
+        "latestConnectionId": 4,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 74319.7,
+        "mode": 0,
+        "elapsedMs": 4074
+      },
+      {
+        "at": "2026-10-26T14:31:22.792Z",
+        "sequence": 1922,
+        "kind": "flash-sent",
+        "latestConnectionId": 5,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 84986.6,
+        "id": "light-level",
+        "sent": 4544,
+        "retries": 0,
+        "verified": false
+      },
+      {
+        "at": "2026-10-26T14:31:24.609Z",
+        "sequence": 1956,
+        "kind": "trial-program-verified",
+        "latestConnectionId": 6,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 86803.8,
+        "id": "light-level",
+        "programHash": "6300a600dd008a00",
+        "sha256": "61f012e38501bc3a43b587f94ce5cd3315ea72e193dd4fb8f05ee58a7123f1f7"
+      },
+      {
+        "at": "2026-10-26T14:31:29.522Z",
+        "sequence": 2005,
+        "kind": "reset-device-disconnected",
+        "latestConnectionId": 6,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 91717.3,
+        "mode": 0,
+        "elapsedMs": 4072
+      },
+      {
+        "at": "2026-10-26T14:31:39.650Z",
+        "sequence": 2555,
+        "kind": "flash-sent",
+        "latestConnectionId": 7,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 101845.4,
+        "id": "temperature",
+        "sent": 4352,
+        "retries": 0,
+        "verified": false
+      },
+      {
+        "at": "2026-10-26T14:31:39.928Z",
+        "sequence": 2566,
+        "kind": "trial-reconnect-retry",
+        "latestConnectionId": 8,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 102123.5,
+        "attempt": 1,
+        "error": "연결 작업이 취소되었습니다."
+      }
+    ],
+    "trace": [
+      {
+        "at": "2026-10-26T14:31:07.867Z",
+        "sequence": 1318,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 4,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 70062.2,
+        "method": "getPrimaryService",
+        "operationConnectionId": 4,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb"
+      },
+      {
+        "at": "2026-10-26T14:31:07.872Z",
+        "sequence": 1320,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 4,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 70067.3,
+        "method": "getPrimaryService",
+        "operationConnectionId": 4,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb",
+        "outcome": "resolved",
+        "elapsedMs": 5.2
+      },
+      {
+        "at": "2026-10-26T14:31:08.053Z",
+        "sequence": 1346,
+        "kind": "trace-command-start",
+        "latestConnectionId": 4,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 70248.1,
+        "bytes": "ff00",
+        "ownerConnectionId": 4
+      },
+      {
+        "at": "2026-10-26T14:31:08.057Z",
+        "sequence": 1347,
+        "kind": "trace-command-end",
+        "latestConnectionId": 4,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 70251.7,
+        "bytes": "ff00",
+        "ownerConnectionId": 4,
+        "outcome": "resolved"
+      },
+      {
+        "at": "2026-10-26T14:31:12.118Z",
+        "sequence": 1349,
+        "kind": "trace-device-disconnected",
+        "latestConnectionId": 4,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 74313.1
+      },
+      {
+        "at": "2026-10-26T14:31:12.121Z",
+        "sequence": 1350,
+        "kind": "trace-diagnostic-event",
+        "latestConnectionId": 4,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 74316.1,
+        "ownerConnectionId": 4,
+        "handled": true,
+        "closed": false
+      },
+      {
+        "at": "2026-10-26T14:31:12.128Z",
+        "sequence": 1352,
+        "kind": "trace-diagnostic-cleanup",
+        "latestConnectionId": 4,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 74323.3,
+        "reason": "device",
+        "ownerConnectionId": 4,
+        "keepConnection": false,
+        "wasActive": true,
+        "removingDisconnectListener": true
+      },
+      {
+        "at": "2026-10-26T14:31:12.135Z",
+        "sequence": 1354,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 5,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 74329.9,
+        "method": "connect",
+        "operationConnectionId": 5
+      },
+      {
+        "at": "2026-10-26T14:31:12.761Z",
+        "sequence": 1356,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 5,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 74956.3,
+        "method": "connect",
+        "operationConnectionId": 5,
+        "outcome": "resolved",
+        "elapsedMs": 626.4
+      },
+      {
+        "at": "2026-10-26T14:31:12.767Z",
+        "sequence": 1358,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 5,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 74961.8,
+        "method": "getPrimaryService",
+        "operationConnectionId": 5,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb"
+      },
+      {
+        "at": "2026-10-26T14:31:14.001Z",
+        "sequence": 1360,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 5,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 76196.5,
+        "method": "getPrimaryService",
+        "operationConnectionId": 5,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb",
+        "outcome": "resolved",
+        "elapsedMs": 1234.8
+      },
+      {
+        "at": "2026-10-26T14:31:14.080Z",
+        "sequence": 1374,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 5,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 76275,
+        "method": "getPrimaryService",
+        "operationConnectionId": 5,
+        "service": "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+        "outcome": "rejected",
+        "elapsedMs": 4.9,
+        "error": "No Services matching UUID 6e400001-b5a3-f393-e0a9-e50e24dcca9e found in Device.",
+        "errorName": "NotFoundError"
+      },
+      {
+        "at": "2026-10-26T14:31:14.203Z",
+        "sequence": 1388,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 5,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 76397.7,
+        "method": "getPrimaryService",
+        "operationConnectionId": 5,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb"
+      },
+      {
+        "at": "2026-10-26T14:31:14.208Z",
+        "sequence": 1390,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 5,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 76402.5,
+        "method": "getPrimaryService",
+        "operationConnectionId": 5,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb",
+        "outcome": "resolved",
+        "elapsedMs": 4.8
+      },
+      {
+        "at": "2026-10-26T14:31:14.298Z",
+        "sequence": 1404,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 5,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 76493.3,
+        "method": "getPrimaryService",
+        "operationConnectionId": 5,
+        "service": "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+        "outcome": "rejected",
+        "elapsedMs": 7.5,
+        "error": "No Services matching UUID 6e400001-b5a3-f393-e0a9-e50e24dcca9e found in Device.",
+        "errorName": "NotFoundError"
+      },
+      {
+        "at": "2026-10-26T14:31:18.268Z",
+        "sequence": 1915,
+        "kind": "trace-command-start",
+        "latestConnectionId": 5,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 80463.3,
+        "bytes": "02",
+        "ownerConnectionId": 5
+      },
+      {
+        "at": "2026-10-26T14:31:18.272Z",
+        "sequence": 1916,
+        "kind": "trace-command-end",
+        "latestConnectionId": 5,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 80466.5,
+        "bytes": "02",
+        "ownerConnectionId": 5,
+        "outcome": "resolved"
+      },
+      {
+        "at": "2026-10-26T14:31:22.782Z",
+        "sequence": 1917,
+        "kind": "trace-device-disconnected",
+        "latestConnectionId": 5,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 84976.8
+      },
+      {
+        "at": "2026-10-26T14:31:22.784Z",
+        "sequence": 1918,
+        "kind": "trace-diagnostic-event",
+        "latestConnectionId": 5,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 84978.7,
+        "ownerConnectionId": 5,
+        "handled": true,
+        "closed": false
+      },
+      {
+        "at": "2026-10-26T14:31:22.788Z",
+        "sequence": 1920,
+        "kind": "trace-diagnostic-cleanup",
+        "latestConnectionId": 5,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 84982.6,
+        "reason": "device",
+        "ownerConnectionId": 5,
+        "keepConnection": false,
+        "wasActive": true,
+        "removingDisconnectListener": true
+      },
+      {
+        "at": "2026-10-26T14:31:22.794Z",
+        "sequence": 1923,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 6,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 84989.2,
+        "method": "connect",
+        "operationConnectionId": 6
+      },
+      {
+        "at": "2026-10-26T14:31:22.935Z",
+        "sequence": 1925,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 6,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 85130.3,
+        "method": "connect",
+        "operationConnectionId": 6,
+        "outcome": "resolved",
+        "elapsedMs": 141.1
+      },
+      {
+        "at": "2026-10-26T14:31:22.939Z",
+        "sequence": 1927,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 6,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 85133.8,
+        "method": "getPrimaryService",
+        "operationConnectionId": 6,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb"
+      },
+      {
+        "at": "2026-10-26T14:31:24.411Z",
+        "sequence": 1929,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 6,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 86606.1,
+        "method": "getPrimaryService",
+        "operationConnectionId": 6,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb",
+        "outcome": "resolved",
+        "elapsedMs": 1472.3
+      },
+      {
+        "at": "2026-10-26T14:31:24.635Z",
+        "sequence": 1958,
+        "kind": "trace-diagnostic-cleanup",
+        "latestConnectionId": 6,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 86830.3,
+        "reason": "handoff",
+        "ownerConnectionId": 6,
+        "keepConnection": true,
+        "wasActive": true,
+        "removingDisconnectListener": true
+      },
+      {
+        "at": "2026-10-26T14:31:25.199Z",
+        "sequence": 1970,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 6,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 87393.9,
+        "method": "getPrimaryService",
+        "operationConnectionId": 6,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb"
+      },
+      {
+        "at": "2026-10-26T14:31:25.203Z",
+        "sequence": 1972,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 6,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 87397.8,
+        "method": "getPrimaryService",
+        "operationConnectionId": 6,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb",
+        "outcome": "resolved",
+        "elapsedMs": 3.9
+      },
+      {
+        "at": "2026-10-26T14:31:25.453Z",
+        "sequence": 2000,
+        "kind": "trace-command-start",
+        "latestConnectionId": 6,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 87647.7,
+        "bytes": "ff00",
+        "ownerConnectionId": 6
+      },
+      {
+        "at": "2026-10-26T14:31:25.456Z",
+        "sequence": 2001,
+        "kind": "trace-command-end",
+        "latestConnectionId": 6,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 87650.8,
+        "bytes": "ff00",
+        "ownerConnectionId": 6,
+        "outcome": "resolved"
+      },
+      {
+        "at": "2026-10-26T14:31:29.518Z",
+        "sequence": 2003,
+        "kind": "trace-device-disconnected",
+        "latestConnectionId": 6,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 91712.9
+      },
+      {
+        "at": "2026-10-26T14:31:29.520Z",
+        "sequence": 2004,
+        "kind": "trace-diagnostic-event",
+        "latestConnectionId": 6,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 91715.2,
+        "ownerConnectionId": 6,
+        "handled": true,
+        "closed": false
+      },
+      {
+        "at": "2026-10-26T14:31:29.526Z",
+        "sequence": 2006,
+        "kind": "trace-diagnostic-cleanup",
+        "latestConnectionId": 6,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 91721,
+        "reason": "device",
+        "ownerConnectionId": 6,
+        "keepConnection": false,
+        "wasActive": true,
+        "removingDisconnectListener": true
+      },
+      {
+        "at": "2026-10-26T14:31:29.533Z",
+        "sequence": 2008,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 7,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 91727.9,
+        "method": "connect",
+        "operationConnectionId": 7
+      },
+      {
+        "at": "2026-10-26T14:31:29.746Z",
+        "sequence": 2010,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 7,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 91941.2,
+        "method": "connect",
+        "operationConnectionId": 7,
+        "outcome": "resolved",
+        "elapsedMs": 213.3
+      },
+      {
+        "at": "2026-10-26T14:31:29.753Z",
+        "sequence": 2012,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 7,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 91947.6,
+        "method": "getPrimaryService",
+        "operationConnectionId": 7,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb"
+      },
+      {
+        "at": "2026-10-26T14:31:30.981Z",
+        "sequence": 2014,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 7,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 93176.1,
+        "method": "getPrimaryService",
+        "operationConnectionId": 7,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb",
+        "outcome": "resolved",
+        "elapsedMs": 1228.5
+      },
+      {
+        "at": "2026-10-26T14:31:31.058Z",
+        "sequence": 2028,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 7,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 93252.9,
+        "method": "getPrimaryService",
+        "operationConnectionId": 7,
+        "service": "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+        "outcome": "rejected",
+        "elapsedMs": 4.5,
+        "error": "No Services matching UUID 6e400001-b5a3-f393-e0a9-e50e24dcca9e found in Device.",
+        "errorName": "NotFoundError"
+      },
+      {
+        "at": "2026-10-26T14:31:31.184Z",
+        "sequence": 2042,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 7,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 93378.9,
+        "method": "getPrimaryService",
+        "operationConnectionId": 7,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb"
+      },
+      {
+        "at": "2026-10-26T14:31:31.189Z",
+        "sequence": 2044,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 7,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 93383.5,
+        "method": "getPrimaryService",
+        "operationConnectionId": 7,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb",
+        "outcome": "resolved",
+        "elapsedMs": 4.7
+      },
+      {
+        "at": "2026-10-26T14:31:31.278Z",
+        "sequence": 2058,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 7,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 93473.4,
+        "method": "getPrimaryService",
+        "operationConnectionId": 7,
+        "service": "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+        "outcome": "rejected",
+        "elapsedMs": 6.3,
+        "error": "No Services matching UUID 6e400001-b5a3-f393-e0a9-e50e24dcca9e found in Device.",
+        "errorName": "NotFoundError"
+      },
+      {
+        "at": "2026-10-26T14:31:35.126Z",
+        "sequence": 2548,
+        "kind": "trace-command-start",
+        "latestConnectionId": 7,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 97321.2,
+        "bytes": "02",
+        "ownerConnectionId": 7
+      },
+      {
+        "at": "2026-10-26T14:31:35.129Z",
+        "sequence": 2549,
+        "kind": "trace-command-end",
+        "latestConnectionId": 7,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 97323.9,
+        "bytes": "02",
+        "ownerConnectionId": 7,
+        "outcome": "resolved"
+      },
+      {
+        "at": "2026-10-26T14:31:39.641Z",
+        "sequence": 2550,
+        "kind": "trace-device-disconnected",
+        "latestConnectionId": 7,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 101835.8
+      },
+      {
+        "at": "2026-10-26T14:31:39.642Z",
+        "sequence": 2551,
+        "kind": "trace-diagnostic-event",
+        "latestConnectionId": 7,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 101837.3,
+        "ownerConnectionId": 7,
+        "handled": true,
+        "closed": false
+      },
+      {
+        "at": "2026-10-26T14:31:39.646Z",
+        "sequence": 2553,
+        "kind": "trace-diagnostic-cleanup",
+        "latestConnectionId": 7,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 101840.7,
+        "reason": "device",
+        "ownerConnectionId": 7,
+        "keepConnection": false,
+        "wasActive": true,
+        "removingDisconnectListener": true
+      },
+      {
+        "at": "2026-10-26T14:31:39.653Z",
+        "sequence": 2556,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 8,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 101847.7,
+        "method": "connect",
+        "operationConnectionId": 8
+      },
+      {
+        "at": "2026-10-26T14:31:39.846Z",
+        "sequence": 2558,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 8,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 102041.1,
+        "method": "connect",
+        "operationConnectionId": 8,
+        "outcome": "resolved",
+        "elapsedMs": 193.4
+      },
+      {
+        "at": "2026-10-26T14:31:39.850Z",
+        "sequence": 2560,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 8,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 102044.7,
+        "method": "getPrimaryService",
+        "operationConnectionId": 8,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb"
+      },
+      {
+        "at": "2026-10-26T14:31:39.921Z",
+        "sequence": 2562,
+        "kind": "trace-device-disconnected",
+        "latestConnectionId": 8,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 102115.9
+      },
+      {
+        "at": "2026-10-26T14:31:39.923Z",
+        "sequence": 2563,
+        "kind": "trace-diagnostic-event",
+        "latestConnectionId": 8,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 102117.9,
+        "ownerConnectionId": 8,
+        "handled": true,
+        "closed": false
+      },
+      {
+        "at": "2026-10-26T14:31:39.925Z",
+        "sequence": 2564,
+        "kind": "trace-diagnostic-cleanup",
+        "latestConnectionId": 8,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 102119.5,
+        "reason": "device",
+        "ownerConnectionId": 8,
+        "keepConnection": false,
+        "wasActive": true,
+        "removingDisconnectListener": true
+      },
+      {
+        "at": "2026-10-26T14:31:39.932Z",
+        "sequence": 2567,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 8,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 102127,
+        "method": "getPrimaryService",
+        "operationConnectionId": 8,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb",
+        "outcome": "rejected",
+        "elapsedMs": 82.3,
+        "error": "GATT Server is disconnected. Cannot retrieve services. (Re)connect first with `device.gatt.connect`.",
+        "errorName": "NetworkError"
+      },
+      {
+        "at": "2026-10-26T14:31:41.844Z",
+        "sequence": 2568,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 9,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 104038.8,
+        "method": "connect",
+        "operationConnectionId": 9
+      },
+      {
+        "at": "2026-10-26T14:31:41.856Z",
+        "sequence": 2570,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 9,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 104051.1,
+        "method": "connect",
+        "operationConnectionId": 9,
+        "outcome": "resolved",
+        "elapsedMs": 12.4
+      },
+      {
+        "at": "2026-10-26T14:31:41.860Z",
+        "sequence": 2572,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 9,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 104055.4,
+        "method": "getPrimaryService",
+        "operationConnectionId": 9,
+        "service": "0000180a-0000-1000-8000-00805f9b34fb"
+      },
+      {
+        "at": "2026-10-26T14:31:48.842Z",
+        "sequence": 2574,
+        "kind": "trace-timeout",
+        "latestConnectionId": 9,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 111036.8,
+        "stage": "info 서비스 탐색",
+        "ownerConnectionId": 9,
+        "timeoutMs": 6000
+      },
+      {
+        "at": "2026-10-26T14:31:48.844Z",
+        "sequence": 2575,
+        "kind": "trace-diagnostic-cleanup",
+        "latestConnectionId": 9,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 111038.9,
+        "reason": "timeout",
+        "ownerConnectionId": 9,
+        "keepConnection": false,
+        "wasActive": true,
+        "removingDisconnectListener": true
+      },
+      {
+        "at": "2026-10-26T14:31:48.846Z",
+        "sequence": 2576,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 9,
+        "gattConnected": true,
+        "visibility": "hidden",
+        "monotonicMs": 111040.9,
+        "method": "disconnect",
+        "operationConnectionId": 9,
+        "callsite": "    at close (http://localhost:8080/dev/bluetooth-install/diagnostics.js:78:55)\n    at http://localhost:8080/dev/bluetooth-install/diagnostics.js:102:9",
+        "reason": "explicit GATT.disconnect call; caller and cleanup reason in adjacent trace"
+      },
+      {
+        "at": "2026-10-26T14:31:48.848Z",
+        "sequence": 2577,
+        "kind": "trace-device-disconnected",
+        "latestConnectionId": 9,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 111042.6
+      },
+      {
+        "at": "2026-10-26T14:31:48.850Z",
+        "sequence": 2578,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 9,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 111044.5,
+        "method": "disconnect",
+        "operationConnectionId": 9,
+        "reason": "explicit GATT.disconnect call; caller and cleanup reason in adjacent trace",
+        "outcome": "returned",
+        "elapsedMs": 3.8
+      },
+      {
+        "at": "2026-10-26T14:31:48.854Z",
+        "sequence": 2580,
+        "kind": "trace-operation-start",
+        "latestConnectionId": 9,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 111048.8,
+        "method": "disconnect",
+        "operationConnectionId": 9,
+        "callsite": "    at Object.run (http://localhost:8080/dev/bluetooth-install/trial-runner.js:189:51)\n    at async startAuto (http://localhost:8080/dev/bluetooth-install/page.js:394:20)",
+        "reason": "explicit GATT.disconnect call; caller and cleanup reason in adjacent trace"
+      },
+      {
+        "at": "2026-10-26T14:31:48.856Z",
+        "sequence": 2581,
+        "kind": "trace-operation-end",
+        "latestConnectionId": 9,
+        "gattConnected": false,
+        "visibility": "hidden",
+        "monotonicMs": 111051.3,
+        "method": "disconnect",
+        "operationConnectionId": 9,
+        "reason": "explicit GATT.disconnect call; caller and cleanup reason in adjacent trace",
+        "outcome": "returned",
+        "elapsedMs": 2.6
+      }
+    ]
+  },
+  "boundary": {
+    "retainedConnectionId": 4,
+    "nextModeCommandConnectionId": 4,
+    "connectCalls": 0,
+    "disconnectCalls": 0
+  },
+  "findings": [
+    "First quick round trip passed with connection retained. Second run reused that connection and successfully entered installation mode.",
+    "Second light program installed, identity verified, three samples received. Final temperature transfer completed with no block retransmissions and actual disconnect observed.",
+    "First reconnect after temperature transfer disconnected during info service discovery. One connection/diagnosis retry occurred; connect resolved but info service discovery timed out.",
+    "No mode command or firmware transmission was repeated for recovery. Final temperature identity, mode and samples were not verified after this failure.",
+    "Configured one-retry recovery was exercised and exhausted; trial stopped. Builtin, BMP280 and analog follow-up plans were not submitted.",
+    "No automatic third retry, USB reinstall or user reset performed in this test."
+  ],
+  "recordScope": "Condensed evidence: completed samples/state and relevant failure timeline retained; repetitive successful service queries, packet snapshots and duplicate context removed. This is not a complete raw log."
+}

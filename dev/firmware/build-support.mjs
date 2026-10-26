@@ -29,7 +29,7 @@ export function parseArgs(args, targetNames) {
   return { targets, list, check };
 }
 
-/** Generates the same magnetic pxt.json bytes as before, from shared UART settings. */
+/** Preserve the pinned native profile; optional local TS inputs change program code only. */
 export function createPlans(config, template, repository) {
   const seen = new Set(), plans = new Map();
   for (const [key, target] of Object.entries(config.targets)) {
@@ -44,38 +44,49 @@ export function createPlans(config, template, repository) {
     seen.add(artifact);
     const sourcePath = inside(repository, target.source);
     if (!/\.(js|ts)$/.test(sourcePath)) throw new Error(`Expected a JS/TS source: ${target.source}`);
-    const pxt = { name: target.name, description: target.description, dependencies: template.dependencies, files: template.files,
+    const additionalSources = target.additionalSources ?? {};
+    if (!additionalSources || typeof additionalSources !== 'object' || Array.isArray(additionalSources)) throw new Error('Invalid additionalSources');
+    const additionalPaths = {};
+    for (const [file, input] of Object.entries(additionalSources)) {
+      if (!/^[a-z][a-z0-9-]*\.ts$/.test(file) || file === 'main.ts' || typeof input !== 'string' || !/\.(js|ts)$/.test(input)) throw new Error('Invalid additional source file');
+      additionalPaths[file] = inside(repository, input);
+    }
+    const pxt = { name: target.name, description: target.description, dependencies: template.dependencies,
+      files: [...Object.keys(additionalPaths), ...template.files],
       targetVersions: { target: config.toolchain.target, pxt: config.toolchain.compiler }, preferredEditor: template.preferredEditor, yotta: template.yotta };
     // This profile is deliberately limited to the pinned, bundled UART runtime.
-    if (JSON.stringify(pxt.dependencies) !== JSON.stringify({ core: '*', bluetooth: '*' }) || JSON.stringify(pxt.files) !== '["main.ts"]') throw new Error('Only the bundled core + bluetooth / main.ts profile is supported.');
-    plans.set(key, { key, ...structuredClone(target), artifact, sourcePath, config: JSON.stringify(pxt, null, 4) + '\n' });
+    if (JSON.stringify(pxt.dependencies) !== JSON.stringify({ core: '*', bluetooth: '*' }) || JSON.stringify(template.files) !== '["main.ts"]') throw new Error('Only the bundled core + bluetooth / main.ts profile is supported.');
+    plans.set(key, { key, ...structuredClone(target), artifact, sourcePath, additionalPaths, config: JSON.stringify(pxt, null, 4) + '\n' });
   }
   return plans;
 }
 
 /** Validate the complete cache before invoking the compiler. */
-export async function prepareToolchain(root, toolchain) {
+export async function prepareToolchain(root, toolchain, cacheDirectory = 'runtime-cache') {
   for (const [name, version] of [['pxt', toolchain.cli], ['pxt-microbit', toolchain.target], ['pxt-core', toolchain.compiler]]) {
     const installed = await readJson(inside(root, `node_modules/${name}/package.json`));
     if (installed.version !== version) throw new Error(`Expected ${name}@${version}; run npm ci --ignore-scripts in dev/firmware.`);
   }
-  const runtime = await readJson(inside(root, 'runtime-cache/manifest.json'));
+  const runtime = await readJson(inside(root, `${cacheDirectory}/manifest.json`));
   if (runtime.target !== `pxt-microbit@${toolchain.target}` || runtime.pxt !== `pxt-core@${toolchain.compiler}` || !runtime.files.length) throw new Error('Native runtime/toolchain version mismatch.');
   for (const file of runtime.files) {
     if (!/^[a-f0-9]{64}$/.test(file.compileSha) || file.file !== `${file.compileSha}.hex`) throw new Error('Invalid native runtime filename.');
-    const input = inside(root, `runtime-cache/${file.file}`), bytes = await readFile(input);
+    const input = inside(root, `${cacheDirectory}/${file.file}`), bytes = await readFile(input);
     if (hash(bytes) !== file.sha256 || bytes.length !== file.bytes) throw new Error(`Runtime cache changed: ${file.file}`);
   }
   await writeFile(inside(root, 'node_modules/pxtcli.json'), JSON.stringify({ targetdir: 'pxt-microbit' }));
   return runtime;
 }
 
-export async function verifyHex(hex, source, config, { readV2, unpack }) {
+export async function verifyHex(hex, source, config, { readV2, unpack }, additionalSources = {}) {
   if (!(await readV2(hex)).startsWith(':')) throw new Error('Official V2 HEX reader did not produce flash data.');
   const embedded = await unpack(hex);
   if (!embedded?.source) throw new Error('HEX has no embedded source.');
   const files = JSON.parse(embedded.source);
   if (files['main.ts'] !== source) throw new Error('Embedded HEX source does not match the selected source.');
+  for (const [name, content] of Object.entries(additionalSources)) {
+    if (files[name] !== content) throw new Error(`Embedded HEX source mismatch: ${name}`);
+  }
   // PXT serializes its embedded pxt.json; compare content rather than indentation.
   const actual = JSON.parse(files['pxt.json']), expected = JSON.parse(config);
   for (const key of ['name', 'description', 'dependencies', 'files', 'targetVersions', 'preferredEditor', 'yotta']) {
@@ -101,20 +112,29 @@ export function buildRecord(plan, toolchain, runtime, source, hex) {
 /** The compiler may fail or return stale/mismatched output; only verified results become candidates. */
 export async function buildCandidate(plan, { root, toolchain, runtime, compile, readV2, unpack, pinned = null }) {
   const source = normalizeText(await readFile(plan.sourcePath));
+  const additionalSources = {};
+  for (const [name, path] of Object.entries(plan.additionalPaths ?? {})) additionalSources[name] = normalizeText(await readFile(path));
   const project = inside(root, `built/projects/${plan.key}`), output = inside(root, `built/artifacts/${plan.key}`);
   await mkdir(project, { recursive: true });
   await writeFile(inside(project, 'main.ts'), source);
+  for (const [name, content] of Object.entries(additionalSources)) await writeFile(inside(project, name), content);
   await writeFile(inside(project, 'pxt.json'), plan.config);
   const binary = inside(project, 'built/binary.hex');
   await rm(binary, { force: true });
   await compile(project);
   const hex = normalizeText(await readFile(binary));
-  await verifyHex(hex, source, plan.config, { readV2, unpack });
-  if (pinned) checkPinned(plan, hex, source, pinned.artifact, pinned.hex, pinned.source);
+  await verifyHex(hex, source, plan.config, { readV2, unpack }, additionalSources);
+  const names = Object.keys(additionalSources);
+  const downloadSource = names.length ? [...names.map(name => `// ${name}\n${additionalSources[name]}`), `// main.ts\n${source}`].join('\n') : source;
+  if (pinned) checkPinned(plan, hex, downloadSource, pinned.artifact, pinned.hex, pinned.source);
   const record = buildRecord(plan, toolchain, runtime, source, hex);
+  if (names.length) {
+    record.sourceFiles = Object.entries(additionalSources).map(([name, content]) => ({ name, source: plan.additionalSources[name], sha256: hash(content) }));
+    record.downloadSourceSha256 = hash(downloadSource);
+  }
   await mkdir(output, { recursive: true });
   await writeFile(inside(output, `${plan.artifact}.hex`), hex);
-  await writeFile(inside(output, `${plan.artifact}.ts`), source);
+  await writeFile(inside(output, `${plan.artifact}.ts`), downloadSource);
   await writeFile(inside(output, `${plan.artifact}.build.json`), JSON.stringify(record, null, 2) + '\n');
   return { output, record };
 }

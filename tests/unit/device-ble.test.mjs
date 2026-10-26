@@ -71,7 +71,8 @@ function deviceFixture() {
   const device = new Observable(); device.name = 'micro:bit test';
   device.gatt = {
     connected: false,
-    async connect() { this.connected = true; return { getPrimaryService: async () => ({ getCharacteristics: async () => [rx, tx] }) }; },
+    async getPrimaryService() { return { getCharacteristics: async () => [rx, tx] }; },
+    async connect() { this.connected = true; return this; },
     disconnect() { this.connected = false; device.dispatchEvent(new Event('gattserverdisconnected')); },
   };
   return { device, rx, tx, writes, send(text) { rx.value = new DataView(encode(text).buffer); rx.dispatchEvent(new Event('characteristicvaluechanged')); } };
@@ -98,4 +99,35 @@ test('UART property discovery, direct reconnection and queued callbacks preserve
   f.device.gatt.disconnect();
   assert.equal(disconnects, 1); assert.equal(ble.getContext().device, null);
   await ble.disconnect();
+});
+
+test('UART hands off a live GATT only after unsubscribing and retires old callbacks', async () => {
+  const f = deviceFixture(), lines = [], bluetooth = { requestDevice() {} };
+  const old = createBleClient({ bluetooth }), next = createBleClient({ bluetooth });
+  await f.device.gatt.connect();
+  f.device.gatt.connect = () => { assert.fail('handoff must not reconnect'); };
+  await old.connect(f.device, { reuseConnection: true }); await old.startNotifications(line => lines.push(line));
+  const notify = f.rx.callbacks.get('characteristicvaluechanged'), disconnected = f.device.callbacks.get('gattserverdisconnected');
+  let finish;
+  f.rx.stopNotifications = () => new Promise(resolve => { finish = resolve; });
+  let released = false;
+  const releasing = old.releaseConnection().then(device => { released = true; return device; });
+  f.send('old\n'); await Promise.resolve(); assert.equal(released, false);
+  finish(); assert.equal(await releasing, f.device);
+  await next.connect(f.device, { reuseConnection: true }); await next.startNotifications(line => lines.push(line));
+  await old.disconnect(); notify({ target: f.rx }); disconnected({ target: f.device });
+  f.send('fresh\n');
+  assert.deepEqual(lines, ['fresh']); assert.equal(f.device.gatt.connected, true);
+  await next.disconnect(); assert.equal(f.device.gatt.connected, false);
+  await assert.rejects(old.connect(f.device, { reuseConnection: true }), { name: 'NetworkError' });
+  await old.disconnect();
+});
+
+test('UART subscription cleanup failure never claims a successful handoff', async () => {
+  const f = deviceFixture(), ble = createBleClient({ bluetooth: { requestDevice() {} } });
+  await ble.connect(f.device);
+  f.rx.stopNotifications = async () => { throw new Error('unsubscribe failed'); };
+  await assert.rejects(ble.releaseConnection(), /unsubscribe failed/);
+  assert.equal(ble.getContext().device, null);
+  f.device.gatt.disconnect(); // The orchestrator owns failure cleanup during transfer.
 });

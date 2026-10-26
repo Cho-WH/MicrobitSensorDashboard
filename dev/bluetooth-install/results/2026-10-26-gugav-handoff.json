@@ -1,0 +1,704 @@
+{
+  "format": "sensor-lab-hardware-trial-v1",
+  "environment": {
+    "date": "2026-10-26",
+    "timeZone": "Asia/Seoul",
+    "os": "Windows",
+    "browser": "Chrome 155",
+    "board": "micro:bit V2 [gugav]",
+    "runtimeHash": "5f21a4c8e2b240e5",
+    "connectionHandoff": "same-gatt-v1"
+  },
+  "startedAt": "2026-10-26T12:57:00.858Z",
+  "endedAt": "2026-10-26T12:58:41.084Z",
+  "plan": "builtin",
+  "status": "passed",
+  "completedSteps": [
+    {
+      "id": "temperature",
+      "status": "passed",
+      "programHash": "570021009100fc00",
+      "sha256": "3dfab7aa1391eb562d4b3adc9a0d5df218c372a1dfc8788deda9e662e7c1a2ae",
+      "samples": [
+        {
+          "raw": "26",
+          "values": {
+            "temperatureC": 26
+          }
+        },
+        {
+          "raw": "26",
+          "values": {
+            "temperatureC": 26
+          }
+        },
+        {
+          "raw": "26",
+          "values": {
+            "temperatureC": 26
+          }
+        }
+      ],
+      "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+    },
+    {
+      "id": "accelerometer",
+      "status": "passed",
+      "programHash": "0d00e200cd004700",
+      "sha256": "fa9380641d02f1340ea479da9cd38d7da9ea629bc3887cba2dca6bf7f88cd7a1",
+      "samples": [
+        {
+          "raw": "-144,1024,96,1038",
+          "values": {
+            "accelerationX": -1.4121576,
+            "accelerationY": 10.0420096,
+            "accelerationZ": 0.9414384,
+            "accelerationStrength": 10.179302700000001
+          }
+        },
+        {
+          "raw": "-128,1024,112,1038",
+          "values": {
+            "accelerationX": -1.2552512,
+            "accelerationY": 10.0420096,
+            "accelerationZ": 1.0983448,
+            "accelerationStrength": 10.179302700000001
+          }
+        },
+        {
+          "raw": "-160,1024,96,1040",
+          "values": {
+            "accelerationX": -1.569064,
+            "accelerationY": 10.0420096,
+            "accelerationZ": 0.9414384,
+            "accelerationStrength": 10.198916
+          }
+        }
+      ],
+      "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+    },
+    {
+      "id": "magnetometer",
+      "status": "passed",
+      "programHash": "bd004d006500c300",
+      "sha256": "882aefb81c0ac17dec573f26d723b7cc3a4cc8b2b62ca244b1dd8f164cff8cbc",
+      "samples": [
+        {
+          "raw": "-47.4,15.9,3,50.085",
+          "values": {
+            "magneticX": -47.4,
+            "magneticY": 15.9,
+            "magneticZ": 3,
+            "magneticStrength": 50.085
+          }
+        },
+        {
+          "raw": "-48.6,15,3.45,50.979",
+          "values": {
+            "magneticX": -48.6,
+            "magneticY": 15,
+            "magneticZ": 3.45,
+            "magneticStrength": 50.979
+          }
+        },
+        {
+          "raw": "-47.25,14.25,3,49.443",
+          "values": {
+            "magneticX": -47.25,
+            "magneticY": 14.25,
+            "magneticZ": 3,
+            "magneticStrength": 49.443
+          }
+        }
+      ],
+      "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+    },
+    {
+      "id": "light-level",
+      "status": "passed",
+      "programHash": "6300a600dd008a00",
+      "sha256": "61f012e38501bc3a43b587f94ce5cd3315ea72e193dd4fb8f05ee58a7123f1f7",
+      "samples": [
+        {
+          "raw": "0",
+          "values": {
+            "lightLevel": 0
+          }
+        },
+        {
+          "raw": "0",
+          "values": {
+            "lightLevel": 0
+          }
+        },
+        {
+          "raw": "0",
+          "values": {
+            "lightLevel": 0
+          }
+        }
+      ],
+      "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+    },
+    {
+      "id": "temperature",
+      "status": "passed",
+      "programHash": "570021009100fc00",
+      "sha256": "3dfab7aa1391eb562d4b3adc9a0d5df218c372a1dfc8788deda9e662e7c1a2ae",
+      "samples": [
+        {
+          "raw": "26",
+          "values": {
+            "temperatureC": 26
+          }
+        },
+        {
+          "raw": "26",
+          "values": {
+            "temperatureC": 26
+          }
+        },
+        {
+          "raw": "26",
+          "values": {
+            "temperatureC": 26
+          }
+        }
+      ],
+      "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+    }
+  ],
+  "handoffSummary": {
+    "connectedTransfers": 10,
+    "uartPreparationRetries": 0,
+    "restartReconnectRetries": 10
+  },
+  "finalBoard": {
+    "mode": 1,
+    "programHash": "570021009100fc00",
+    "program": "temperature",
+    "connectionReleased": true
+  },
+  "baseline": "2026-10-26-gugav-builtins.json",
+  "observedEvents": [
+    {
+      "at": "2026-10-26T12:57:05.083Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:57:11.865Z",
+      "kind": "flash-sent",
+      "id": "temperature",
+      "sent": 4352,
+      "retries": 0,
+      "verified": false
+    },
+    {
+      "at": "2026-10-26T12:57:16.378Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:57:19.482Z",
+      "kind": "trial-program-verified",
+      "id": "temperature",
+      "programHash": "570021009100fc00",
+      "sha256": "3dfab7aa1391eb562d4b3adc9a0d5df218c372a1dfc8788deda9e662e7c1a2ae"
+    },
+    {
+      "at": "2026-10-26T12:57:19.512Z",
+      "kind": "trial-handoff",
+      "from": "diagnostic",
+      "to": "uart",
+      "connected": true
+    },
+    {
+      "at": "2026-10-26T12:57:21.733Z",
+      "kind": "trial-handoff",
+      "from": "uart",
+      "to": "diagnostic",
+      "connected": true
+    },
+    {
+      "at": "2026-10-26T12:57:25.978Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:57:33.330Z",
+      "kind": "flash-sent",
+      "id": "accelerometer",
+      "sent": 4544,
+      "retries": 0,
+      "verified": false
+    },
+    {
+      "at": "2026-10-26T12:57:37.846Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:57:41.562Z",
+      "kind": "trial-program-verified",
+      "id": "accelerometer",
+      "programHash": "0d00e200cd004700",
+      "sha256": "fa9380641d02f1340ea479da9cd38d7da9ea629bc3887cba2dca6bf7f88cd7a1"
+    },
+    {
+      "at": "2026-10-26T12:57:41.592Z",
+      "kind": "trial-handoff",
+      "from": "diagnostic",
+      "to": "uart",
+      "connected": true
+    },
+    {
+      "at": "2026-10-26T12:57:42.044Z",
+      "kind": "trial-handoff",
+      "from": "uart",
+      "to": "diagnostic",
+      "connected": true
+    },
+    {
+      "at": "2026-10-26T12:57:46.287Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:57:52.979Z",
+      "kind": "flash-sent",
+      "id": "magnetometer",
+      "sent": 5248,
+      "retries": 0,
+      "verified": false
+    },
+    {
+      "at": "2026-10-26T12:57:57.493Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:58:00.462Z",
+      "kind": "trial-program-verified",
+      "id": "magnetometer",
+      "programHash": "bd004d006500c300",
+      "sha256": "882aefb81c0ac17dec573f26d723b7cc3a4cc8b2b62ca244b1dd8f164cff8cbc"
+    },
+    {
+      "at": "2026-10-26T12:58:00.491Z",
+      "kind": "trial-handoff",
+      "from": "diagnostic",
+      "to": "uart",
+      "connected": true
+    },
+    {
+      "at": "2026-10-26T12:58:00.552Z",
+      "kind": "trial-calibration-skipped",
+      "reason": "수신 시험; 보정 정확도 미검증"
+    },
+    {
+      "at": "2026-10-26T12:58:01.063Z",
+      "kind": "trial-handoff",
+      "from": "uart",
+      "to": "diagnostic",
+      "connected": true
+    },
+    {
+      "at": "2026-10-26T12:58:05.307Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:58:11.234Z",
+      "kind": "flash-sent",
+      "id": "light-level",
+      "sent": 4544,
+      "retries": 0,
+      "verified": false
+    },
+    {
+      "at": "2026-10-26T12:58:15.748Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:58:19.452Z",
+      "kind": "trial-program-verified",
+      "id": "light-level",
+      "programHash": "6300a600dd008a00",
+      "sha256": "61f012e38501bc3a43b587f94ce5cd3315ea72e193dd4fb8f05ee58a7123f1f7"
+    },
+    {
+      "at": "2026-10-26T12:58:19.481Z",
+      "kind": "trial-handoff",
+      "from": "diagnostic",
+      "to": "uart",
+      "connected": true
+    },
+    {
+      "at": "2026-10-26T12:58:20.098Z",
+      "kind": "trial-handoff",
+      "from": "uart",
+      "to": "diagnostic",
+      "connected": true
+    },
+    {
+      "at": "2026-10-26T12:58:24.346Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:58:30.149Z",
+      "kind": "flash-sent",
+      "id": "temperature",
+      "sent": 4352,
+      "retries": 0,
+      "verified": false
+    },
+    {
+      "at": "2026-10-26T12:58:34.662Z",
+      "kind": "trial-reconnect-retry",
+      "attempt": 1,
+      "error": "연결 작업이 취소되었습니다."
+    },
+    {
+      "at": "2026-10-26T12:58:38.607Z",
+      "kind": "trial-program-verified",
+      "id": "temperature",
+      "programHash": "570021009100fc00",
+      "sha256": "3dfab7aa1391eb562d4b3adc9a0d5df218c372a1dfc8788deda9e662e7c1a2ae"
+    },
+    {
+      "at": "2026-10-26T12:58:38.636Z",
+      "kind": "trial-handoff",
+      "from": "diagnostic",
+      "to": "uart",
+      "connected": true
+    },
+    {
+      "at": "2026-10-26T12:58:40.887Z",
+      "kind": "trial-handoff",
+      "from": "uart",
+      "to": "diagnostic",
+      "connected": true
+    }
+  ],
+  "capture": {
+    "method": "10-second local snapshots merged by event identity",
+    "trialStartAndEndCaptured": true,
+    "sourcePageLogIsBounded": true
+  },
+  "limitations": [
+    "One Windows Chrome 155 / micro:bit V2 run; other boards and browsers unverified.",
+    "Every mode/program restart needed one diagnostic reconnect retry; the underlying restart timing remains unresolved.",
+    "Magnetometer calibration explicitly skipped; light readings were 0 with no illumination-response test.",
+    "Three samples per step verify format/range, not physical accuracy or long-duration stability.",
+    "BMP280, analog input, interrupted-transfer recovery and production installation UI remain unverified or unimplemented."
+  ],
+  "restartTiming": {
+    "clock": "Browser UTC event timestamps; millisecond precision, not a measured hardware boot-complete signal",
+    "anchor": "control-write ff00 or 02, immediately before sending the restart request",
+    "configuredDelayMs": 1200,
+    "cycles": [
+      {
+        "sequence": 1,
+        "program": "temperature",
+        "transition": "enter-install-mode",
+        "requestAt": "2026-10-26T12:57:01.018Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:57:02.855Z",
+            "startedAfterRequestMs": 1837,
+            "gattResolvedAfterRequestMs": 1838,
+            "gattPromiseMs": 1,
+            "failedAfterRequestMs": 4065,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:57:06.854Z",
+            "startedAfterRequestMs": 5836,
+            "gattResolvedAfterRequestMs": 6596,
+            "gattPromiseMs": 760,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 8009,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 0
+      },
+      {
+        "sequence": 2,
+        "program": "temperature",
+        "transition": "restart-program",
+        "requestAt": "2026-10-26T12:57:11.864Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:57:13.855Z",
+            "startedAfterRequestMs": 1991,
+            "gattResolvedAfterRequestMs": 1992,
+            "gattPromiseMs": 1,
+            "failedAfterRequestMs": 4514,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:57:17.841Z",
+            "startedAfterRequestMs": 5977,
+            "gattResolvedAfterRequestMs": 6020,
+            "gattPromiseMs": 43,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 7618,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 1
+      },
+      {
+        "sequence": 3,
+        "program": "accelerometer",
+        "transition": "enter-install-mode",
+        "requestAt": "2026-10-26T12:57:21.913Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:57:23.850Z",
+            "startedAfterRequestMs": 1937,
+            "gattResolvedAfterRequestMs": 1938,
+            "gattPromiseMs": 1,
+            "failedAfterRequestMs": 4065,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:57:27.850Z",
+            "startedAfterRequestMs": 5937,
+            "gattResolvedAfterRequestMs": 6746,
+            "gattPromiseMs": 809,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 8204,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 0
+      },
+      {
+        "sequence": 4,
+        "program": "accelerometer",
+        "transition": "restart-program",
+        "requestAt": "2026-10-26T12:57:33.328Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:57:34.847Z",
+            "startedAfterRequestMs": 1519,
+            "gattResolvedAfterRequestMs": 1524,
+            "gattPromiseMs": 5,
+            "failedAfterRequestMs": 4518,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:57:39.845Z",
+            "startedAfterRequestMs": 6517,
+            "gattResolvedAfterRequestMs": 6652,
+            "gattPromiseMs": 135,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 8233,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 1
+      },
+      {
+        "sequence": 5,
+        "program": "magnetometer",
+        "transition": "enter-install-mode",
+        "requestAt": "2026-10-26T12:57:42.223Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:57:43.848Z",
+            "startedAfterRequestMs": 1625,
+            "gattResolvedAfterRequestMs": 1630,
+            "gattPromiseMs": 5,
+            "failedAfterRequestMs": 4064,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:57:47.850Z",
+            "startedAfterRequestMs": 5627,
+            "gattResolvedAfterRequestMs": 5962,
+            "gattPromiseMs": 335,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 7363,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 0
+      },
+      {
+        "sequence": 6,
+        "program": "magnetometer",
+        "transition": "restart-program",
+        "requestAt": "2026-10-26T12:57:52.978Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:57:54.849Z",
+            "startedAfterRequestMs": 1871,
+            "gattResolvedAfterRequestMs": 1877,
+            "gattPromiseMs": 6,
+            "failedAfterRequestMs": 4515,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:57:58.848Z",
+            "startedAfterRequestMs": 5870,
+            "gattResolvedAfterRequestMs": 5904,
+            "gattPromiseMs": 34,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 7483,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 1
+      },
+      {
+        "sequence": 7,
+        "program": "light-level",
+        "transition": "enter-install-mode",
+        "requestAt": "2026-10-26T12:58:01.243Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:58:02.847Z",
+            "startedAfterRequestMs": 1604,
+            "gattResolvedAfterRequestMs": 1612,
+            "gattPromiseMs": 8,
+            "failedAfterRequestMs": 4064,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:58:06.846Z",
+            "startedAfterRequestMs": 5603,
+            "gattResolvedAfterRequestMs": 5738,
+            "gattPromiseMs": 135,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 7138,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 0
+      },
+      {
+        "sequence": 8,
+        "program": "light-level",
+        "transition": "restart-program",
+        "requestAt": "2026-10-26T12:58:11.233Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:58:12.847Z",
+            "startedAfterRequestMs": 1614,
+            "gattResolvedAfterRequestMs": 1619,
+            "gattPromiseMs": 5,
+            "failedAfterRequestMs": 4515,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:58:17.846Z",
+            "startedAfterRequestMs": 6613,
+            "gattResolvedAfterRequestMs": 6643,
+            "gattPromiseMs": 30,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 8218,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 1
+      },
+      {
+        "sequence": 9,
+        "program": "temperature",
+        "transition": "enter-install-mode",
+        "requestAt": "2026-10-26T12:58:20.277Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:58:21.851Z",
+            "startedAfterRequestMs": 1574,
+            "gattResolvedAfterRequestMs": 1581,
+            "gattPromiseMs": 7,
+            "failedAfterRequestMs": 4069,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:58:25.851Z",
+            "startedAfterRequestMs": 5574,
+            "gattResolvedAfterRequestMs": 5773,
+            "gattPromiseMs": 199,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 7169,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 0
+      },
+      {
+        "sequence": 10,
+        "program": "temperature",
+        "transition": "restart-program",
+        "requestAt": "2026-10-26T12:58:30.148Z",
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAt": "2026-10-26T12:58:31.853Z",
+            "startedAfterRequestMs": 1705,
+            "gattResolvedAfterRequestMs": 1711,
+            "gattPromiseMs": 6,
+            "failedAfterRequestMs": 4514,
+            "diagnosedAfterRequestMs": null,
+            "outcome": "failed-during-service-discovery"
+          },
+          {
+            "attempt": 2,
+            "startedAt": "2026-10-26T12:58:36.851Z",
+            "startedAfterRequestMs": 6703,
+            "gattResolvedAfterRequestMs": 6861,
+            "gattPromiseMs": 158,
+            "failedAfterRequestMs": null,
+            "diagnosedAfterRequestMs": 8458,
+            "outcome": "diagnosed"
+          }
+        ],
+        "confirmedMode": 1
+      }
+    ]
+  }
+}
