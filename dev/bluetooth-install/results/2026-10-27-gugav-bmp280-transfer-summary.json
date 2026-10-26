@@ -1,0 +1,92 @@
+{
+  "board": {
+    "id": "KTkRh2zE8GLoKePtgDbKDQ==",
+    "name": "BBC micro:bit [gugav]"
+  },
+  "policy": {
+    "revision": "connection-backoff-2-4-8-discovery-2s-v2",
+    "attempts": 4,
+    "delaysMs": [
+      2000,
+      4000,
+      8000
+    ],
+    "disconnectWaitMs": 10000,
+    "serviceDiscoveryTimeoutMs": 2000
+  },
+  "startedAt": "2026-10-26T17:45:01.083Z",
+  "endedAt": "2026-10-26T17:45:38.574Z",
+  "status": "passed",
+  "bytes": 8320,
+  "transferMs": 5398.4,
+  "blockRetries": 0,
+  "transferStart": {
+    "at": "2026-10-26T17:45:01.548Z",
+    "monotonicMs": 25490.6
+  },
+  "transferEnd": {
+    "at": "2026-10-26T17:45:06.947Z",
+    "monotonicMs": 30889
+  },
+  "measurement": "flash-start to flash-finish-requested; includes protocol acknowledgement, excludes reboot/disconnect/reconnect",
+  "note": "Start event read from live log before bounded log rolled over during temperature return.",
+  "steps": [
+    {
+      "id": "bmp280",
+      "status": "passed",
+      "programHash": "3000e0008000b500",
+      "sha256": "8b6a03ec43d34c1eabde4c8cce6346307a0f8137a14cf08d28227825216f62b4",
+      "samples": [
+        {
+          "raw": "26.9070064614527,,1006.38267605488",
+          "values": {
+            "temperatureC": 26.9070064614527,
+            "pressureHpa": 1006.38267605488
+          }
+        },
+        {
+          "raw": "26.9121280994965,,1006.58985465833",
+          "values": {
+            "temperatureC": 26.9121280994965,
+            "pressureHpa": 1006.58985465833
+          }
+        },
+        {
+          "raw": "26.9223713581217,,1006.6329478495",
+          "values": {
+            "temperatureC": 26.9223713581217,
+            "pressureHpa": 1006.6329478495
+          }
+        }
+      ],
+      "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+    },
+    {
+      "id": "temperature",
+      "status": "passed",
+      "programHash": "570021009100fc00",
+      "sha256": "3dfab7aa1391eb562d4b3adc9a0d5df218c372a1dfc8788deda9e662e7c1a2ae",
+      "samples": [
+        {
+          "raw": "27",
+          "values": {
+            "temperatureC": 27
+          }
+        },
+        {
+          "raw": "27",
+          "values": {
+            "temperatureC": 27
+          }
+        },
+        {
+          "raw": "27",
+          "values": {
+            "temperatureC": 27
+          }
+        }
+      ],
+      "scope": "프로그램 식별·측정값 형식/범위; 물리 정확도 검증 아님"
+    }
+  ]
+}
