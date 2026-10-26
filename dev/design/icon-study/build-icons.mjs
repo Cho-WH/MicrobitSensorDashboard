@@ -218,6 +218,30 @@ function smallSvg(mode, size) {
   return result;
 }
 
+// A browser tab is about 16 CSS px even when its bitmap is 32 device pixels.
+// Keep one tick-free optical shape at every density; do not use the 32px UI icon.
+function faviconSvg() {
+  let result = smallSvg('primary',16);
+  const corners = [[false,false],[true,false],[true,true],[false,true]].map(([reflectX,reflectY]) => {
+    const x = value => reflectX ? 128-value : value;
+    const y = value => reflectY ? 128-value : value;
+    const p = (a,b) => `${x(a)} ${y(b)}`;
+    const clockwise = reflectX === reflectY ? 1 : 0;
+    return `M${p(32,16)}H${x(55)}Q${p(56,16)} ${p(56,17)}V${y(23)}Q${p(56,24)} ${p(55,24)}H${x(32)}A8 8 0 0 ${1-clockwise} ${p(24,32)}V${y(55)}Q${p(24,56)} ${p(23,56)}H${x(17)}Q${p(16,56)} ${p(16,55)}V${y(32)}A16 16 0 0 ${clockwise} ${p(32,16)}Z`;
+  });
+  result = result.replace(/<g id="observation-frame"[\s\S]*?<\/g>/,
+    `<g id="observation-frame" fill="url(#frame-paint)">\n${corners.map(d => `    <path d="${d}"/>`).join('\n')}\n  </g>`);
+  for (const [id,path] of [
+    ['orbit-open',band(42,264,8,.18)],
+    ['orbit-bright-left',band(95.3,210.5,8,.55)],
+    ['orbit-signal',band(290,334.5,7,.45)],
+  ]) result = result.replace(new RegExp(`(<path id="${id}" d=")[^"]+`), `$1${path}`);
+  return result.replace('16px 축소 보정형</title>', '브라우저 탭 전용</title>')
+    .replace(/<desc id="desc">.*?<\/desc>/, '<desc id="desc">16 CSS px 탭 전용. 픽셀 경계에 맞춘 프레임과 대비를 높인 열린 궤도, 중심 구체와 금빛 신호점. 모든 화면 배율에서 눈금과 발광을 생략한다.</desc>')
+    .replace('fill="#6687b9"','fill="#7c9bd0"');
+}
+
+await writeFile(new URL('sensor-lab-favicon.svg',root),faviconSvg());
 for (const mode of ['primary','compact','light','monochrome']) {
   await writeFile(new URL(`sensor-lab-${mode}.svg`,root),svg(mode));
   for (const size of [32,24,16]) {

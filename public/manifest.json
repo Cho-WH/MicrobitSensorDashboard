@@ -9,6 +9,7 @@
   "background_color": "#0b1f3b",
   "icons": [
     { "src": "assets/branding/sensor-lab-home-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "assets/branding/sensor-lab-home-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "assets/branding/sensor-lab-home-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/branding/sensor-lab-home.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

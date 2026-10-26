@@ -15,10 +15,12 @@ Use is governed by the [official brand guidelines](https://www.microbit.org/bran
 앱 자체 아이콘이며 위의 micro:bit 호환 마크와 구분한다. 디자인 원본과 생성기는 `dev/design/icon-study/`에 있다.
 
 - `sensor-lab-mark-24.svg`: 24px 보정 원본을 사용하는 앱 이름 옆 단색 심벌. 표시 크기는 micro:bit와 앱 이름 두 줄의 전체 높이를 따른다.
-- `sensor-lab-favicon-{16|32}.png`: 크기별 보정을 반영한 탭 아이콘.
-- `sensor-lab-home-{180|192|512}.png`: 홈 화면용 큰 기본형. 플랫폼의 외곽 마스크를 위해 바탕은 불투명 정사각형이다.
+- `sensor-lab-favicon.svg`: 브라우저 파비콘의 기본 벡터. 작은 표시에서 구분되도록 프레임 경계와 궤도 굵기·대비를 보정하고 눈금·발광을 생략했다. 디자인 원본에서 그대로 복사해 배포한다.
+- `sensor-lab-favicon-{16|32|96}.png`: 같은 보정 형태의 PNG 호환용 파일. 각 해상도에서 벡터를 직접 래스터화한다. 96px에도 눈금을 복원하지 않으며 일반 UI용 24·32px SVG와 구분한다.
+- `sensor-lab-home.svg`: 홈 화면용 큰 기본형 벡터. 눈금·그라데이션을 유지하며 매니페스트에 `sizes: "any"`로 제공한다. 플랫폼의 외곽 처리에 맞춰 바탕은 불투명 정사각형이다.
+- `sensor-lab-home-{180|192|512}.png`: 같은 큰 기본형의 호환용 PNG. 192·512px는 매니페스트에, 180px는 HTML의 `apple-touch-icon`에 유지한다. 실제 선택은 브라우저·설치 경로에 따르며 SVG 사용을 강제하지 않는다.
 
-`node dev/design/icon-study/export-app-icons.mjs`로 재생성한다. 내보내기에만 Sharp가 필요하며 운영 빌드는 저장된 자산을 복사한다. Sharp를 별도 환경에서 사용하는 경우 `ICON_SHARP_MODULE` 환경 변수에 모듈 진입점의 file URL을 지정한다. 이번 출력은 Sharp 0.35.5를 사용했다.
+`node dev/design/icon-study/export-app-icons.mjs`로 재생성한다. 내보내기에만 Sharp가 필요하며 운영 빌드는 저장된 자산을 복사한다. Sharp를 별도 환경에서 사용하는 경우 `ICON_SHARP_MODULE` 환경 변수에 모듈 진입점의 file URL을 지정한다. 이번 출력은 Sharp 0.35.5를 사용했다. 디자인 시트의 `size-study.html#favicon-pixels`에서 이전·현재 PNG를 16 CSS px와 픽셀 확대로 비교할 수 있다. SVG와 각 PNG를 같은 표시 크기로 비교한다. `sizes`는 후보 정보이며 파일 선택은 브라우저에 맡긴다. 48px 이하 PNG·초과 SVG처럼 크기별 선택을 강제하지 않는다. HTML의 파비콘 URL에는 캐시 갱신용 `v=2`를 붙인다.
 
 ## 링크 미리보기
 

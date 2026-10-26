@@ -20,6 +20,7 @@
     "src/analysis/**/*.js",
     "src/data/**/*.js",
     "src/measurement/**/*.js",
+    "src/sharing/**/*.js",
     "src/device/**/*.js",
     "src/guide/**/*.js",
     "src/app/routes.js",

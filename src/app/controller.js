@@ -23,6 +23,7 @@ import { createRecordDialogs } from '../ui/record-dialogs.js';
 import { renderEventList } from '../ui/event-content.js';
 import { bindAppShell } from '../ui/app-shell.js';
 import { createConnectionNotice } from '../ui/connection-notice.js';
+import { createShareView } from '../ui/share-view.js';
 
 // Connects modules and owns navigation only. Source records live exclusively in RunStore.
 export function createController(root = document, { repository = null, deviceTransport = null, historyEnabled = true, initialUrl = location.href } = {}) {
@@ -48,6 +49,7 @@ export function createController(root = document, { repository = null, deviceTra
   const dialogs = createRecordDialogs(root.querySelector('.lab-shell'));
   const measurement = createMeasurementView(root,()=>{renderRequested=true;}, event=>act(()=>editEventNote(event)));
   const experimentGuide = createExperimentGuide(root.querySelector('.lab-shell'));
+  const share = createShareView(findElement(root, 'section', '[data-screen="preview"]'));
   const analysis = createAnalysisView(root.querySelector('[data-screen="analysis"]'), { onError: showError, onExport: kind => act(() => exportFile(kind)) });
   const help = createActionHelp(root, { messages: { tableSelection: {label:'표 선택과 분석 대상',text:'체크한 행과 분석에 쓰는 자료는 별개입니다. 선택 자료로 분석을 누르면 분석 대상을 바꿀 수 있고, 분석에서 제외를 누르면 원자료를 보존하면서 계산에서 뺍니다.'} } });
   const policy = () => getActivityPolicy(context);
@@ -204,6 +206,7 @@ export function createController(root = document, { repository = null, deviceTra
     const preparation=getGuideContent(next);
     $('preview-equipment').textContent=[...preparation.equipment,...preparation.activityEquipment].map(item=>item.name).join(' · ');
     $('preview-transition-note').textContent = store ? nextCopy.preview.transitionNote : '';
+    share.setTarget(next);
     navigate('preview', push);
     return true;
   }
@@ -519,6 +522,6 @@ export function createController(root = document, { repository = null, deviceTra
   const ready = act(()=>applyLocation(initialUrl)); render();
   return { ready, async dispose(){
     await persistCurrent(); await disconnect(); await store?.close();
-    clearInterval(interval);abort.abort();dialogs.dispose();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();measurement.dispose();experimentGuide.dispose();repo.close();
+    clearInterval(interval);abort.abort();dialogs.dispose();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();measurement.dispose();experimentGuide.dispose();share.dispose();repo.close();
   }, getState:()=>({screen,context,targetContext,busy:busy || !!programmerState.busy,storage:store?.getState(),session:session?.getState()}) };
 }

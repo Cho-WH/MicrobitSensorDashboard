@@ -8,12 +8,16 @@ const source = new URL('./', import.meta.url);
 const output = new URL('../../../public/assets/branding/', import.meta.url);
 await mkdir(output, { recursive:true });
 await copyFile(new URL('sensor-lab-monochrome-24.svg',source),new URL('sensor-lab-mark-24.svg',output));
-for (const size of [16,32]) {
-  const svg = await readFile(new URL(`sensor-lab-primary-${size}.svg`,source));
-  await sharp(svg).resize(size,size).png().toFile(fileURLToPath(new URL(`sensor-lab-favicon-${size}.png`,output)));
+const favicon = await readFile(new URL('sensor-lab-favicon.svg',source));
+await copyFile(new URL('sensor-lab-favicon.svg',source),new URL('sensor-lab-favicon.svg',output));
+for (const size of [16,32,96]) {
+  // Rasterize directly at target density instead of enlarging a 16px bitmap.
+  await sharp(favicon, { density:72 * size / 16 }).png()
+    .toFile(fileURLToPath(new URL(`sensor-lab-favicon-${size}.png`,output)));
 }
 // Home-screen platforms supply the outer mask. Keep the background square/opaque.
 const primary = (await readFile(new URL('sensor-lab-primary.svg',source),'utf8')).replaceAll('rx="30"','rx="0"');
+await writeFile(new URL('sensor-lab-home.svg',output),primary);
 for (const size of [180,192,512]) {
   await sharp(Buffer.from(primary)).resize(size,size).flatten({ background:'#0b1f3b' }).png()
     .toFile(fileURLToPath(new URL(`sensor-lab-home-${size}.png`,output)));

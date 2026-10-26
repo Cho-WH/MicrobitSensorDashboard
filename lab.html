@@ -18,8 +18,10 @@
 <meta name="twitter:description" content="micro:bit 센서로 측정하고, 데이터를 저장해 그래프로 분석하며 실험 결과를 해석하는 과학 실험실입니다.">
 <meta name="twitter:image" content="https://cho-wh.github.io/MicrobitSensorDashboard/public/assets/branding/sensor-lab-social.png">
 <meta name="twitter:image:alt" content="micro:bit 센서 실험실 — 측정에서 발견까지, 준비·측정·분석 화면">
-<link rel="icon" type="image/png" sizes="16x16" href="public/assets/branding/sensor-lab-favicon-16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="public/assets/branding/sensor-lab-favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="public/assets/branding/sensor-lab-favicon-16.png?v=2">
+<link rel="icon" type="image/png" sizes="32x32" href="public/assets/branding/sensor-lab-favicon-32.png?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="public/assets/branding/sensor-lab-favicon-96.png?v=2">
+<link rel="icon" type="image/svg+xml" sizes="any" href="public/assets/branding/sensor-lab-favicon.svg?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="public/assets/branding/sensor-lab-home-180.png">
 <link rel="manifest" href="public/manifest.json">
 <link data-app-style rel="stylesheet" href="src/ui/guide.css">
@@ -54,7 +56,14 @@
 </aside>
 <div id="current-experiment" class="current-experiment" hidden><span id="current-experiment-label"></span><button id="return-current" data-copy="navigation.returnCurrent"></button></div>
 <section data-screen="home" class="lab-home"><div class="home-intro"><p class="eyebrow" data-copy="common.appName"></p><h2 data-copy="home.title"></h2><p data-copy="home.description"></p></div><h3 data-copy="home.sensors"></h3><div id="sensor-cards" class="experiment-cards"></div><h3 data-copy="home.activities"></h3><div id="activity-cards" class="experiment-cards"></div></section>
-<section data-screen="preview" class="experiment-preview lab-panel" hidden><p id="preview-eyebrow" data-copy="preview.eyebrow" class="eyebrow"></p><h2 id="preview-title"></h2><p id="preview-question" class="preview-question" data-copy="preview.question"></p><p id="preview-description" data-copy="preview.description"></p><p id="preview-channels" class="preview-channels"></p><ul id="preview-preparation"></ul><div class="preview-equipment"><strong id="preview-equipment-heading" data-copy="preview.equipmentHeading"></strong><p id="preview-equipment"></p></div><p id="preview-transition-note" class="lab-note"></p><div class="lab-controls"><button id="activate-experiment" data-ui-action="accent" data-copy="preview.start" class="primary"></button><button id="activate-prepared" data-copy="preview.prepared"></button><button id="preview-browse" data-copy="preview.browse" data-view="home"></button></div></section>
+<section data-screen="preview" class="experiment-preview lab-panel" hidden>
+  <div class="preview-layout"><div class="preview-content">
+    <p id="preview-eyebrow" data-copy="preview.eyebrow" class="eyebrow"></p><div class="preview-heading"><h2 id="preview-title"></h2></div>
+    <p id="preview-question" class="preview-question" data-copy="preview.question"></p><p id="preview-description" data-copy="preview.description"></p><p id="preview-channels" class="preview-channels"></p><ul id="preview-preparation"></ul>
+    <div class="preview-equipment"><strong id="preview-equipment-heading" data-copy="preview.equipmentHeading"></strong><p id="preview-equipment"></p></div><p id="preview-transition-note" class="lab-note"></p>
+    <div class="lab-controls"><button id="activate-experiment" data-ui-action="accent" data-copy="preview.start" class="primary"></button><button id="activate-prepared" data-copy="preview.prepared"></button><button id="preview-browse" data-copy="preview.browse" data-view="home"></button></div>
+  </div><aside id="tool-share-inline" class="tool-share-inline" aria-label="도구 공유"></aside></div>
+</section>
 <section data-screen="prepare" hidden><div class="preparation-heading"><div><h2 id="prepare-title" data-copy="navigation.prepare"></h2></div><button id="to-measure" class="primary" data-copy="prepare.measure"></button></div><div id="guide-host"></div></section>
 <section data-screen="measure" class="measurement-layout" hidden>
   <div class="luminous-heading"><div><h2>측정·기록</h2></div></div>
