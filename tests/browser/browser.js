@@ -12,6 +12,7 @@ import { runStartupTests } from './startup.js';
 import { runDeviceTests } from './devices.js';
 import { runLuminousTests, runLuminousWorkspaceTests } from './luminous.js';
 import { runPresentationPerformance, runPresentationAccessibility } from './presentation.js';
+import { runLargeRecordingTests } from './large-recording.js';
 const button = document.getElementById('run'), status = document.getElementById('status'), list = document.getElementById('results');
 button.addEventListener('click', async () => {
   button.disabled = true; list.replaceChildren(); status.textContent = '검사 중'; delete status.dataset.result;
@@ -23,6 +24,7 @@ button.addEventListener('click', async () => {
     suites.records = runRecordTests;
     suites.startup = runStartupTests;
     suites.accessibility = runPresentationAccessibility;
+    suites['large-recording'] = runLargeRecordingTests;
     const names=selected ? selected.split(',') : Object.keys(suites);
     if(names.includes('performance')) suites.performance=runPresentationPerformance;
     for(const name of names) if(!suites[name]) throw new Error('알 수 없는 검사 묶음: '+name);

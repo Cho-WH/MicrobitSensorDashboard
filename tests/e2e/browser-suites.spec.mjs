@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // Preserve the existing assertions while separating browser execution from an
 // interactive extension session. Each suite receives a fresh BrowserContext.
 const suites = ['startup', 'copy', 'storage', 'files', 'guide', 'preparation', 'luminous',
-  'workspace', 'accessibility', 'ui', 'app', 'records', 'measurement', 'navigation', 'layout', 'devices'];
+  'workspace', 'accessibility', 'ui', 'app', 'records', 'measurement', 'navigation', 'layout', 'devices', 'large-recording'];
 for (const suite of suites) {
   test(`browser suite: ${suite}`, async ({ page }, testInfo) => {
     try {
@@ -11,6 +11,7 @@ for (const suite of suites) {
       await page.getByRole('button', { name: '검사 실행', exact: true }).click();
       await expect(page.locator('#status')).toHaveAttribute('data-result', /passed|failed/, { timeout: 160_000 });
       await expect(page.locator('#status')).toHaveAttribute('data-result', 'passed');
+      if (suite === 'large-recording') console.log(await page.locator('#results').innerText());
     } catch (error) {
       // Successful runs need no diagnostic copies. Network and console events
       // are already retained in the failure trace configured by Playwright.
