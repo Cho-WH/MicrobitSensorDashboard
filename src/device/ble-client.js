@@ -60,7 +60,7 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     // Deliberately no await before the chooser: the caller's click remains the activation boundary.
     return bluetooth.requestDevice({ filters: deviceFilters, optionalServices: [UART_SERVICE] });
   }
-  async function connect(selectedDevice, { reuseConnection = false } = {}) {
+  async function connect(selectedDevice, { reuseConnection = false, serviceDiscoveryTimeoutMs = 0 } = {}) {
     checkAvailable();
     if (reuseConnection && device) throw new Error('이전 측정 연결의 제어권을 먼저 정리하세요.');
     if (device) await disconnect();
@@ -68,6 +68,18 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     device = selectedDevice; framer.reset();
     const current = () => token === epoch && device === selectedDevice;
     const assertCurrent = () => { if (!current()) throw new DOMException('연결 시도가 취소되었습니다.', 'AbortError'); };
+    async function discover(promise) {
+      if (!serviceDiscoveryTimeoutMs) return promise;
+      let timer;
+      try {
+        return await Promise.race([promise, new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            if (current()) void disconnect();
+            reject(Object.assign(new Error('UART 서비스·특성 조회 시간이 초과됐습니다.'), { code: 'timeout' }));
+          }, serviceDiscoveryTimeoutMs);
+        })]);
+      } finally { clearTimeout(timer); }
+    }
     gattListener = event => {
       if (!current() || event?.target !== selectedDevice) return;
       ++epoch; clearReferences(); disconnectListener?.();
@@ -76,12 +88,14 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     if (reuseConnection && !device.gatt?.connected) throw new DOMException('넘겨받을 GATT 연결이 끊겼습니다.', 'NetworkError');
     const server = reuseConnection ? device.gatt : await device.gatt?.connect(); assertCurrent();
     if (!server) throw new Error('장치의 Bluetooth 서비스에 연결하지 못했습니다.');
-    service = await server.getPrimaryService(UART_SERVICE); assertCurrent();
-    const characteristics = await service.getCharacteristics(); assertCurrent();
+    const discoveredService = await discover(server.getPrimaryService(UART_SERVICE)); assertCurrent();
+    service = discoveredService;
+    const characteristics = await discover(service.getCharacteristics()); assertCurrent();
     const classified = await Promise.all(characteristics.map(async characteristic => {
       const properties = characteristic.properties ?? {};
       let descriptors = [];
-      try { descriptors = await characteristic.getDescriptors?.() ?? []; } catch { /* Optional metadata. */ }
+      try { descriptors = await discover(characteristic.getDescriptors?.()) ?? []; }
+      catch (error) { if (error.code === 'timeout') throw error; /* Optional metadata. */ }
       return { characteristic, uuid: characteristic.uuid?.toLowerCase(),
         write: !!(properties.write || properties.writeWithoutResponse),
         notify: !!(properties.notify || properties.indicate) || descriptors.some(d => d.uuid?.toLowerCase() === CCCD) };

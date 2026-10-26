@@ -1,3 +1,4 @@
+import { rendered, until } from './render.js';
 const check=(value,message)=>{if(!value)throw new Error(message);};
 function contrast(foreground,background) {
   const luminance=color=>{
@@ -6,11 +7,6 @@ function contrast(foreground,background) {
     });return values[0]*.2126+values[1]*.7152+values[2]*.0722;
   };
   const a=luminance(foreground),b=luminance(background);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
-}
-const settle=()=>new Promise(resolve=>setTimeout(resolve,280));
-async function until(predicate,message) {
-  const deadline=performance.now()+15000;
-  while(!predicate()){if(performance.now()>deadline)throw new Error(message);await settle();}
 }
 async function open(path,width=1366,height=768) {
   const frame=document.createElement('iframe'); frame.title='표현·접근성 검토';
@@ -40,20 +36,25 @@ export async function runPresentationPerformance(report=()=>{}) {
       const pausedRedraws=redraws;
       check(pausedRedraws<=1,'일시정지 자료를 주기적으로 다시 그리고 있습니다.');
       check(initial===JSON.stringify(win.Chart.getChart($('#live-chart')).data.datasets.map(dataset=>dataset.data)),'정지 중 그래프 자료가 바뀌었습니다.');
-      $('#resume-recording').click();await settle();
+      $('#resume-recording').click();await rendered(doc);
       [...doc.querySelectorAll('footer button')].find(button=>button.textContent==='10초 수신').click();
       await until(()=>$('#sample-count').textContent.includes('700'),'성능 검토 중 기록이 누락되었습니다.');
-      $('#pause-recording').click();await settle();
-      $('[data-view="analysis"]').click();await settle();
-      const transitionStart=performance.now();$('#tab-relationship').click();await settle();
+      $('#pause-recording').click();
+      await until(()=>$('[data-screen="measure"]').dataset.recordingState==='paused','일시정지 완료 시간 초과');
+      await rendered(doc);
+      $('[data-view="analysis"]').click();
+      await until(()=>!$('[data-screen="analysis"]').hidden && !$('#tab-relationship').disabled,'분석 화면 준비 시간 초과');
+      await rendered(doc);
+      const transitionStart=performance.now();$('#tab-relationship').click();await rendered(doc);
       const transition=performance.now()-transitionStart;
+      await until(()=>win.Chart.getChart($('#analysis-chart'))?.data.datasets[0]?.data.length===700,'분석 자료 렌더링 시간 초과');
       const chart=win.Chart.getChart($('#analysis-chart'));
       check(chart.data.datasets[0].data.length===700,'분석 전환에서 원자료가 누락되었습니다.');
       const chartCount=Object.keys(win.Chart.instances).length;
-      for(const mode of ['graph','table','split']){$(`[data-relationship-mode="${mode}"]`).click();await settle();}
+      for(const mode of ['graph','table','split']){$(`[data-relationship-mode="${mode}"]`).click();await rendered(doc);}
       check(Object.keys(win.Chart.instances).length===chartCount,'보기 전환마다 차트가 누적됩니다.');
       const scroller=$('#raw-scroll');const scrollStart=performance.now();
-      scroller.scrollTop=scroller.scrollHeight;scroller.dispatchEvent(new win.Event('scroll'));await settle();
+      scroller.scrollTop=scroller.scrollHeight;scroller.dispatchEvent(new win.Event('scroll'));await rendered(doc);
       check($('#raw-rows [data-sample-id="700"]')&&$('#raw-rows').querySelectorAll('.sample-row').length<100,'가상 표가 마지막 자료에 도달하지 못하거나 전체 행을 생성했습니다.');
       times.sort((a,b)=>a-b);
       report(`기본 Luminous · 4채널 600→700개 · Chart update 중앙값 ${times[Math.floor(times.length/2)].toFixed(1)}ms / p95 ${times[Math.floor(times.length*.95)].toFixed(1)}ms · 분석 전환 ${transition.toFixed(0)}ms · 표 끝 이동 ${(performance.now()-scrollStart).toFixed(0)}ms · 정지 1.2초 재그리기 ${pausedRedraws}회`);
@@ -70,7 +71,7 @@ export async function runPresentationAccessibility(report=()=>{}) {
     const frame=await open(path+'&text=200&fallback=1&motion=reduce',width,844);
     const doc=frame.contentDocument,win=frame.contentWindow,$=selector=>doc.querySelector(selector);
     try {
-      await settle();
+      await rendered(doc);
       const fits=label=>check(doc.documentElement.scrollWidth<=width+1,`${label}: 200% 글자에서 페이지 가로 넘침 ${doc.documentElement.scrollWidth}/${width}`);
       fits(path);
       check(parseFloat(win.getComputedStyle(doc.documentElement).fontSize)===32,'200% 글자 환경이 적용되지 않았습니다.');
@@ -92,15 +93,15 @@ export async function runPresentationAccessibility(report=()=>{}) {
         }
         const rangeStyle=win.getComputedStyle($('#live-range summary'));
         check(contrast(rangeStyle.color,rangeStyle.backgroundColor)>=4.5,'표시 구간 버튼 글자 대비 부족');
-        $('.luminous-settings').click();await settle();
+        $('.luminous-settings').click();await rendered(doc);
         const dialog=$('#measurement-settings');
         check(dialog.open&&dialog.contains(doc.activeElement),'설정 창 진입 초점 누락');
         check(dialog.scrollWidth<=dialog.clientWidth+1,'확대 설정 창 가로 넘침');
-        $('.luminous-close').click();await settle();
+        $('.luminous-close').click();await rendered(doc);
         check(doc.activeElement===$('.luminous-settings'),'설정 닫기 후 초점 복귀 누락');
-        $('[data-view="analysis"]').click();await settle();$('#tab-relationship').click();await settle();fits('분석');
-        $('[data-relationship-mode="table"]').click();await settle();
-        const scroller=$('#raw-scroll');scroller.scrollTop=scroller.scrollHeight;scroller.dispatchEvent(new win.Event('scroll'));await settle();
+        $('[data-view="analysis"]').click();await rendered(doc);$('#tab-relationship').click();await rendered(doc);fits('분석');
+        $('[data-relationship-mode="table"]').click();await rendered(doc);
+        const scroller=$('#raw-scroll');scroller.scrollTop=scroller.scrollHeight;scroller.dispatchEvent(new win.Event('scroll'));await rendered(doc);
         check($('#raw-rows [data-sample-id="600"]'),'확대 가상 표의 마지막 원자료 누락');
       }
       report(`${width}px ${path.includes('preparation')?'준비 B':'측정·분석'} · 글자 200% · 글꼴 실패·필터 없음·동작 줄이기 · 대비·대화상자·자료 접근`);

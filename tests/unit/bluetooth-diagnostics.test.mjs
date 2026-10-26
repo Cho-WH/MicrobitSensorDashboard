@@ -153,6 +153,31 @@ test('invalid memory bounds and zero hashes cannot enable reset', () => {
   assert.equal(parseRegion(bytes, 1).valid, false);
 });
 
+test('discovery has its own deadline; timeout retires the connection and ignores late results', async () => {
+  for (const stage of ['service', 'characteristic']) {
+    const { f, client, events } = setup({}, { timeoutMs: 500, serviceDiscoveryTimeoutMs: 15 });
+    const connect = f.device.gatt.connect.bind(f.device.gatt);
+    f.device.gatt.connect = async () => { await new Promise(resolve => setTimeout(resolve, 30)); return connect(); };
+    await client.connect(f.device); // The discovery limit must not shorten connect.
+    const original = f.server.getPrimaryService.bind(f.server);
+    let finish;
+    f.server.getPrimaryService = async id => {
+      const service = await original(id);
+      if (id !== services.info) return service;
+      return stage === 'service' ? new Promise(resolve => { finish = () => resolve(service); })
+        : { getCharacteristic: () => new Promise(resolve => { finish = () => resolve({}); }) };
+    };
+    await assert.rejects(client.diagnose(), { code: 'timeout' });
+    assert.equal(events.find(e => e.kind === 'trace-timeout').timeoutMs, 15);
+    assert.equal(f.device.gatt.connected, false);
+    f.server.getPrimaryService = original;
+    await client.connect(f.device);
+    finish();
+    assert.equal((await client.diagnose()).status.mode, 1);
+    client.disconnect();
+  }
+});
+
 test('a late GATT connection is released unless a newer UART owner is using the device', async () => {
   for (const occupied of [false, true]) {
     const { f, client } = setup({}, { timeoutMs: 10, isDeviceInUse: () => occupied });

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>비본딩 전체 교체 · 시험본 C</title>
+<link rel="icon" href="../../public/assets/branding/sensor-lab-favicon-32.png">
+<link rel="stylesheet" href="../../src/ui/tokens.css">
+<link rel="stylesheet" href="./style.css">
+<main>
+  <header><div><p class="eyebrow">개발 실험 · 시험본 C</p><h1>비본딩 전체 교체</h1>
+    <p>실행 모드 → 비본딩 DFU 진입 → 전체 전송 → 프로그램·수신 확인</p></div><a href="./">기존 부분 교체 시험</a></header>
+  <aside class="scope"><strong>처음 한 번 USB 준비</strong><p>아래 C 파일을 MICROBIT 드라이브에 복사하세요. OS 페어링은 하지 않습니다. 다른 앱의 측정을 마치고 연결을 해제하세요. 이번 전체 전송은 런타임과 프로그램을 바꾸며 Bluetooth 스택·부트로더는 바꾸지 않습니다.</p></aside>
+  <p id="environment" class="environment"></p>
+  <p id="notice" role="status">실험 파일을 확인하고 있습니다.</p>
+  <label class="check"><input id="remote-control" type="checkbox"><span>이 컴퓨터의 로컬 명령으로 선택 보드의 진단·전체 전송·측정 확인을 허용합니다.</span></label>
+  <p id="bridge-status">로컬 제어 꺼짐</p>
+  <div class="layout"><div class="steps">
+    <section><h2>1. 시험본 C 준비·연결</h2>
+      <p id="downloads"></p>
+      <label class="check"><input id="single-board" type="checkbox"><span>주변의 다른 micro:bit 전원을 끄고 이 시험 보드 한 대만 켰습니다. OS에 이 보드의 본딩 기록이 없는 실험 조건입니다.</span></label>
+      <p class="hint">브라우저의 장치 선택 권한과 OS 본딩은 다릅니다. 기존 본딩 기록이 있다면 먼저 로그에 남기고 별도 조건으로 다루세요. 이 실험 화면은 기록을 삭제하지 않습니다.</p>
+      <div class="actions"><button id="choose" disabled>보드 선택·진단</button><button id="reconnect" disabled>같은 보드 재연결·확인</button></div>
+      <p id="board">선택한 보드 없음</p>
+    </section>
+    <section><h2>2. 비본딩 DFU 진입</h2>
+      <label>교체할 프로그램<select id="target" disabled></select></label>
+      <p class="hint">일반 실행 모드에서 UUID 0003을 확인한 뒤 진입합니다. 본딩형 UUID 0004로 대신 진행하지 않습니다.</p>
+      <button id="enter" disabled>선택 프로그램 준비·DFU 진입</button>
+    </section>
+    <section><h2>3. DFU 보드 선택·전체 전송</h2>
+      <p class="hint">라이브러리 비교: web-bluetooth-dfu 2.4.0 기본 설정 · 별도 전송 속도 제한 없음. 이전 6분 성공 기록과 다른 전송기입니다.</p>
+      <p>2번 진입 직후 이 버튼으로 장치를 선택하세요. 대기 시간이 길어지면 일반 실행으로 돌아갈 수 있습니다. 이름은 <code>DfuTarg</code> 또는 기존 보드 이름으로 보일 수 있습니다. 한 대만 켠 실험 조건에서 진행합니다.</p>
+      <button id="flash" disabled>DFU 장치 선택·전송 시작</button>
+      <progress id="progress" max="100" value="0" aria-label="전송률"></progress>
+      <p id="transfer">아직 전송하지 않음</p>
+    </section>
+    <section><h2>4. 실행·측정 확인</h2>
+      <p>재연결 후 같은 보드의 일반 실행·프로그램 식별값을 확인하고 측정값 3개를 받습니다. 재연결이 실패하면 1번의 보드 선택으로 다시 선택할 수 있습니다.</p>
+      <div class="actions"><button id="verify" disabled>재연결·설치·수신 확인</button><button id="receive" disabled>현재 프로그램 수신만 확인</button></div>
+      <p id="reading">수신 전</p>
+      <p class="hint">권장 순서: 온도 자기 재설치 → 밝기 → 온도. 실패 시 로그를 저장하고 C HEX를 USB로 다시 설치해 복구합니다.</p>
+    </section>
+  </div><section class="log-panel"><h2>실험 기록</h2>
+    <label>보드·환경 메모<textarea id="memo" rows="3" placeholder="보드 이름/리비전, OS, 이전 USB 설치, 본딩 상태"></textarea></label>
+    <div class="actions"><button id="save">JSON 저장</button><button id="disconnect">연결 해제·실험 중단</button></div>
+    <pre id="log" tabindex="0" aria-label="실험 로그"></pre>
+  </section></div>
+</main>
+<script src="./vendor/web-bluetooth-dfu-2.4.0/secure-dfu.js"></script>
+<script type="module" src="./unbonded.js"></script>
+</html>

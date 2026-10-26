@@ -4,6 +4,7 @@ import { trialPrograms } from './firmware/programs.js';
 import { loadTrialProgram, partialFlashProblem } from './partial-flash.js';
 import { testPlans, decodeTrialSample } from './test-plans.js';
 import { runConnectionTrial } from './connection-trial.js';
+import { reconnectPolicy, retryConnection, requireDiagnosticReady } from './connection-retry.js';
 
 const failure = (message, code = 'trial-failed') => Object.assign(new Error(message), { code });
 export function identifyTrial(report) {
@@ -11,7 +12,7 @@ export function identifyTrial(report) {
 }
 
 export function createTrialRunner({ diagnostic, onEvent = () => {}, onState = () => {}, onOwner = () => {},
-  createClient = createBleClient, loadImage = loadTrialProgram, settleMs = 1200, sampleTimeoutMs = 10000 } = {}) {
+  createClient = createBleClient, loadImage = loadTrialProgram, retryDelaysMs = reconnectPolicy.delaysMs, sampleTimeoutMs = 10000 } = {}) {
   let active = null, state = { status: 'idle', steps: [] };
   const publish = patch => { Object.assign(state, patch); onState(structuredClone(state)); };
   function check(ctx) { if (active !== ctx || ctx.abort.signal.aborted) throw failure('시험을 중단했습니다.', 'cancelled'); }
@@ -27,18 +28,13 @@ export function createTrialRunner({ diagnostic, onEvent = () => {}, onState = ()
   }
   const pause = (ctx, ms) => wait(ctx, new Promise(resolve => setTimeout(resolve, ms)), ms + 1000);
   async function readBoard(ctx, reconnect = false) {
-    for (let attempt = 1; attempt <= (reconnect ? 2 : 1); attempt++) {
+    return retryConnection(async () => {
       check(ctx); onOwner(diagnostic);
-      try {
-        if (!diagnostic.connected) await diagnostic.connect(ctx.device);
-        check(ctx); const report = await diagnostic.diagnose(); check(ctx); return report;
-      } catch (error) {
-        diagnostic.disconnect(); check(ctx);
-        if (attempt === (reconnect ? 2 : 1)) throw error;
-        onEvent({ kind: 'trial-reconnect-retry', attempt, error: error.message });
-        await pause(ctx, settleMs);
-      }
-    }
+      if (!diagnostic.connected) await diagnostic.connect(ctx.device);
+      check(ctx); const report = await diagnostic.diagnose(); check(ctx);
+      requireDiagnosticReady(report); return report;
+    }, { phase: reconnect || 'partial-diagnose', check: () => check(ctx), cleanup: () => diagnostic.disconnect(),
+      pause: ms => pause(ctx, ms), onEvent, delaysMs: retryDelaysMs });
   }
   function releaseUart(ctx) {
     const client = ctx.client; ctx.client = null;
@@ -47,13 +43,14 @@ export function createTrialRunner({ diagnostic, onEvent = () => {}, onState = ()
     ctx.device.gatt?.disconnect(); void client.disconnect().catch(() => {});
   }
   async function openUart(ctx, onLine, onDisconnected) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    return retryConnection(async attempt => {
       check(ctx);
       const client = createClient(); ctx.client = client; onOwner(client);
       let ready = false;
       client.setDisconnectedListener(() => { if (ready) onDisconnected(); });
       try {
-        const connecting = client.connect(ctx.device, { reuseConnection: attempt === 1 });
+        const connecting = client.connect(ctx.device, { reuseConnection: attempt === 1,
+          serviceDiscoveryTimeoutMs: reconnectPolicy.serviceDiscoveryTimeoutMs });
         const ownerConnectionId = ctx.device.gatt?.__trialConnectionId;
         connecting.finally(() => {
           if (active !== ctx && !active && ctx.device.gatt?.connected) {
@@ -67,14 +64,9 @@ export function createTrialRunner({ diagnostic, onEvent = () => {}, onState = ()
         }));
         if (!ctx.device.gatt?.connected) throw failure('측정 연결 준비 중 연결이 끊겼습니다.', 'uart-disconnected');
         ready = true; return client;
-      } catch (error) {
-        releaseUart(ctx); check(ctx);
-        const transient = ['NetworkError', 'InvalidStateError'].includes(error.name) || error.code === 'uart-disconnected';
-        if (attempt === 2 || !transient) throw error;
-        onEvent({ kind: 'trial-uart-connect-retry', attempt, error: error.message, startCommandSent: false });
-        await pause(ctx, Math.max(settleMs, 1500));
-      }
-    }
+      } catch (error) { releaseUart(ctx); throw error; }
+    }, { phase: 'partial-uart-prepare', check: () => check(ctx), cleanup: () => releaseUart(ctx),
+      pause: ms => pause(ctx, ms), onEvent, delaysMs: retryDelaysMs });
   }
   async function receive(ctx, target) {
     await diagnostic.releaseConnection(); check(ctx);
@@ -119,7 +111,7 @@ export function createTrialRunner({ diagnostic, onEvent = () => {}, onState = ()
     if (active) throw failure('이미 시험 중입니다.');
     if (!device || !Object.hasOwn(testPlans, planId)) throw failure('장치와 시험을 선택하세요.');
     const ctx = { device, abort: new AbortController(), client: null }; active = ctx;
-    state = { status: 'running', plan: planId, device: { id: device.id, name: device.name }, startedAt: new Date().toISOString(), steps: [] };
+    state = { status: 'running', reconnectPolicy, plan: planId, device: { id: device.id, name: device.name }, startedAt: new Date().toISOString(), steps: [] };
     publish({ stage: '파일 검사', target: null, progress: 0 });
     onEvent({ kind: 'trial-start', plan: planId, device: state.device });
     try {
@@ -150,8 +142,8 @@ export function createTrialRunner({ diagnostic, onEvent = () => {}, onState = ()
           publish({ target: target.id, stage: '설치 모드', progress: 0, samples: 0, lastLine: null });
           if (report.status.mode !== 0) {
             const previousIdentity = [report.regions[1].hash, report.regions[2].hash];
-            await diagnostic.reset(0, { candidateConfirmed: true, waitForDisconnect: true }); check(ctx);
-            report = await readBoard(ctx, true);
+            await diagnostic.reset(0, { candidateConfirmed: true, waitForDisconnect: true, allowDisconnectTimeout: true }); check(ctx);
+            report = await readBoard(ctx, 'partial-install-mode');
             if (report.status?.mode !== 0) throw failure('재연결 후 설치 모드가 확인되지 않았습니다.');
             if (report.regions?.[1]?.hash !== previousIdentity[0] || report.regions?.[2]?.hash !== previousIdentity[1])
               throw failure('설치 모드 진입 후 기존 런타임·프로그램 식별값이 달라졌습니다.');
@@ -162,7 +154,7 @@ export function createTrialRunner({ diagnostic, onEvent = () => {}, onState = ()
             finishing: () => publish({ stage: '전송 완료 · 보드 연결 해제 이벤트 대기' }),
           });
           publish({ stage: '재연결·프로그램 확인' });
-          report = await readBoard(ctx, true);
+          report = await readBoard(ctx, 'partial-post-install');
           if (report.status?.mode !== 1 || identifyTrial(report)?.id !== target.id)
             throw failure('재연결 후 대상 프로그램·일반 실행이 확인되지 않았습니다.');
           onEvent({ kind: 'trial-program-verified', id: target.id, programHash: target.programHash, sha256: target.sha256 });

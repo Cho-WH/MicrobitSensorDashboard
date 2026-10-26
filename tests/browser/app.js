@@ -1,3 +1,4 @@
+import { rendered, until } from './render.js';
 import { composeGuideSteps } from '../../src/guide/steps.js';
 import { mountLabFixture, clickLabControl, clickVisible } from './lab-fixture.js';
 import { startApp } from '../../src/app/startup.js';
@@ -6,11 +7,7 @@ import { buildExperimentJson, parseExperimentJson } from '../../src/data/files/j
 import { buildCsv, parseExperimentCsv } from '../../src/data/files/csv.js';
 
 const check=(value,message)=>{if(!value)throw new Error(message);};
-async function until(predicate,message) {
-  const deadline=performance.now()+12000;
-  while(!predicate()&&performance.now()<deadline) await new Promise(resolve=>setTimeout(resolve,50));
-  check(predicate(),message);
-}
+
 
 // Runs the actual controller, DOM, charts and isolated IndexedDB with explicitly simulated readings.
 export async function runAppTests(report=()=>{}) {
@@ -25,7 +22,7 @@ export async function runAppTests(report=()=>{}) {
   };
   const fixture=await mountLabFixture(),{host}=fixture;
   const $=selector=>host.querySelector(selector);
-  const click=async selector=>{await until(()=>!app.getState().busy&&$(selector)&&!$(selector).disabled,'조작 비활성: '+selector);clickLabControl(host,selector);await new Promise(resolve=>setTimeout(resolve,240));check($('#lab-error').hidden,$('#lab-error').textContent);};
+  const click=async selector=>{await until(()=>!app.getState().busy&&$(selector)&&!$(selector).disabled,'조작 비활성: '+selector);clickLabControl(host,selector);await until(()=>!app.getState().busy,'조작 완료 시간 초과: '+selector);await rendered();check($('#lab-error').hidden,$('#lab-error').textContent);};
   let app;
   const select=async path=>{
     await click(`[href*="/${path}/"]`);await until(()=>app.getState().screen==='preview','실험 미리보기 누락');

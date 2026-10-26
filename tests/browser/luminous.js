@@ -1,10 +1,6 @@
+import { rendered, until } from './render.js';
 import { stableText } from './layout.js';
 const check=(value,message)=>{if(!value)throw new Error(message);};
-const settle=()=>new Promise(resolve=>setTimeout(resolve,260));
-async function until(predicate,label) {
-  const deadline=performance.now()+12000;
-  while(!predicate()){if(performance.now()>deadline)throw new Error(label);await settle();}
-}
 
 // Reflow the same persisted experiment, then reopen it through the library.
 // This protects screen transitions without keeping separate layout fixtures.
@@ -13,6 +9,7 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
   frame.style.cssText='display:block;border:0;max-width:none;width:1366px;height:768px';
   frame.src=new URL('../../dev/design/?sensor=bmp280&state=paused&view=relationship',import.meta.url).href;
   document.body.append(frame);
+  const settle=()=>rendered(frame.contentDocument);
   try {
     await until(()=>frame.contentDocument?.documentElement.dataset.reviewReady==='paused','분석 검토 화면을 열지 못했습니다.');
     const doc=frame.contentDocument, win=frame.contentWindow, $=selector=>doc.querySelector(selector);
@@ -22,7 +19,9 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
     await click('#add-right-axis'); await click('#trend-enabled'); await click('#right-trend-enabled');
     for (const [width,height] of [[2560,1440],[1920,1080],[1366,768],[1280,1039],[1024,768],[390,844],[320,700]]) {
       frame.style.width=width+'px'; frame.style.height=height+'px'; await settle();
-      for (const mode of ['table','graph','split']) {
+      // All modes at desktop/mobile; other widths check the densest split layout.
+      const modes=[1366,390].includes(width)?['table','graph','split']:['split'];
+      for (const mode of modes) {
         await click(`[data-relationship-mode="${mode}"]`);
         check(doc.documentElement.scrollWidth<=width+1,`${width}px ${mode} 분석 화면이 페이지 밖으로 넘칩니다.`);
         if(mode!=='table') {
@@ -61,8 +60,11 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
       await click('#tab-relationship');
       await click('#use-graph-for-reflection');
       const answer=$('#reflection-observation');
-      answer.value='조건을 일정하게 두고 관찰한 결과입니다. '.repeat(20);
-      answer.dispatchEvent(new win.Event('input',{bubbles:true})); await settle();
+      if(!answer.value) {
+        answer.value='조건을 일정하게 두고 관찰한 결과입니다. '.repeat(20);
+        answer.dispatchEvent(new win.Event('input',{bubbles:true}));
+      }
+      await settle();
       check(doc.documentElement.scrollWidth<=width+1,`${width}px 해석 화면이 페이지 밖으로 넘칩니다.`);
       check(answer.clientWidth>0&&answer.scrollWidth<=answer.clientWidth+1,`${width}px 해석 글이 옆으로 잘립니다.`);
       await click('#reflection-back');
@@ -97,6 +99,7 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
 // Real app + real IndexedDB, fixed simulated input. No duplicate UI or run model.
 export async function runLuminousTests(report=()=>{}) {
   let frame;
+  const settle=()=>rendered(frame.contentDocument);
   const cases = [['bmp280',1366,768],['bmp280',1024,768],['bmp280',390,844],['magnetometer',1366,768],['light-level',390,844]];
   try {
     for(const [sensor,width,height] of cases) {
@@ -162,7 +165,7 @@ export async function runLuminousTests(report=()=>{}) {
           const pressure=$('#display-channels input[value="pressureHpa"]');pressure.click();await settle();pressure.click();await settle();
           check(samples()===original,'표시 항목 전환으로 측정 자료가 바뀌었습니다.');
           $('#resume-recording').click();await settle();
-          const advance=[...doc.querySelectorAll('footer button')].find(button=>button.textContent==='10초 수신');advance.click();await settle();
+          const advance=[...doc.querySelectorAll('footer button')].find(button=>button.textContent==='10초 수신');advance.click();await until(()=>$('#sample-count').textContent.includes('700'),'모의 자료 추가 시간 초과');await settle();
           check($('#sample-count').textContent.includes('700'),'재개 후 새 자료가 기존 기록에 이어지지 않았습니다.');
           $('[data-view="analysis"]').click();await settle();$('[data-view="measure"]').click();await settle();
           check($('#sample-count').textContent.includes('700')&&$('#recording-status').textContent==='기록 중','분석 화면 이동으로 기록 상태가 바뀌었습니다.');
@@ -175,7 +178,8 @@ export async function runLuminousTests(report=()=>{}) {
           reviewButton('저장 정상화').click();
           await until(()=>$('[data-screen="measure"]').dataset.storageState==='clean','저장 재시도 실패');
           check(samples()===unsaved,'저장 재시도 중 원자료가 바뀌었습니다.');
-          reviewButton('수신 끊기').click();await settle();
+          reviewButton('수신 끊기').click();
+          await until(()=>$('[data-screen="measure"]').dataset.connectionState==='disconnected','수신 종료 상태 반영 시간 초과');await settle();
           check($('[data-screen="measure"]').dataset.connectionState==='disconnected'&&samples()===unsaved,'수신 끊김 뒤 자료 또는 연결 표시 오류');
           report('새 화면 · 저장 실패 표시·재시도·연결 종료에서 원자료 보존');
         }

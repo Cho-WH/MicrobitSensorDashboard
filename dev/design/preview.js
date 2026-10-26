@@ -30,7 +30,16 @@ async function advance(ms) {
     await job.fn();
   }
   time = end;
-  await new Promise(resolve=>setTimeout(resolve,250));
+  await until(()=>!app.getState().busy);
+  const saved=app.getState().storage;
+  if(saved?.sampleCount && app.getState().session?.recording) {
+    // Controller painting is scheduled separately from simulated sensor input.
+    await until(()=>{
+      const last=globalThis.Chart.getChart(document.querySelector('#live-chart'))?.data.datasets[0]?.data.at(-1);
+      return last?.sampleId===saved.lastSampleId && last.x===0;
+    });
+  }
+  await painted();
 }
 async function until(predicate) {
   const deadline = realNow()+10000;
@@ -50,7 +59,13 @@ const transport = createTransport({ble:createMockBleClient(()=>context,{timers,n
 const app = await startApp(document,{repository,deviceTransport:transport,historyEnabled:false,
   initialUrl:new URL(`sensors/${sensor}/?view=measure&mock=1`,document.baseURI).href});
 const $ = selector=>document.querySelector(selector);
-async function click(selector) { await until(()=>!app.getState().busy&&!$(selector).disabled); $(selector).click(); await new Promise(resolve=>setTimeout(resolve,250)); }
+const painted=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+async function click(selector) {
+  await until(()=>!app.getState().busy&&!$(selector).disabled);
+  $(selector).click();
+  await until(()=>!app.getState().busy);
+  await painted();
+}
 await until(()=>!app.getState().busy);
 $('#run-name').value = '작은 변화 관찰하기';
 if (state !== 'idle') {

@@ -123,6 +123,30 @@ test('UART hands off a live GATT only after unsubscribing and retires old callba
   await old.disconnect();
 });
 
+test('UART discovery timeout ignores late results and leaves the next connection usable', async () => {
+  for (const stage of ['service', 'characteristics', 'descriptors']) {
+    const f = deviceFixture(), ble = createBleClient({ bluetooth: { requestDevice() {} } });
+    const original = f.device.gatt.getPrimaryService;
+    const descriptors = f.rx.getDescriptors;
+    let finish;
+    const pending = () => new Promise(resolve => { finish = resolve; });
+    f.device.gatt.getPrimaryService = stage === 'service' ? pending
+      : stage === 'characteristics' ? async () => ({ getCharacteristics: pending }) : original;
+    if (stage === 'descriptors') f.rx.getDescriptors = pending;
+    await assert.rejects(ble.connect(f.device, { serviceDiscoveryTimeoutMs: 15 }), { code: 'timeout' });
+    assert.equal(f.device.gatt.connected, false);
+    f.device.gatt.getPrimaryService = original; f.rx.getDescriptors = descriptors;
+    await ble.connect(f.device, { serviceDiscoveryTimeoutMs: 15 });
+    const currentService = ble.getContext().service;
+    finish(stage === 'service' ? { getCharacteristics: async () => [] } : []);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(ble.getContext().service, currentService);
+    await ble.sendStartCommand('start');
+    assert.deepEqual(f.writes, ['start\n']);
+    await ble.disconnect();
+  }
+});
+
 test('UART subscription cleanup failure never claims a successful handoff', async () => {
   const f = deviceFixture(), ble = createBleClient({ bluetooth: { requestDevice() {} } });
   await ble.connect(f.device);

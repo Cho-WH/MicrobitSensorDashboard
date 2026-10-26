@@ -24,6 +24,8 @@ export function decodeTrialSample(id, raw) {
 export function validateCommand(command) {
   if (!command || typeof command !== 'object' || Array.isArray(command)) throw new Error('명령 형식 오류');
   if (command.action === 'run' && Object.hasOwn(testPlans, command.plan) && Object.keys(command).every(k => ['action', 'plan'].includes(k))) return command;
+  if (command.action === 'unbonded' && ['temperature', 'light-level', 'quick', 'verify'].includes(command.target)
+    && Object.keys(command).every(k => ['action', 'target'].includes(k))) return command;
   if (['diagnose', 'cancel'].includes(command.action) && Object.keys(command).length === 1) return command;
-  throw new Error('지원 명령: diagnose, cancel, run + 등록된 plan');
+  throw new Error('지원 명령: diagnose, cancel, run + 등록된 plan, unbonded + temperature/light-level/quick/verify');
 }

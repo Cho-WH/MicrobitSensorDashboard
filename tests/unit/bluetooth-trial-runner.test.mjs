@@ -7,6 +7,7 @@ import { createTrialRunner } from '../../dev/bluetooth-install/trial-runner.js';
 import { trialPrograms } from '../../dev/bluetooth-install/firmware/programs.js';
 import { verifyTrialProgram } from '../../dev/bluetooth-install/partial-flash.js';
 import { bluetoothFixture } from '../fixtures/bluetooth-diagnostics.mjs';
+import { retryConnection } from '../../dev/bluetooth-install/connection-retry.js';
 const rows = { temperature: '25', 'light-level': '100', accelerometer: '0,0,1000,1000', magnetometer: '1,2,3,4', bmp280: '25,,1000', 'analog-raw': '0,512,1023' };
 const temperature = trialPrograms.find(p => p.id === 'temperature');
 const autoSamples = Object.fromEntries(trialPrograms.filter(p => rows[p.id]).map(p => [p.programHash, rows[p.id]]));
@@ -17,9 +18,10 @@ const loadImage = async id => {
 function setup(options = {}, overrides = {}) {
   const f = bluetoothFixture({ runtimeHash: temperature.runtimeHash, programHash: temperature.programHash,
     flash: true, disconnectOnReset: true, disconnectOnFinish: true, autoSamples, ...options });
-  const events = [], diagnostic = createDiagnostics({ bluetooth: f.bluetooth, timeoutMs: 100, support: () => 'supported' });
+  const events = [], diagnostic = createDiagnostics({ bluetooth: f.bluetooth, timeoutMs: 100, disconnectTimeoutMs: 10,
+    support: () => 'supported', onEvent: e => events.push(e) });
   const runner = createTrialRunner({ diagnostic, createClient: () => createBleClient({ bluetooth: f.bluetooth }), loadImage,
-    settleMs: 1, sampleTimeoutMs: 50, onEvent: e => events.push(e), ...overrides });
+    retryDelaysMs: [1, 2, 4], sampleTimeoutMs: 50, onEvent: e => events.push(e), ...overrides });
   return { f, runner, events, diagnostic };
 }
 test('built-in round trip verifies five programs and UART samples without extra device choosers', async () => {
@@ -39,8 +41,8 @@ test('built-in round trip verifies five programs and UART samples without extra 
   assert.equal((await runner.run(f.device, 'quick')).status, 'passed');
   assert.equal(f.state.connects, 15); assert.equal(f.state.disconnects, 14);
 });
-test('post-flash diagnosis retries once without replaying mode or firmware, then stops on exhaustion', async () => {
-  for (const failures of [1, 2]) {
+test('post-flash diagnosis recovers on fourth attempt or exhausts without replaying mode or firmware', async () => {
+  for (const failures of [3, 4]) {
     let remaining = 0;
     const { f, runner, diagnostic, events } = setup({}, { onState: s => {
       if (s.stage === '재연결·프로그램 확인' && s.target === 'light-level') remaining = failures;
@@ -51,12 +53,51 @@ test('post-flash diagnosis retries once without replaying mode or firmware, then
       return diagnose();
     };
     const result = await runner.run(f.device, 'quick');
-    assert.equal(result.status, failures === 1 ? 'passed' : 'failed', result.error);
-    assert.equal(events.filter(e => e.kind === 'trial-reconnect-retry').length, 1);
-    assert.equal(f.writes.filter(p => p[0] === 2).length, failures === 1 ? 2 : 1);
-    assert.equal(f.writes.filter(p => p[0] === 0xff).length, failures === 1 ? 2 : 1);
-    assert.equal(result.connectionRetained, failures === 1);
+    assert.equal(result.status, failures === 3 ? 'passed' : 'failed', result.error);
+    assert.equal(events.filter(e => e.kind === 'connection-retry-wait').length, 3);
+    assert.equal(f.writes.filter(p => p[0] === 2).length, failures === 3 ? 2 : 1);
+    assert.equal(f.writes.filter(p => p[0] === 0xff).length, failures === 3 ? 2 : 1);
+    assert.equal(result.connectionRetained, failures === 3);
     diagnostic.disconnect();
+  }
+});
+
+test('missing reboot events fall back to fresh mode/program verification without repeating commands', async () => {
+  const { f, runner, events } = setup({ disconnectOnReset: false, disconnectOnFinish: false });
+  const result = await runner.run(f.device, 'quick');
+  assert.equal(result.status, 'passed', result.error);
+  assert.equal(events.filter(e => e.kind === 'disconnect-wait-fallback').length, 4);
+  assert.equal(f.writes.filter(p => p[0] === 0xff).length, 2);
+  assert.equal(f.writes.filter(p => p[0] === 2).length, 2);
+  assert.equal(result.steps.length, 2);
+});
+
+test('service absence is retried before mode change; explicit denial is terminal', async () => {
+  for (const name of ['NotFoundError', 'SecurityError']) {
+    const { f, runner, events } = setup();
+    const get = f.device.gatt.getPrimaryService;
+    let failures = 1;
+    f.device.gatt.getPrimaryService = async uuid => {
+      if (uuid === 'e97dd91d-251d-470a-a062-fa1922dfa9a8' && failures-- > 0)
+        throw new DOMException('service unavailable', name);
+      return get(uuid);
+    };
+    const result = await runner.run(f.device, 'quick');
+    assert.equal(result.status, name === 'NotFoundError' ? 'passed' : 'failed', result.error);
+    assert.equal(events.filter(e => e.kind === 'connection-retry-wait').length, name === 'NotFoundError' ? 1 : 0);
+    assert.equal(f.writes.filter(p => p[0] === 0xff).length, name === 'NotFoundError' ? 2 : 0);
+  }
+});
+
+test('Chrome backoff uses 2/4/8 seconds and cancellation during a wait prevents another attempt', async () => {
+  for (const cancel of [false, true]) {
+    const delays = []; let calls = 0, stopped = false;
+    await assert.rejects(retryConnection(async () => { calls++; throw new DOMException('lost', 'NetworkError'); }, {
+      phase: 'test', check: () => { if (stopped) throw new Error('cancelled'); }, cleanup: () => {},
+      pause: async ms => { delays.push(ms); if (cancel) stopped = true; },
+    }), cancel ? /cancelled/ : /lost/);
+    assert.deepEqual(delays, cancel ? [2000] : [2000, 4000, 8000]);
+    assert.equal(calls, cancel ? 1 : 4);
   }
 });
 
@@ -113,7 +154,7 @@ test('a transient UART setup disconnect retries once before start without repeat
   } });
   const result = await runner.run(f.device, 'quick');
   assert.equal(result.status, 'passed', result.error);
-  assert.equal(events.filter(e => e.kind === 'trial-uart-connect-retry').length, 1);
+  assert.equal(events.filter(e => e.kind === 'connection-retry-wait' && e.phase === 'partial-uart-prepare').length, 1);
   assert.equal(f.writes.filter(p => p[0] === 2).length, 2);
   assert.equal(f.writes.filter(p => p === 'start\n').length, 2);
 });
@@ -132,7 +173,7 @@ test('UART permission refusal is not retried; disconnect after start never resen
     } });
     const result = await runner.run(f.device, 'quick');
     assert.equal(result.status, 'failed'); assert.equal(connections, 1);
-    assert.equal(events.some(e => e.kind === 'trial-uart-connect-retry'), false);
+    assert.equal(events.some(e => e.kind === 'connection-retry-wait'), false);
     assert.equal(f.writes.filter(p => p === 'start\n').length, phase === 'permission' ? 0 : 1);
   }
 });

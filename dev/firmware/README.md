@@ -95,6 +95,22 @@ ID별 단일 설치 버전을 제공하므로 여러 버전을 동시에 설치 
 
 ## 고정 도구와 네이티브 런타임
 
+### 비본딩 전체 교체 시험본 C — 2026-10-27
+
+`build-unbonded-trial.mjs`는 기존 센서 소스·고정 빌드를 사용해 온도·밝기 두 후보만 만든다. B의 `open: 1`, `pairing_mode: 1`, `whitelist: 0`, `security_level: null`에 **`security_mode: 1`**을 추가하여 Nordic SDK의 비본딩 DFU 진입을 시험한다. 새 설정의 첫 설치는 USB다.
+
+```sh
+node dev/firmware/build-unbonded-trial.mjs
+# 새 런타임을 공식 컴파일러에서 처음 확보할 때만:
+node dev/firmware/build-unbonded-trial.mjs --fetch-runtime
+```
+
+공식 런타임은 `runtime-cache-unbonded/`에 별도 고정하며 기존 두 캐시·배포 파일은 바꾸지 않는다. USB HEX·소스·빌드 기록은 `built/artifacts/<대상>-unbonded-trial/`, 무선 전체 BIN·56바이트 DAT·목록은 `dev/bluetooth-install/firmware/unbonded/`에 생성한다. `built/`는 Git 제외이므로 새 체크아웃에서는 위 명령으로 USB HEX를 재생성한다. 고지·라이선스는 기존 [펌웨어 고지](../../public/firmware/NOTICES.md)를 따른다.
+
+2026-10-27 두 C 후보의 컴파일·캐시 재빌드·내장 소스/설정·SECURITY_MODE·V2 해석·네이티브 바이트·BIN/init 검증을 완료했다. 런타임은 `d6ba9f94efcc2d28`, 프로그램 시작은 `0x49000`이다. 전송은 런타임+프로그램만 포함하며 SoftDevice·부트로더를 제외한다. UUID 0003 비본딩 진입과 원본 라이브러리 기본값의 온도/밝기 전체 교체 4회를 확인했다. [실행 안내](../bluetooth-install/README.md#비본딩-전체-교체--시험본-c-빠른-시작), [설계·검증 범위](../../docs/sensor-program-installation-roadmap.md#10-비본딩-전체-교체-실험--2026-10-27).
+
+### 기존 도구·부분 교체 프로필
+
 공식 [MakeCode CLI](https://makecode.com/cli)와
 [micro:bit target](https://github.com/microsoft/pxt-microbit/tree/v9.1.1)을 사용한다.
 lockfile은 `pxt@0.5.1`, `pxt-microbit@9.1.1`, `pxt-core@13.0.1` 및 하위 의존성을 고정한다.
@@ -142,7 +158,7 @@ node dev/firmware/build-pairing-trial.mjs --fetch-runtime
 2026-10-26 생성 온도 HEX SHA-256은 `cc80091a1d612acf540150c45a19eaf43663fab18f167c348fd64b7fdd7be09c`,
 V2 런타임 식별값은 `5f21a4c8e2b240e5`, 프로그램 시작 주소는 `0x49000`이다.
 기존 소스 일치·설정 단일 변경·공식 V2 해석·내장 소스/설정 일치·고정 캐시 재빌드를 확인했다.
-공통 후보 7개의 런타임 식별값·시작 주소·네이티브 바이트 일치를 확인했다. 실물에서는 내장 4종·BMP280·센서 미연결 아날로그 원시 입력의 교체·수신 사례를 확인했지만, 재시작 뒤 재연결은 제한된 재시도에도 실패했다. 결합 예제 실물·측정 정확도·중단 복구·제품 통합은 미완료다. 상세 성공·실패 범위는 [현재 검증 결과](../../docs/sensor-program-installation-roadmap.md#84-현재-검증-결과와-남은-작업)에서 관리한다.
+공통 후보 7개의 런타임 식별값·시작 주소·네이티브 바이트 일치를 확인했다. 내장 4종·BMP280·센서 미연결 아날로그의 교체/수신 사례가 있고, 새 연결 정책에서 부분 B 32회·실제 연결 오류 6건 자동 복구를 확인했다. 자동 복구 소진 시 리셋·다시 시도 안내는 설계 확정이며 제품 UI 통합은 미완료다. 결합 예제 실물·측정 정확도·전송 중단 복구도 별도 검증한다. [핵심 검증 결과](../../docs/sensor-program-installation-roadmap.md#84-현재-검증-결과와-남은-작업).
 
 V1·V2를 포함하는 Universal HEX를 생성하지만 앱의 설치 허용 보드는 V2다. CODAL V2
 `v0.3.5`, classic runtime `v2.2.0-rc6`의 출처·고지는

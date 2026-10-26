@@ -4,6 +4,7 @@ import { getBluetoothSupport } from '../../src/device/browser-support.js';
 import { verifyTrialProgram, partialFlashProblem, parseWriteAck, transferProgram } from './partial-flash.js';
 import { dfuIds, parseDfuResponse } from './secure-dfu.js';
 import { trialPrograms } from './firmware/programs.js';
+import { reconnectPolicy } from './connection-retry.js';
 
 export const services = Object.freeze({
   partial: 'e97dd91d-251d-470a-a062-fa1922dfa9a8',
@@ -57,17 +58,19 @@ export function fullDfuProblem(report) {
 /** Single GATT owner for diagnostics, mode requests and validated trial transfers. */
 export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
   support = () => getBluetoothSupport({ bluetooth }), onEvent = () => {}, onDisconnect = () => {},
-  isDeviceInUse = () => false, timeoutMs = 6000 } = {}) {
+  isDeviceInUse = () => false, timeoutMs = 6000, disconnectTimeoutMs = reconnectPolicy.disconnectWaitMs,
+  serviceDiscoveryTimeoutMs = reconnectPolicy.serviceDiscoveryTimeoutMs } = {}) {
   let active = null;
   const event = (kind, data = {}) => onEvent({ kind, ...data });
   function assertCurrent(ctx) {
-    if (active !== ctx || ctx.closed) throw failure('cancelled', '연결 작업이 취소되었습니다.');
+    if (active !== ctx || ctx.closed) throw failure(ctx.closeReason === 'device' ? 'disconnected'
+      : ctx.closeReason === 'timeout' ? 'timeout' : 'cancelled', '연결 작업이 종료되었습니다.');
   }
   function close(ctx, reason = 'manual', keepConnection = false) {
     if (!ctx || ctx.closed) return;
     event('trace-diagnostic-cleanup', { reason, ownerConnectionId: ctx.traceConnectionId,
       keepConnection, wasActive: active === ctx, removingDisconnectListener: true });
-    ctx.closed = true;
+    ctx.closed = true; ctx.closeReason = reason;
     if (active === ctx) active = null;
     ctx.device.removeEventListener('gattserverdisconnected', ctx.disconnected);
     ctx.control?.removeEventListener('characteristicvaluechanged', ctx.notified);
@@ -79,7 +82,7 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
       event('disconnected', { reason }); onDisconnect(reason);
     }
   }
-  function wait(ctx, promise, stage) {
+  function wait(ctx, promise, stage, limitMs = timeoutMs) {
     try { assertCurrent(ctx); }
     catch (error) {
       // The operation may already have synchronously disconnected the GATT.
@@ -96,11 +99,11 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
       };
       const cancel = error => finish(error);
       const timer = setTimeout(() => {
-        event('trace-timeout', { stage, ownerConnectionId: ctx.traceConnectionId, timeoutMs });
+        event('trace-timeout', { stage, ownerConnectionId: ctx.traceConnectionId, timeoutMs: limitMs });
         finish(failure('timeout', `${stage}: 응답 시간이 초과됐습니다. 다시 연결하세요.`));
         // No request IDs exist in PFS: a timed-out session must not consume late replies.
         close(ctx, 'timeout');
-      }, timeoutMs);
+      }, limitMs);
       ctx.waiters.add(cancel);
       Promise.resolve(promise).then(value => {
         try { assertCurrent(ctx); finish(null, value); } catch (error) { finish(error); }
@@ -146,7 +149,7 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
   }
   async function inspectService(ctx, key) {
     try {
-      const service = await wait(ctx, ctx.server.getPrimaryService(services[key]), `${key} 서비스 탐색`);
+      const service = await wait(ctx, ctx.server.getPrimaryService(services[key]), `${key} 서비스 탐색`, serviceDiscoveryTimeoutMs);
       ctx.report.services[key] = { state: 'available' };
       return service;
     } catch (error) {
@@ -188,7 +191,7 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
   }
   async function prepareControl(ctx, service) {
     if (ctx.control) return;
-    ctx.control = await wait(ctx, service.getCharacteristic(controlId), '진단 특성 탐색');
+    ctx.control = await wait(ctx, service.getCharacteristic(controlId), '진단 특성 탐색', serviceDiscoveryTimeoutMs);
     ctx.notified = e => {
       if (active !== ctx || ctx.closed || e.target !== ctx.control || !e.target.value) return;
       const value = e.target.value, bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice();
@@ -214,7 +217,7 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
       const info = await inspectService(ctx, 'info');
       if (info) for (const [key, id] of Object.entries(infoIds)) {
         try {
-          const characteristic = await wait(ctx, info.getCharacteristic(id), `${key} 특성`);
+          const characteristic = await wait(ctx, info.getCharacteristic(id), `${key} 특성`, serviceDiscoveryTimeoutMs);
           const value = await wait(ctx, characteristic.readValue(), `${key} 읽기`);
           ctx.report.info[key] = new TextDecoder().decode(value).replace(/\0+$/, '');
         } catch (error) { assertCurrent(ctx); ctx.report.errors.push(`${key}: ${error.message}`); }
@@ -254,7 +257,7 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
           finishing();
           const requested = performance.now();
           await new Promise((resolve, reject) => {
-            let done = false;
+            let done = false, commandCompleted = false;
             const finish = error => {
               if (done) return;
               done = true; clearTimeout(timer); ctx.waiters.delete(cancel); ctx.resetDisconnected = null;
@@ -262,15 +265,18 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
             };
             const cancel = error => finish(error);
             const timer = setTimeout(() => {
-              event('trace-timeout', { stage: 'flash-disconnect-event', ownerConnectionId: ctx.traceConnectionId, timeoutMs });
-              finish(failure('timeout', '전송 완료 후 실제 연결 해제 이벤트 대기 시간 초과'));
-            }, timeoutMs);
+              event('trace-timeout', { stage: 'flash-disconnect-event', ownerConnectionId: ctx.traceConnectionId, timeoutMs: disconnectTimeoutMs });
+              if (commandCompleted) {
+                event('disconnect-wait-fallback', { stage: 'partial-post-install', eventSeen: false });
+                finish(); close(ctx, 'flash-disconnect-fallback');
+              } else finish(failure('timeout', '전송 종료 명령 완료를 확인하지 못했습니다.'));
+            }, disconnectTimeoutMs);
             ctx.waiters.add(cancel);
             ctx.resetDisconnected = () => {
               event('flash-device-disconnected', { id, elapsedMs: Math.round(performance.now() - requested) });
               finish();
             };
-            void write(ctx, Uint8Array.of(2)).catch(error => finish(error));
+            void write(ctx, Uint8Array.of(2)).then(() => { commandCompleted = true; }, error => finish(error));
           });
         },
         progress: state => { event('flash-progress', state); progress(state); },
@@ -280,18 +286,18 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
     } catch (error) { close(ctx, 'flash-error'); throw error; }
     finally { ctx.busy = false; close(ctx, 'flash-finished'); }
   }
-  async function reset(mode, { candidateConfirmed = false, waitForDisconnect = false } = {}) {
+  async function reset(mode, { candidateConfirmed = false, waitForDisconnect = false, allowDisconnectTimeout = false } = {}) {
     const ctx = active;
     if (!ctx || ctx.busy || !ctx.control) throw failure('not-ready', '현재 연결에서 진단을 먼저 완료하세요.');
     const problem = modeRequestProblem(ctx.report, mode, candidateConfirmed);
     if (problem) throw failure('mode-blocked', problem);
     ctx.busy = true; ctx.report = null;
     if (waitForDisconnect) {
-      // Temporary comparison: only the device event ends the old connection.
+      // Installation can fall back after the bounded event wait; timing-only trials stay strict.
       const requested = performance.now();
       try {
         return await new Promise((resolve, reject) => {
-          let done = false;
+          let done = false, commandCompleted = false;
           const finish = (error, value) => {
             if (done) return;
             done = true; clearTimeout(timer); ctx.waiters.delete(cancel); ctx.resetDisconnected = null;
@@ -299,21 +305,25 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
           };
           const cancel = error => finish(error);
           const timer = setTimeout(() => {
-            event('trace-timeout', { stage: 'mode-disconnect-event', mode, ownerConnectionId: ctx.traceConnectionId, timeoutMs });
-            finish(failure('timeout', '실제 연결 해제 이벤트 대기 시간 초과'));
-          }, timeoutMs);
+            event('trace-timeout', { stage: 'mode-disconnect-event', mode, ownerConnectionId: ctx.traceConnectionId, timeoutMs: disconnectTimeoutMs });
+            if (allowDisconnectTimeout && commandCompleted) {
+              event('disconnect-wait-fallback', { stage: 'partial-install-mode', mode, eventSeen: false });
+              finish(null, { elapsedMs: Math.round(performance.now() - requested), eventSeen: false });
+            } else finish(failure('timeout', '실제 연결 해제 이벤트 대기 시간 초과'));
+          }, disconnectTimeoutMs);
           ctx.waiters.add(cancel);
           ctx.resetDisconnected = () => {
             const elapsedMs = Math.round(performance.now() - requested);
             event('reset-device-disconnected', { mode, elapsedMs });
-            finish(null, { elapsedMs });
+            finish(null, { elapsedMs, eventSeen: true });
           };
           void write(ctx, Uint8Array.of(0xff, mode)).then(() => {
+            commandCompleted = true;
             if (!done) event('mode-requested', { mode, verified: false, waitingForDeviceDisconnect: true });
           }, error => finish(error));
         });
       } finally {
-        // On timeout/error, cleanup happens only after the trial has failed.
+        // Release the old connection before fresh service discovery, including fallback.
         if (!ctx.closed) close(ctx, 'reset-event-wait-ended');
       }
     }
@@ -333,8 +343,8 @@ export function createDiagnostics({ bluetooth = globalThis.navigator?.bluetooth,
     try {
       const problem = fullDfuProblem(await readReport(ctx));
       if (problem) throw failure('dfu-blocked', problem);
-      const service = await wait(ctx, ctx.server.getPrimaryService(services.dfu), 'DFU 서비스 탐색');
-      const characteristics = await wait(ctx, service.getCharacteristics(), 'DFU 특성 확인');
+      const service = await wait(ctx, ctx.server.getPrimaryService(services.dfu), 'DFU 서비스 탐색', serviceDiscoveryTimeoutMs);
+      const characteristics = await wait(ctx, service.getCharacteristics(), 'DFU 특성 확인', serviceDiscoveryTimeoutMs);
       event('dfu-characteristics', { values: characteristics.map(c => ({ uuid: c.uuid, write: c.properties.write, indicate: c.properties.indicate })) });
       button = characteristics.find(c => c.uuid === dfuIds.bondedButton) ?? characteristics.find(c => c.uuid === dfuIds.button);
       if (!button?.properties.write || !button.properties.indicate) throw failure('dfu-missing', 'DFU 진입 특성이 없습니다. USB로 복구하세요.');

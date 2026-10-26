@@ -4,6 +4,9 @@ import { createHash } from 'node:crypto';
 import { bluetoothFixture } from '../fixtures/bluetooth-diagnostics.mjs';
 import { trialPrograms } from '../../dev/bluetooth-install/firmware/programs.js';
 
+// The local command bridge has one shared command slot; keep this file sequential.
+test.describe.configure({ mode: 'default' });
+
 const url = '/dev/bluetooth-install/';
 const openManual = page => page.locator('details').evaluateAll(nodes => nodes.forEach(node => { node.open = true; }));
 async function fake(page, options = {}) {

@@ -79,12 +79,13 @@ test('lost or malformed ACK and mid-block disconnect stop without EOT or unsafe 
   }
 });
 
-test('missing final device event fails without resending firmware or reporting success', async () => {
-  const { f, client, events } = setup({ disconnectOnFinish: false }, { timeoutMs: 25 });
+test('missing final device event releases connection for verification without resending firmware', async () => {
+  const { f, client, events } = setup({ disconnectOnFinish: false }, { disconnectTimeoutMs: 25 });
   await client.connect(f.device);
-  await assert.rejects(client.flash(target.id, original), /해제 이벤트 대기 시간 초과/);
+  const sent = await client.flash(target.id, original);
+  assert.equal(sent.verified, false);
   assert.equal(f.writes.filter(p => p[0] === 2).length, 1);
-  assert.equal(events.some(e => e.kind === 'flash-sent'), false);
+  assert.equal(events.some(e => e.kind === 'disconnect-wait-fallback'), true);
   assert.equal(f.device.gatt.connected, false);
 });
 

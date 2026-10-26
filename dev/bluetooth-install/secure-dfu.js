@@ -18,10 +18,10 @@ export function parseDfuResponse(bytes, opcode, prefix = 0x60) {
 }
 function checksum(response, data, offset) {
   if (response.byteLength !== 8 || response.getUint32(0, true) !== offset || response.getUint32(4, true) !== crc32(data.subarray(0, offset)))
-    throw new Error('DFU 오프셋 또는 CRC 불일치: 전송을 중단합니다.');
+    throw new Error(`DFU 오프셋 또는 CRC 불일치: 예상 ${offset} B, 수신 ${response.byteLength === 8 ? response.getUint32(0, true) : '알 수 없음'} B. 전송을 중단합니다.`);
 }
 /** Full replacement from byte zero. Never silently resume an earlier download. */
-export async function transferFullImage(image, { command, packet, progress = () => {}, finalizing = () => {} }) {
+export async function transferFullImage(image, { command, packet, progress = () => {}, finalizing = () => {}, checkpointPackets = 0 }) {
   await command(Uint8Array.of(2, 0, 0)); // Explicit CRC checks per object, no unsolicited PRN responses.
   for (const [type, data] of [[1, image.init], [2, image.data]]) {
     const selected = await command(Uint8Array.of(6, type));
@@ -35,7 +35,13 @@ export async function transferFullImage(image, { command, packet, progress = () 
     for (let offset = 0; offset < data.length;) {
       const end = Math.min(offset + max, data.length);
       await command(Uint8Array.of(1, type, ...u32(end - offset)));
-      for (let p = offset; p < end; p += 20) await packet(data.slice(p, Math.min(p + 20, end)));
+      for (let p = offset, packets = 0; p < end; p += 20) {
+        await packet(data.slice(p, Math.min(p + 20, end)));
+        // Windows writeWithoutResponse can resolve while bytes are still queued.
+        // Experiment C bounds each burst with a real receiver offset/CRC response.
+        if (checkpointPackets > 0 && ++packets % checkpointPackets === 0 && p + 20 < end)
+          checksum(await command(Uint8Array.of(3)), data, p + 20);
+      }
       checksum(await command(Uint8Array.of(3)), data, end);
       if (type === 2 && end === data.length) finalizing();
       const executed = await command(Uint8Array.of(4));
@@ -47,7 +53,7 @@ export async function transferFullImage(image, { command, packet, progress = () 
   return { sent: image.data.length, verified: false }; // Application reconnect remains required.
 }
 
-export function createSecureDfu({ timeoutMs = 10000, onEvent = () => {} } = {}) {
+export function createSecureDfu({ timeoutMs = 10000, onEvent = () => {}, programs = fullPrograms } = {}) {
   let active = null;
   const fail = message => new Error(message);
   function close(ctx) {
@@ -81,7 +87,7 @@ export function createSecureDfu({ timeoutMs = 10000, onEvent = () => {} } = {}) 
     active = ctx; ctx.disconnected = () => close(ctx);
     device.addEventListener('gattserverdisconnected', ctx.disconnected);
     try {
-      image = await wait(ctx, () => verifyFullImage(fullPrograms.find(p => p.id === image.target?.id), image.data, image.init), '전체 파일 검증');
+      image = await wait(ctx, () => verifyFullImage(programs.find(p => p.id === image.target?.id), image.data, image.init), '전체 파일 검증');
       const server = await wait(ctx, () => {
         const connecting = device.gatt.connect();
         connecting.then(() => { if (ctx.closed && active?.device !== device) device.gatt.disconnect(); }, () => {});
@@ -108,6 +114,7 @@ export function createSecureDfu({ timeoutMs = 10000, onEvent = () => {} } = {}) 
         finally { ctx.pending = null; }
       };
       return await transferFullImage(image, { command,
+        checkpointPackets: options.checkpointPackets ?? 0,
         packet: bytes => wait(ctx, () => dataCharacteristic.writeValueWithoutResponse(bytes), 'DFU 데이터'),
         progress: state => { onEvent({ kind: 'dfu-progress', ...state }); options.progress?.(state); },
         finalizing: () => { onEvent({ kind: 'dfu-finalizing', id: image.target.id }); options.finalizing?.(); } });

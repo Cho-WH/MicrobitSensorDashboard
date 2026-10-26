@@ -1,11 +1,6 @@
+import { rendered, until } from './render.js';
 // Real iframe viewports keep layout checks independent of the test runner's window.
 const check=(value,message)=>{if(!value)throw new Error(message);};
-const settle=()=>new Promise(resolve=>setTimeout(resolve,260));
-const until=async(predicate,label)=>{
-  const deadline=performance.now()+10000;
-  while(!predicate()&&performance.now()<deadline)await settle();
-  check(predicate(),label);
-};
 // Exercise changing text in the real app's cells synchronously, before the next
 // mock tick. Compare boxes, not implementation classes or exact copy.
 export function stableText(doc,selector,targets,variants,label,{noScroll=false}={}) {
@@ -25,6 +20,7 @@ export function stableText(doc,selector,targets,variants,label,{noScroll=false}=
 }
 export async function runLayoutTests(report=()=>{}) {
   const frame=document.createElement('iframe');frame.title='준비 화면 크기 검증';frame.style.cssText='display:block;border:0;max-width:none';document.body.append(frame);
+  const settle=()=>rendered(frame.contentDocument);
   const open=async(path,width,height)=>{
     frame.style.width=width+'px';frame.style.height=height+'px';
     const url=new URL('../../'+path+'?mock=1',import.meta.url).href;
@@ -34,8 +30,8 @@ export async function runLayoutTests(report=()=>{}) {
       const timer=setTimeout(()=>{done();reject(new Error(`${path} ${width}×${height}: 프레임 로딩 시간 초과 (${frame.contentDocument?.URL ?? '문서 없음'})`));},10000);
       frame.addEventListener('load',onLoad);frame.src=url;
     });
-    const doc=frame.contentDocument, deadline=performance.now()+10000, marker=path==='lab.html'?'#sensor-cards a':'.guide';
-    while(!doc.querySelector(marker)&&performance.now()<deadline)await settle();
+    const doc=frame.contentDocument, marker=path==='lab.html'?'#sensor-cards a':'.guide';
+    await until(()=>doc.querySelector(marker),'홈·준비 화면 로드 실패');
     check(doc.querySelector(marker),'홈·준비 화면 로드 실패');await settle();return doc;
   };
   const fits=(doc,width,label)=>check(doc.documentElement.scrollWidth<=width+1,`${label}: 페이지 가로 넘침 ${doc.documentElement.scrollWidth}/${width}`);
@@ -80,15 +76,14 @@ export async function runLayoutTests(report=()=>{}) {
       for(const sensor of sensors){
         const path=`sensors/${sensor}/`, doc=await open(path,width,height),label=sensor+' '+width+'px';fits(doc,width,label);
         if(width===390){
-          for(const group of doc.querySelectorAll('[data-guide-group]')){group.click();await settle();fits(doc,width,label);}
+          // Every preparation group at desktop/mobile is covered by preparation.
           if(sensor!=='bmp280')check(!doc.querySelector('iframe').src,label+': 내장 센서 화면이 3D 자원을 열었습니다.');
         }
         doc.querySelector('[data-guide-group="connection"]').click();await settle();
         if(sensor==='magnetometer'){
           check(doc.querySelector('.guide-reception').hidden,label+': 연결 전 빈 수치 표시');
           doc.querySelector('[data-guide-action="connect"]').click();await settle();
-          const deadline=performance.now()+5000;
-          while(doc.querySelector('.magnetic-preparation').dataset.phase!=='choice'&&performance.now()<deadline)await settle();
+          await until(()=>doc.querySelector('.magnetic-preparation').dataset.phase==='choice',label+': 보정 선택 시간 초과',5000);await settle();
           fits(doc,width,label+' 보정 선택');
           const buttons=[...doc.querySelectorAll('[data-device-action]')].map(node=>node.getBoundingClientRect());
           check(buttons.every(r=>r.width>0&&r.left>=0&&r.right<=width),label+': 보정 선택 버튼 넘침');

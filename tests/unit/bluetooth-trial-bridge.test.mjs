@@ -33,8 +33,11 @@ test('bridge requires local origin, explicit headers, one armed page and registe
   assert.equal((await request('/command', { action: 'eval', code: 'anything' })).status, 400);
   assert.equal((await request('/command', { action: 'run', plan: '__proto__' })).status, 400);
   assert.equal((await request('/command', { action: 'run', plan: 'connect-6s' })).status, 400);
-  for (const plan of ['connect-3s']) {
-    const result = await request('/command', { action: 'run', plan });
+  assert.equal((await request('/command', { action: 'unbonded', target: 'unknown' })).status, 400);
+  assert.equal((await request('/command', { action: 'unbonded', target: 'temperature', url: '/arbitrary.bin' })).status, 400);
+  for (const command of [{ action: 'run', plan: 'connect-3s' },
+    ...['temperature', 'light-level', 'quick', 'verify'].map(target => ({ action: 'unbonded', target }))]) {
+    const result = await request('/command', command);
     assert.equal(result.status, 200);
     await request('/poll', { session, snapshot: { armed: true, busy: false } });
     await request('/poll', { session, snapshot: { armed: true, busy: false }, completed: [{ id: result.data.id, status: 'passed' }] });

@@ -1,3 +1,4 @@
+import { rendered, until } from './render.js';
 import { mountLabFixture, clickVisible } from './lab-fixture.js';
 import { createGuideView } from '../../src/ui/guide-view.js';
 import { getExperiment } from '../../src/catalog/index.js';
@@ -175,12 +176,7 @@ export async function runGuideTests(report = (_message) => {}) {
 export async function runPreparationTests(report=()=>{}) {
   const frame=document.createElement('iframe'); frame.title='준비 B안 동작과 화면 크기 검증';
   frame.style.cssText='display:block;border:0;max-width:none;width:1366px;height:768px'; document.body.append(frame);
-  const settle=()=>new Promise(resolve=>setTimeout(resolve,160));
-  const until=async(predicate,message)=>{
-    const end=performance.now()+12000;
-    while(!predicate()&&performance.now()<end)await settle();
-    check(predicate(),message);
-  };
+  const settle=()=>rendered(frame.contentDocument);
   try {
     for(const entry of ['sensor=bmp280','sensor=temperature','sensor=light-level','sensor=accelerometer','sensor=magnetometer','activity=gay-lussac']) {
       frame.style.width='1366px';frame.style.height='768px';
