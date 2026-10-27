@@ -3,12 +3,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { createRequire } from 'node:module';
+import MemoryMap from 'nrf-intel-hex';
 import { runInNewContext } from 'node:vm';
 import { firmwareManifest, getFirmwareArtifact } from '../../src/device/firmware.js';
 import { createUniversalHexFlashDataSource } from '../../public/vendor/microbit-usb-1.0.0.js';
 import { verifyProgram } from '../../src/device/partial-flash.js';
-const MemoryMap = createRequire(new URL('../../dev/usb-library/package.json', import.meta.url))('nrf-intel-hex');
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 test('legacy temperature-light example retains start/stop, zero readings, field order and 1-second sampling', async () => {
