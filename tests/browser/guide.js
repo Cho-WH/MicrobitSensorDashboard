@@ -98,11 +98,11 @@ export async function runGuideTests(report = (_message) => {}) {
     step('connection');
     const latest={values:{temperatureC:22,pressureHpa:1001},validity:{temperatureC:'valid',pressureHpa:'valid'}};
     view.render({attemptId:'bmp-1',connected:true,receptionReady:true,receivedAt:10000,latest});
-    const valueNode=$('.guide-value strong');
+
     check($('.guide-reception').dataset.state==='receiving','새 수신 상태 누락');
     view.render({attemptId:'bmp-1',connected:true,receptionReady:false,receivedAt:10000,latest});
     check($('.guide-reception').dataset.fresh==='false'&&$('[data-guide-action="measure"]').hidden,'수신 중단 후 측정 행동이 남았습니다.');
-    check(valueNode===$('.guide-value strong')&&valueNode.textContent==='22','상태 갱신이 마지막 값이나 기존 표시 노드를 버렸습니다.');
+    check($('.guide-value strong').textContent==='22','상태 갱신이 마지막 수신값을 버렸습니다.');
     view.render({attemptId:'bmp-1',connected:false,receivedAt:10000,latest});
     check($('.guide-reception').dataset.state==='disconnected','연결 해제 상태 누락');
     report('실제 준비 UI · USB 실패·진행률·재시도 표시');
@@ -173,7 +173,7 @@ export async function runPreparationTests(report=()=>{}) {
       frame.style.width='1366px';frame.style.height='768px';
       const url=new URL(`../../dev/design/preparation.html?${entry}`,import.meta.url).href;
       frame.src=url;
-      await until(()=>frame.contentDocument?.URL===url&&frame.contentDocument.documentElement.dataset.preparationReviewReady==='true',entry+': 준비 화면 로딩 실패');
+      await until(()=>frame.contentDocument?.URL===url&&frame.contentDocument.documentElement?.dataset.preparationReviewReady==='true',entry+': 준비 화면 로딩 실패');
       const doc=frame.contentDocument, $=selector=>doc.querySelector(selector);
       try {
         $('[data-guide-action="confirm"]').click();

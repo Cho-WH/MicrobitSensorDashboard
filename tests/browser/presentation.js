@@ -12,7 +12,7 @@ async function open(path,width=1366,height=768) {
   const frame=document.createElement('iframe'); frame.title='표현·접근성 검토';
   frame.style.cssText=`display:block;border:0;max-width:none;width:${width}px;height:${height}px`;
   frame.src=new URL('../../'+path,import.meta.url).href; document.body.append(frame);
-  try {await until(()=>frame.contentDocument?.documentElement.dataset.reviewReady || frame.contentDocument?.documentElement.dataset.preparationReviewReady,'검토 화면 로딩 시간 초과: '+path);return frame;}
+  try {await until(()=>frame.contentDocument?.documentElement?.dataset.reviewReady || frame.contentDocument?.documentElement?.dataset.preparationReviewReady,'검토 화면 로딩 시간 초과: '+path);return frame;}
   catch(error){frame.remove();throw error;}
 }
 async function close(frame) {

@@ -10,7 +10,7 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
   document.body.append(frame);
   const settle=()=>rendered(frame.contentDocument);
   try {
-    await until(()=>frame.contentDocument?.documentElement.dataset.reviewReady==='paused','분석 검토 화면을 열지 못했습니다.');
+    await until(()=>frame.contentDocument?.documentElement?.dataset.reviewReady==='paused','분석 검토 화면을 열지 못했습니다.');
     const doc=frame.contentDocument, win=frame.contentWindow, $=selector=>doc.querySelector(selector);
     const click=async selector=>{const button=$(selector);check(button&&!button.disabled,'조작할 수 없습니다: '+selector);button.click();await settle();};
     const points=()=>JSON.stringify(win.Chart.getChart($('#analysis-chart')).data.datasets[0].data);
@@ -96,7 +96,7 @@ export async function runLuminousTests(report=()=>{}) {
       frame.style.width=width+'px';frame.style.height=height+'px';
       frame.src=new URL(`../../dev/design/?sensor=${sensor}&state=recording`,import.meta.url).href;
       document.body.append(frame);frame.scrollIntoView({block:'start'});
-      await until(()=>frame.contentDocument?.documentElement.dataset.reviewReady==='recording',`${sensor} ${width}px 모의 측정 검토 화면을 열지 못했습니다.`);
+      await until(()=>frame.contentDocument?.documentElement?.dataset.reviewReady==='recording',`${sensor} ${width}px 모의 측정 검토 화면을 열지 못했습니다.`);
       const doc=frame.contentDocument, $=selector=>doc.querySelector(selector), win=frame.contentWindow;
       try {
         check(doc.documentElement.scrollWidth<=width+1,`${sensor} ${width}px 페이지가 가로로 넘칩니다.`);

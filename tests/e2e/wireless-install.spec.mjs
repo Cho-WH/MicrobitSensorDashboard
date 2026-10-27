@@ -157,19 +157,27 @@ test('incompatible board offers USB in place without sending any firmware or mod
 });
 
 test('exhausted recovery shows the reset action, then retry finishes without resending the program', async ({ page }) => {
+  // Install before navigation; production backoff remains 2/4/8 seconds.
+  await page.clock.install();
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare(page);
   await page.evaluate(() => {
     const f = window.fixture, connect = f.device.gatt.connect.bind(f.device.gatt);
-    window.failReconnect = true;
+    window.failReconnect = true; window.failedReconnects = 0;
     f.device.gatt.connect = async () => {
-      if (f.state.packets && window.failReconnect) throw new DOMException('Rebooting', 'NetworkError');
+      if (f.state.packets && window.failReconnect) {
+        window.failedReconnects++; throw new DOMException('Rebooting', 'NetworkError');
+      }
       return connect();
     };
   });
   await page.getByRole('button', { name: '무선으로 프로그램 설치', exact: true }).click();
   const program = page.locator('.guide-program');
-  await expect(program).toHaveAttribute('data-state', 'recovery', { timeout: 20_000 });
+  await expect.poll(() => page.evaluate(() => window.failedReconnects)).toBe(1);
+  // runFor fires every scheduled retry, unlike fastForward's skipped intervals.
+  await page.clock.runFor(14_000);
+  expect(await page.evaluate(() => window.failedReconnects)).toBe(4);
+  expect(await program.getAttribute('data-state')).toBe('recovery');
   await expect(page.locator('[data-guide-action="program-confirm"]')).toBeHidden();
   await expect(page.locator('[data-guide-action="next"]')).toBeHidden();
   await expect(program.getByRole('button', { name: 'USB로 설치하기', exact: true })).toBeVisible();

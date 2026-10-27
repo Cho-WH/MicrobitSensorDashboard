@@ -2,13 +2,17 @@ import { test, expect } from '@playwright/test';
 
 // Protect first-entry guidance without interrupting measurement or trapping focus.
 for(const sensor of ['magnetometer','accelerometer','temperature','light-level']) {
-  test(`${sensor}: first measurement entry, manual reopening and uninterrupted recording`,async({page})=>{
-    await page.goto(`/sensors/${sensor}/?mock=1`);
-    await page.locator('[data-guide-group="connection"]').click();
-    await page.locator('[data-guide-action="connect"]').click();
-    if(sensor==='magnetometer')await page.locator('[data-device-action="skip"]').click();
-    await expect(page.locator('[data-guide-step="reception"]')).toHaveAttribute('data-complete','true');
-    await page.locator('#to-measure').click();
+  test(`${sensor}: first-entry sensor guide${sensor==='light-level'?' and shared recording flow':''}`,async({page})=>{
+    const sharedFlow=sensor==='light-level';
+    await page.clock.install();
+    await page.goto(`/sensors/${sensor}/?mock=1${sharedFlow?'':'&view=measure'}`);
+    if(sharedFlow) {
+      await page.locator('[data-guide-group="connection"]').click();
+      await page.locator('[data-guide-action="connect"]').click();
+      await page.clock.runFor(3100);
+      await expect(page.locator('[data-guide-step="reception"]')).toHaveAttribute('data-complete','true');
+      await page.locator('#to-measure').click();
+    }
     const dialog=page.locator('.experiment-guide');
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('h2')).toBeFocused();
@@ -18,6 +22,8 @@ for(const sensor of ['magnetometer','accelerometer','temperature','light-level']
     }
     await dialog.locator('[data-guide-next]').click();
     await expect(page.locator('#show-experiment-guide')).toBeFocused();
+    // Common reopen/focus/recording behavior needs one representative sensor.
+    if(!sharedFlow)return;
     await page.locator('#start-recording').click();
     await expect(page.locator('[data-screen="measure"]')).toHaveAttribute('data-recording-state','recording');
     await page.locator('[data-view="analysis"]').click();

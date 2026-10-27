@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-for (const width of [1366, 390]) test(`shared connection help preserves device and recording state at ${width}px`, async ({ page }) => {
+for (const width of [1366, 390]) test(`shared connection help layout at ${width}px${width===390?" and recording flow":""}`, async ({ page }) => {
+  await page.clock.install();
   await page.setViewportSize({ width, height: 844 });
   await page.goto('/sensors/temperature/?mock=1');
   await page.locator('[data-guide-group="connection"]').click();
@@ -21,7 +22,10 @@ for (const width of [1366, 390]) test(`shared connection help preserves device a
   await page.setViewportSize({width,height:844});
   // Merely opening help must not connect a device.
   await expect(page.locator('[data-guide-action="connect"]')).toBeVisible();
+  // Shared recording behavior is covered once; both sizes retain layout/focus checks.
+  if(width!==390)return;
   await page.locator('[data-guide-action="connect"]').click();
+  await page.clock.runFor(3100);
   await expect(page.locator('[data-guide-step="reception"]')).toHaveAttribute('data-complete','true');
   await page.locator('#to-measure').click();
   await page.locator('.experiment-guide [data-guide-next]').click();
