@@ -15,8 +15,27 @@ function assertStyles(doc) {
 
 export async function prepareAppPresentation(doc = document) {
   assertStyles(doc);
-  if (!fontDecisions.has(doc)) fontDecisions.set(doc, settleFont(doc));
+  if (!fontDecisions.has(doc)) {
+    fontDecisions.set(doc, settleFont(doc));
+    // A new label or student-entered character can load another font subset.
+    // Canvas does not repaint automatically when that face becomes available.
+    doc.fonts.addEventListener('loadingdone', () => {
+      for (const chart of Object.values(globalThis.Chart?.instances ?? {})) {
+        if (chart.canvas?.ownerDocument === doc) chart.update('none');
+      }
+    });
+  }
   doc.documentElement.style.setProperty('--sl-font', await fontDecisions.get(doc));
+}
+
+// Export/print waits for pending character ranges, with the same bounded fallback
+// as startup. This never blocks normal data reception or changes saved readings.
+export async function settlePendingFonts(doc = document) {
+  let timer;
+  try {
+    await Promise.race([doc.fonts.ready,
+      new Promise(resolve => { timer = setTimeout(resolve, 3000); })]);
+  } finally { clearTimeout(timer); }
 }
 
 async function settleFont(doc) {

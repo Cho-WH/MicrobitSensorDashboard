@@ -25,6 +25,7 @@ import { bindAppShell } from '../ui/app-shell.js';
 import { createConnectionNotice } from '../ui/connection-notice.js';
 import { createShareView } from '../ui/share-view.js';
 import { renderHomeCards } from '../ui/home-view.js';
+import { settlePendingFonts } from '../ui/app-presentation.js';
 
 // Connects modules and owns navigation only. Source records live exclusively in RunStore.
 export function createController(root = document, { repository = null, deviceTransport = null, historyEnabled = true, initialUrl = location.href,
@@ -351,7 +352,10 @@ export function createController(root = document, { repository = null, deviceTra
   async function exportFile(kind) {
     if (!store || !analysis.flush()) return;
     const snapshot = store.getSnapshot(), name = snapshot.run.name.replace(/[<>:"/\\|?*]/g,'-');
-    if (kind === 'png') return downloadUrl(analysis.exportPng(name), name + '.png');
+    if (kind === 'png') {
+      await settlePendingFonts(root.ownerDocument ?? document);
+      return downloadUrl(analysis.exportPng(name), name + '.png');
+    }
     if (kind === 'analysis-csv') return dialogs.exportCsv(snapshot, columns => {
       downloadText(buildAnalysisCsv(snapshot,columns),name+'-analysis.csv','text/csv;charset=utf-8');
     });

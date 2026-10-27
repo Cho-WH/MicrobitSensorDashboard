@@ -1,7 +1,6 @@
 import { createBluetoothProgrammer } from './bluetooth-programmer.js';
 // Adapted from Cho-WH/bme280 gay-lussac/guide/programmer-adapter.js at
 // 59c5c149450f970bace2deaa183857c275595853. Full V2 flashing remains official.
-import { createUSBConnection, createUniversalHexFlashDataSource } from '../../public/vendor/microbit-usb-1.0.0.js';
 import { getFirmwareArtifact } from './firmware.js';
 
 const messages = {
@@ -21,7 +20,7 @@ const busyStatuses = new Set(['loading', 'connecting', 'flashing']);
  * beforeFlash?:()=>Promise<void>,createConnection?:any,makeSource?:any,fetchFile?:any,crypto?:any,supported?:()=>boolean}} options
  */
 export function createUsbProgrammer({ firmwareId, version = null, onState = (_state) => {}, canInstall = () => false,
-  beforeFlash = async () => {}, createConnection = createUSBConnection, makeSource = createUniversalHexFlashDataSource,
+  beforeFlash = async () => {}, createConnection = null, makeSource = null,
   fetchFile = globalThis.fetch, crypto = globalThis.crypto,
   supported = () => !!(/** @type {Navigator & {usb?:object}} */ (globalThis.navigator))?.usb && globalThis.isSecureContext,
 }) {
@@ -50,6 +49,12 @@ export function createUsbProgrammer({ firmwareId, version = null, onState = (_st
     abortPreparation = new AbortController();
     preparation = (async () => {
       try {
+        if (!createConnection || !makeSource) {
+          const library = await import('../../public/vendor/microbit-usb-1.0.0.js');
+          if (disposed) return;
+          createConnection ??= library.createUSBConnection;
+          makeSource ??= library.createUniversalHexFlashDataSource;
+        }
         const response = await fetchFile(program.url, { signal: abortPreparation.signal });
         if (!response.ok) throw new Error('프로그램 파일을 불러오지 못했어요. 연결을 확인하고 다시 준비하세요.');
         const bytes = await response.arrayBuffer();

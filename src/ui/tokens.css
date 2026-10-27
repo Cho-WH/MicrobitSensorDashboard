@@ -1,9 +1,6 @@
 /* Luminous: shared runtime values for the adopted measurement and preparation B
    design. Scene gradients and layout stay local. */
-@font-face {
-  font-family:'Pretendard Variable'; font-weight:100 900; font-style:normal; font-display:swap;
-  src:url('../../public/vendor/pretendard/PretendardVariable.woff2') format('woff2');
-}
+@import url('../../public/vendor/pretendard/pretendardvariable-dynamic-subset.css');
 :root {
   /* Surfaces and reading. A divider is not an input boundary. */
   --sl-bg:#f6f8fc; --sl-surface:#fff; --sl-surface-soft:#eef3fa;

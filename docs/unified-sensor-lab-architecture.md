@@ -529,7 +529,7 @@ UI는 이 판정으로 공통 안내 하나를 현재 화면에 배치한다. OS
 
 ### 12.1. 개발·빌드
 
-앱 코드는 native ES Modules로 실행한다. `scripts/build.mjs`는 등록된 센서·활동의 내부 진입 HTML과 공통 앱 자원을 생성하는 작은 정적 빌드로 둔다. 앱 자원과 내부 이동은 설치 기준 경로에서, 공개 도구 링크와 OG URL은 M3에서 도입한 `publicBaseUrl`에서 계산한다. source definition과 생성된 진입 정보의 ID·버전 불일치는 빌드 오류다. Cloudflare 배포 전환과 공개 주소의 적용 순서는 §12.4를 따른다.
+앱 소스는 native ES Modules로 관리한다. `scripts/build.mjs`는 등록된 센서·활동의 내부 진입 HTML을 생성하고, esbuild로 앱 모듈을 내용 해시가 붙은 ESM 묶음으로 만든다. 동적 import는 별도 묶음으로 유지하며 모듈 기준 자원 URL은 원래 소스 위치를 보존한다. 글꼴은 고정 버전의 공식 가변 분할본을 복사해 실제 글자 범위만 같은 사이트에서 받는다. 앱 자원과 내부 이동은 설치 기준 경로에서, 공개 도구 링크와 OG URL은 M3에서 도입한 `publicBaseUrl`에서 계산한다. source definition과 생성된 진입 정보의 ID·버전 불일치는 빌드 오류다. Cloudflare 배포 전환과 공개 주소의 적용 순서는 §12.4를 따른다.
 
 M1에서 `package.json`의 module 모드, 지원 중인 Node LTS 버전과 lockfile을 고정한다. JSDoc 계약은 TypeScript의 `allowJs/checkJs/noEmit` 검사로 확인하되 TypeScript는 개발 도구로만 쓴다. 기존 코드의 일괄 형식 변경과 타입 전환을 이식에 섞지 않는다. 테스트 명령은 다음 책임으로 구성한다. **현재 실행 명령은 [README](../README.md#로컬-개발과-배포), 단계 상태는 [문서 안내](UNIFIED-PLAN-INDEX.md)를 따른다.** 당시 구현·검증 근거는 [이력](history/README.md)에 보존한다.
 
@@ -540,6 +540,7 @@ M1에서 `package.json`의 module 모드, 지원 중인 Node LTS 버전과 lockf
 | `npm run typecheck` | JSDoc 공개 계약과 import 의존성 검사 |
 | `npm run test:browser` | 브라우저의 실제 IndexedDB·DOM·가상 표·탐색 테스트 실행 경로 |
 | `npm run test:e2e` | 격리된 Chromium에서 브라우저 suite와 실제 페이지·탭 종료 복원·3D 복구 검사 실행 |
+| `npm run test:e2e:build` | 빌드 후 생성된 배포 파일의 하위 경로·지연 로딩·파일 분석과 출력 확인 |
 | `npm run build` | 내부 진입 HTML·자원 생성 및 레지스트리 정적 검증 |
 
 브라우저 테스트는 원본 `tests/browser.html`·`browser.js`의 유효한 사례를 이식한다. 기존 DOM·저장 검사는 유지하고 기본 UI 전환 관련 묶음을 Playwright Test의 독립 BrowserContext에서 실행한다. 새 화면 크기·3D 복구 검사는 실제 최상위 페이지에서 사용자 입력과 준비 응답을 확인한다. 재시도 없이 최초 실패의 trace·화면·결과를 남기며 실제 장치 확인과 구분한다. [Node 테스트 러너][W-test]

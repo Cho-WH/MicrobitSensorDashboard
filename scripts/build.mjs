@@ -6,6 +6,8 @@ import { validateChannels } from '../src/domain/contracts.js';
 import { entryRoutes } from '../src/app/routes.js';
 import { renderEntry, renderPublicMetadata } from './entry-pages.mjs';
 import { bundleStyles, styleEntry } from './styles.mjs';
+import { copyFontAssets } from './fonts.mjs';
+import { bundleJavaScript } from './javascript.mjs';
 import { publicBaseUrl } from '../src/app/deployment.js';
 import { normalizePublicBase } from '../src/sharing/tool-link.js';
 const publicBase = normalizePublicBase(process.env.PUBLIC_BASE_URL ?? publicBaseUrl);
@@ -23,7 +25,12 @@ await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 for (const file of ['lab.html','LICENSE','README.md','THIRD_PARTY_NOTICES.md','src','public','vendor','firmware','docs']) await cp(resolve(root,file), resolve(output,file), { recursive: true });
 await writeFile(resolve(output, styleEntry), await bundleStyles(root));
-const source = renderPublicMetadata(await readFile(resolve(root,'lab.html'), 'utf8'), publicBase);
+await copyFontAssets(output);
+const scripts = await bundleJavaScript(root, output, publicBase);
+const template = await readFile(resolve(root,'lab.html'), 'utf8');
+if (!template.includes('<script defer src="src/app/bootstrap.js"></script>')) throw new Error('Missing lab entry point');
+const source = renderPublicMetadata(template.replace('<script defer src="src/app/bootstrap.js"></script>',
+  `<link rel="modulepreload" href="${scripts.startup}"><script type="module" src="${scripts.entry}"></script>`), publicBase);
 await writeFile(resolve(output,'src/app/deployment.js'), `export const publicBaseUrl = ${JSON.stringify(publicBase)};\n`);
 await writeFile(resolve(output,'lab.html'), source);
 await writeFile(resolve(output,'index.html'), source);
@@ -32,5 +39,4 @@ for (const entry of entryRoutes) {
   await writeFile(resolve(output,entry.path,'index.html'), renderEntry(source, entry));
 }
 await writeFile(resolve(output,'catalog.json'), JSON.stringify({ sensors:catalog.sensors.map(({id,version})=>({id,version})),activities:catalog.activities.map(({id,version})=>({id,version})) }, null, 2));
-if (!source.includes('src/app/bootstrap.js')) throw new Error('Missing lab entry point');
 console.log('Sensor Lab built in dist/ (home + sensor/activity entries).');

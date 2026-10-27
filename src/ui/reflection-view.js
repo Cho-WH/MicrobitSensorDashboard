@@ -3,6 +3,7 @@ import { ANSWER_LIMIT, REFLECTION_QUESTIONS, evidenceKey } from '../analysis/ref
 import { graphColumns, CALCULATION_OPERATORS } from '../domain/contracts.js';
 import { columnLabel, formatCalculated } from '../analysis/calculations.js';
 import { createAnalysisChart, exportAnalysisPng } from './chart-view.js';
+import { settlePendingFonts } from './app-presentation.js';
 import { trendSummary } from './trend-summary.js';
 import { getLabCopy, formatCopy } from './lab-copy.js';
 
@@ -105,6 +106,7 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
     if (printing || !getWorkspace() || !flush()) return;
     printing = true; $('reflection-print-button').disabled = true;
     try {
+      await settlePendingFonts(root.ownerDocument ?? document);
       clearPrint(); printSheet = createReflectionPrint({ name: getStoreState().name, model, evidence, answers: answers(), origin, questions, theme:getTheme() });
       document.body.append(printSheet);
       await Promise.all([...printSheet.querySelectorAll('img')].map(image => image.decode()));

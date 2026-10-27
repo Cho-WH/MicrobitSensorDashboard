@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, relative, dirname, sep } from 'node:path';
+import { fontStylesheet, readFontStyles } from './fonts.mjs';
 
 export const styleEntry = 'src/ui/luminous.css';
 
@@ -15,7 +16,7 @@ export async function bundleStyles(root, entry = styleEntry) {
   async function expand(path, parents = []) {
     local(path);
     if (parents.includes(path)) throw new Error('CSS import cycle: ' + path);
-    let css = await readFile(path, 'utf8');
+    let css = path === resolve(workspace, fontStylesheet) ? await readFontStyles() : await readFile(path, 'utf8');
     // Only the leading import list is expanded. Component CSS remains authored
     // CSS, including media/container queries, variables and print rules.
     let prefix = '', rest = css;

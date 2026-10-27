@@ -53,6 +53,7 @@ npm run test:e2e         # 일반 브라우저 검사 (test:e2e:ui도 동일)
 npm run test:e2e:large    # 36,000행 증분 저장·표·그래프·파일 왕복
 npm run test:e2e:large-import # 36,000행 실제 DB 가져오기·재열기
 npm run test:e2e:all      # 대용량 두 종류까지 모두 실행
+npm run build && npm run test:e2e:build # 배포 파일의 하위 경로·지연 로딩·파일 분석 확인
 ```
 
 `npm run test:e2e`는 일반 브라우저 검사를 실행합니다. 작업 중에는 파일·`--grep`으로 영향 범위를 선택합니다. 대용량 검사는 매번 실행하지 않습니다. 저장·대용량 표시·파일 직렬화 경로 변경 시 `test:e2e:large`, 가져오기·DB 쓰기 경로 변경 시 `test:e2e:large-import`를 추가합니다. 35,800행을 픽스처로 준비하고 마지막 200행은 실제 Session·증분 저장을 통과시킵니다. 전체 36,000행의 값·순서·시각·유효성을 비교하며, 일반 UI 검사에서 다루는 PNG·해석 입력은 반복하지 않습니다.
@@ -65,6 +66,10 @@ UI 검사는 실제 앱 구조·스타일을 사용하며 모의 장치 입력�
 `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e`.
 센서 프로그램의 정식 V1 5종은 `npm run build:firmware`로 빌드합니다. 발행은 별도 `npm run publish:firmware` 명령이며, 자세한 절차는 [펌웨어 빌드·배포](dev/firmware/README.md)를 따릅니다.
 정적 빌드 결과는 `dist/`에 생성됩니다. 자세한 검사 원칙은 [AGENTS.md](AGENTS.md)를 따릅니다.
+
+`npm run build`는 esbuild로 앱 JavaScript를 묶고 내용 해시가 포함된 파일명으로 생성합니다. 설치용 USB 라이브러리는 설치 준비 시 별도 묶음으로 불러옵니다. 원본 모듈 기준의 자원 경로를 보존하므로 GitHub Pages처럼 하위 경로에 배포해도 그림·펌웨어·뷰어가 같은 위치를 가리킵니다. 소스 모듈과 파일 목록을 따로 동기화할 필요는 없습니다.
+
+Pretendard 1.3.9의 공식 가변 글꼴 분할본은 잠금 파일에 고정된 npm 패키지에서 복사합니다. 브라우저가 실제 글자에 필요한 범위만 같은 사이트에서 받으므로 문구 수정이나 학생의 한글 입력에 맞춰 글꼴을 다시 추출하지 않습니다. 개발 서버도 같은 분할본을 제공합니다. 별도 CDN이나 수동 다운로드 단계 없이 기존 `npm ci` → `npm run build` → `dist/` 배포 순서를 유지합니다. 빌드·자원 경로·초기화 변경 시에는 `test:e2e:build`로 생성된 파일을 확인합니다.
 
 GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위 검사·빌드가 성공한 뒤
 `dist/`를 배포합니다. 저장소 Settings → Pages의 Source는 **GitHub Actions**를 사용합니다.

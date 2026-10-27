@@ -5,11 +5,18 @@ import { fileURLToPath } from 'node:url';
 import { entryRoutes } from '../src/app/routes.js';
 import { renderEntry } from './entry-pages.mjs';
 import { bundleStyles, styleEntry } from './styles.mjs';
+import { readFontAsset } from './fonts.mjs';
 export function serve({ root = resolve(fileURLToPath(new URL('..', import.meta.url))), port = 8080, host = '127.0.0.1' } = {}) {
   const types = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.csv':'text/csv' };
   const server = createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost'), path = decodeURIComponent(url.pathname);
+      const font = readFontAsset(path);
+      if (font) {
+        const content = await font;
+        res.writeHead(200, { 'Content-Type':path.endsWith('.css') ? types['.css'] : 'font/woff2', 'Cache-Control':'no-store' });
+        res.end(content); return;
+      }
       if (path === '/' + styleEntry) {
         const content = await bundleStyles(root);
         res.writeHead(200, { 'Content-Type':types['.css'], 'Cache-Control':'no-store' });

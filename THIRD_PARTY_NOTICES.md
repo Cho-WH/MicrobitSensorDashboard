@@ -102,10 +102,16 @@ uses the shared chart adapter and RunStore, with no second collection engine.
 
 ## Luminous V1 design preview assets
 
-The opt-in preview uses the unmodified Pretendard Variable 1.3.9 font by
-Kil Hyung-jin, licensed under SIL OFL 1.1. The local font and license are in
-`public/vendor/pretendard/`; the pinned upstream URL and SHA-256 are recorded
-in `vendor/manifest.json`. No runtime CDN request is made.
+The app uses the unmodified Pretendard Variable 1.3.9 dynamic subsets by
+Kil Hyung-jin, licensed under SIL OFL 1.1, from
+https://github.com/orioncactus/pretendard/tree/v1.3.9/dist/web/variable.
+The `pretendard` npm package version and integrity are pinned in `package-lock.json`.
+The build copies the upstream CSS and WOFF2 subsets into `dist/public/vendor/pretendard/`,
+alongside the existing LICENSE. The original full font's provenance remains in
+`vendor/manifest.json`. No runtime CDN request is made.
+
+esbuild 0.28.2 (MIT, https://github.com/evanw/esbuild) is a build-time development
+dependency. JavaScript output retains linked third-party license comments.
 
 The navigation and recording icons in `public/vendor/lucide/` are unmodified
 Lucide 0.468.0 SVGs, using the existing `public/vendor/lucide-LICENSE`.

@@ -19,11 +19,14 @@
     "build": "node scripts/build.mjs",
     "build:firmware": "node dev/firmware/build.mjs",
     "check:firmware": "node --test tests/unit/firmware.test.mjs tests/unit/sensor-display.test.mjs",
-    "publish:firmware": "node dev/firmware/publish.mjs"
+    "publish:firmware": "node dev/firmware/publish.mjs",
+    "test:e2e:build": "playwright test --config playwright.build.config.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
+    "esbuild": "0.28.2",
     "nrf-intel-hex": "1.4.0",
+    "pretendard": "1.3.9",
     "typescript": "5.9.3"
   }
 }
