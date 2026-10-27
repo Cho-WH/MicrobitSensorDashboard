@@ -8,14 +8,15 @@ export function createRecordDialogs(host) {
   const dialogs = new Set();
   function formDialog({ id, title, description = '', submit = '저장', build, save }) {
     const anchor = document.activeElement;
-    const dialog = element('dialog', 'record-dialog'), form = element('form'); dialog.id = id;
-    const heading = element('h2', '', title); heading.id = id + '-title'; dialog.setAttribute('aria-labelledby', heading.id);
+    const dialog = element('dialog', 'ui-dialog record-dialog'), form = element('form', 'ui-dialog-form'); dialog.id = id;
+    const heading = element('h2', 'ui-dialog-title', title); heading.id = id + '-title'; dialog.setAttribute('aria-labelledby', heading.id);
+    const header = element('header', 'ui-dialog-header'), content = element('div', 'ui-dialog-body'), footer = element('footer', 'ui-dialog-footer');
     const body = element('div', 'record-dialog-fields'), error = element('p', 'record-dialog-error'); error.setAttribute('role', 'alert');
-    const actions = element('div', 'button-row'), cancel = element('button', '', '취소'), confirm = element('button', 'primary', submit);
+    const actions = element('div', 'ui-dialog-actions'), cancel = element('button', '', '취소'), confirm = element('button', 'primary', submit);
     cancel.type = 'button'; confirm.type = 'submit'; confirm.dataset.confirm = '';
-    actions.append(cancel, confirm); form.append(heading);
-    if (description) form.append(element('p', 'record-dialog-description', description));
-    form.append(body, error, actions); dialog.append(form); host.append(dialog); dialogs.add(dialog);
+    actions.append(cancel, confirm); header.append(heading); footer.append(actions);
+    if (description) content.append(element('p', 'ui-dialog-description', description));
+    content.append(body, error); form.append(header, content, footer); dialog.append(form); host.append(dialog); dialogs.add(dialog);
     const read = build(body, confirm); let pending = false;
     cancel.addEventListener('click', () => dialog.close());
     dialog.addEventListener('cancel', event => { if (pending) event.preventDefault(); });

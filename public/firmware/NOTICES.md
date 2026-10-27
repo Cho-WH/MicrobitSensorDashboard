@@ -1,23 +1,16 @@
 # Firmware sources and licenses
 
-`bmp280-uart-v1.hex` is an unmodified copy of `firmware/bme_1.2.hex` from
-[Cho-WH/bme280 at 59c5c149450f970bace2deaa183857c275595853](https://github.com/Cho-WH/bme280/tree/59c5c149450f970bace2deaa183857c275595853).
-The upstream application snapshot has no repository-wide license; copying
-this artifact under the user's reuse instruction does not relicense it under
-this repository's MIT license. The original build inputs were not reproduced.
-
-`magnetometer-uart-v2.hex` is compiled from this repository's
-`firmware/examples/magnetometer.js` (MIT, see the repository `LICENSE`).
-The downloadable `.ts` is an exact LF-normalized source copy. Build commands,
-fixed versions, runtime-cache explanation and validation limits are documented
-in `dev/firmware/README.md`; hashes are in `magnetometer-uart-v2.build.json`.
-
-`temperature-uart-v1.hex`, `light-level-uart-v1.hex` and
-`accelerometer-uart-v1.hex` are compiled from this repository's corresponding
-`firmware/examples/{temperature,light-level,accelerometer}.js` sources (MIT).
-Each downloadable `.ts` is an exact LF-normalized source copy; its matching
-`.build.json` records the pinned toolchain, protocol and verified digest.
-They use the same runtime components and preserved notices listed below.
+The current official V1 releases are `sensor-lab-temperature-v1`,
+`sensor-lab-light-level-v1`, `sensor-lab-accelerometer-v1`,
+`sensor-lab-magnetometer-v1`, and `sensor-lab-bmp280-v1`.
+They are built from this repository's matching `firmware/examples/` sources
+and shared `firmware/common/sensor-display.ts` (MIT). BMP280 also includes
+`firmware/drivers/bmp280.ts` (MIT). Each downloadable `.ts` combines its
+inputs; each release includes a build record and a partial-installation
+`.bin` extracted from the same HEX. All five share the verified B runtime.
+Pre-V1 `*-uart` artifacts have been retired and removed. Only historical
+identity and protocol metadata remain for saved-record compatibility.
+Build and publication commands are documented in `dev/firmware/README.md`.
 
 Compiled runtimes retain their own licenses; the local application license
 does not replace them. Upstream notice texts are preserved alongside the HEX:

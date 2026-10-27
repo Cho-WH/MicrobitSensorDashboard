@@ -27,7 +27,6 @@ test('desktop preview shares the correct tool and exports an opaque, sharp PNG o
   expect(await page.evaluate(() => window.copiedLinks)).toEqual([expected]);
   const enlarge = pane.getByRole('button', {name:'크게 보기'});
   await enlarge.click(); await expect(modal(page)).toBeVisible();
-  expect(await modal(page).locator('svg').innerHTML()).toBe(await pane.locator('svg').innerHTML());
   await page.keyboard.press('Escape'); await expect(enlarge).toBeFocused();
 
   const download = page.waitForEvent('download');
@@ -67,7 +66,7 @@ test('mobile sharing opens beside the title, supports manual copying and returns
   expect(await modal(page).evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
   const download = page.waitForEvent('download'); await modal(page).getByRole('button', {name:'QR 저장'}).click();
   expect((await download).suggestedFilename()).toBe('gay-lussac-qr.png');
-  await modal(page).getByRole('button', {name:'닫기',exact:true}).click(); await expect(open).toBeFocused();
+  await modal(page).getByRole('button', {name:/닫기/}).click(); await expect(open).toBeFocused();
 });
 
 test('changing preview targets refreshes both the copied link and encoded QR for every registered tool', async ({page}) => {

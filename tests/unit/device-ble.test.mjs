@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createBleClient, createLineFramer } from '../../src/device/ble-client.js';
 import { getBluetoothSupport, isAppleMobile } from '../../src/device/browser-support.js';
+import { createTransport } from '../../src/device/transport.js';
+import { getExperiment } from '../../src/catalog/index.js';
 
 test('Bluetooth capability checks stay silent and distinguish security, policy and missing API', () => {
   const bluetooth = {
@@ -123,6 +125,43 @@ test('UART hands off a live GATT only after unsubscribing and retires old callba
   await old.disconnect();
 });
 
+test('ordinary connection and direct reconnect time out at every native setup stage and allow retry', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const reuseDevice of [false, true]) for (const stage of ['connect', 'service', 'characteristics', 'descriptors', 'notifications']) {
+    const f = deviceFixture(), ble = createBleClient({ bluetooth: { requestDevice: async () => f.device } });
+    const transport = createTransport({ ble });
+    const connect = () => transport.connect(getExperiment('temperature'), () => {}, () => {}, { reuseDevice });
+    if (reuseDevice) {
+      await transport.connect(getExperiment('temperature'), () => {});
+      await transport.disconnect();
+    }
+    const server = f.device.gatt, originalService = server.getPrimaryService;
+    let target, method, finish;
+    if (stage === 'connect') { target = server; method = 'connect'; }
+    else if (stage === 'service') { target = server; method = 'getPrimaryService'; }
+    else if (stage === 'characteristics') {
+      target = { getCharacteristics: async () => [f.rx, f.tx] }; method = 'getCharacteristics';
+      server.getPrimaryService = async () => target;
+    } else { target = f.rx; method = stage === 'descriptors' ? 'getDescriptors' : 'startNotifications'; }
+    const original = target[method];
+    target[method] = () => new Promise(resolve => { finish = resolve; });
+    const connecting = connect();
+    await new Promise(resolve => setImmediate(resolve));
+    t.mock.timers.tick(6001); await connecting;
+    assert.equal(transport.getState().status, 'disconnected', stage);
+    assert.equal(transport.getState().busy, false, stage);
+    assert.ok(transport.getState().message);
+    target[method] = original; server.getPrimaryService = originalService;
+    await connect();
+    finish(stage === 'connect' ? server : undefined);
+    await new Promise(resolve => setImmediate(resolve));
+    f.send('26\n');
+    assert.equal(transport.getState().firstReading, true, stage);
+    assert.equal(f.device.gatt.connected, true, stage);
+    await transport.disconnect();
+  }
+});
+
 test('UART discovery timeout ignores late results and leaves the next connection usable', async () => {
   for (const stage of ['service', 'characteristics', 'descriptors']) {
     const f = deviceFixture(), ble = createBleClient({ bluetooth: { requestDevice() {} } });
@@ -154,4 +193,20 @@ test('UART subscription cleanup failure never claims a successful handoff', asyn
   await assert.rejects(ble.releaseConnection(), /unsubscribe failed/);
   assert.equal(ble.getContext().device, null);
   f.device.gatt.disconnect(); // The orchestrator owns failure cleanup during transfer.
+});
+
+test('late connection completion after timeout releases the orphan but preserves a newer owner', async () => {
+  for (const reconnect of [false, true]) {
+    const f = deviceFixture(), ble = createBleClient({ bluetooth: { requestDevice() {} } });
+    const connect = f.device.gatt.connect;
+    let finish;
+    f.device.gatt.connect = () => new Promise(resolve => { finish = () => { f.device.gatt.connected = true; resolve(f.device.gatt); }; });
+    await assert.rejects(ble.connect(f.device, { connectionTimeoutMs: 15 }), { code: 'timeout' });
+    f.device.gatt.connect = connect;
+    if (reconnect) await ble.connect(f.device);
+    finish(); await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(f.device.gatt.connected, reconnect);
+    if (reconnect) { await ble.sendStartCommand('start'); assert.deepEqual(f.writes, ['start\n']); }
+    await ble.disconnect();
+  }
 });

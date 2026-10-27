@@ -1,3 +1,4 @@
+import { displayMock, sensorDisplaySource } from '../helpers/sensor-display.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -27,7 +28,9 @@ function fixture({ address = 0x76, identity = 0x58, duringPause = () => {} } = {
   function setRaw(register, value) { registers[register] = value >> 12; registers[register + 1] = (value >> 4) & 255; registers[register + 2] = (value & 15) << 4; }
   setRaw(0xFA, 519888); setRaw(0xF7, 415148);
   const f = { registers, reads, writes, lines, pauses, analogReads, hooks, setRaw, send(value) { command = value; hooks.uart(); } };
+  const screen = displayMock();
   f.context = createContext({
+    ...screen,
     Math, convertToText: String, AnalogPin: { P0: 0, P1: 1, P2: 2 }, NumberFormat: { UInt8BE: 1 },
     pins: {
       createBuffer: size => Buffer.alloc(size),
@@ -42,9 +45,9 @@ function fixture({ address = 0x76, identity = 0x58, duringPause = () => {} } = {
     bluetooth: { startUartService() {}, onBluetoothConnected: cb => hooks.connect = cb, onBluetoothDisconnected: cb => hooks.disconnect = cb,
       onUartDataReceived: (_, cb) => hooks.uart = cb, uartReadUntil: () => command, uartWriteLine: line => lines.push(line) },
     serial: { delimiters: () => '\n' }, Delimiters: { NewLine: 1 },
-    basic: { clearScreen() {}, forever: cb => hooks.loop = cb, pause: ms => { pauses.push(ms); duringPause(f, ms); } },
+    basic: { ...screen.basic, forever: cb => hooks.loop = cb, pause: ms => { pauses.push(ms); duringPause(f, ms); } },
   });
-  runInContext(driver, f.context);
+  runInContext(sensorDisplaySource + driver, f.context);
   return f;
 }
 

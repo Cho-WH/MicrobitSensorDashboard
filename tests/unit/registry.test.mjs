@@ -4,20 +4,21 @@ import { createRegistry } from '../../src/catalog/registry.js';
 import { registry } from '../../src/catalog/modules.js';
 import bmp from '../../src/catalog/sensors/bmp280/index.js';
 import magnetic from '../../src/catalog/sensors/magnetometer/index.js';
+import temperature from '../../src/catalog/sensors/temperature/index.js';
 import gas from '../../src/catalog/activities/gay-lussac/index.js';
 import { getExperiment, getSensorRuntime, getActivityPolicy, resolveExperiment } from '../../src/catalog/index.js';
 import { composeGuideSteps, getGuideContent } from '../../src/guide/steps.js';
 import { createGuideProgress } from '../../src/guide/progress.js';
 import { parseRoute, routeUrl } from '../../src/app/routes.js';
-import { getPreviewCopy, previewDefaults, getLabCopy, labDefaults, formatCopy } from '../../src/ui/lab-copy.js';
+import { getPreviewCopy, previewDefaults, getLabCopy, labDefaults } from '../../src/ui/lab-copy.js';
 
-// Test-only single-channel module: it never appears in the production catalog or firmware allowlist.
+// A test-only module reuses an approved single-value firmware/codec identity.
+// Its definition versions are independent of firmware versions.
 function extraSensor(version = 1) {
-  const definition = structuredClone(magnetic.definition);
-  Object.assign(definition, { id: 'test-built-in', version, name: '검사용 내장 센서', codecId: 'test-value',
+  const definition = structuredClone(temperature.definition);
+  Object.assign(definition, { id: 'test-built-in', version, name: '검사용 내장 센서',
     channels: [{ id: 'value', name: '값', unit: '', supported: true, calculable: true }], defaultVisibleChannelIds: ['value'],
     defaultGraph: { ...definition.defaultGraph, yColumnId: 'value' }, preparation: ['검사용 준비 안내'] });
-  definition.firmware = { ...definition.firmware, id: 'test-firmware', version, codecId: 'test-value' };
   definition.connectionPolicy = { ...definition.connectionPolicy, requiredChannelIds: ['value'] };
   return { definition, decode: raw => ({ type: 'reading', values: { value: Number(raw) }, validity: { value: 'valid' } }), mockLine: () => '12',
     guide: { equipment: [{ id: 'board', name: '내장 센서 보드', help: '외부 배선 없이 준비합니다.' }], equipmentDescription: '내장 센서 보드를 준비하세요.' } };
@@ -47,7 +48,6 @@ test('screen copy inherits defaults and only registered sensor/activity override
   assert.equal(steps.find(step => step.id === 'program').title, '설치 준비');
   const rules = steps => steps.map(({id,kind,scope,required,quickConfirm})=>({id,kind,scope,required,quickConfirm}));
   assert.deepEqual(rules(steps), rules(originalSteps));
-  assert.equal(formatCopy(all.prepare.title, {name:'온도 센서'}), '온도 센서 · 장비 준비');
   const plain=extraSensor(), plainModules=createRegistry({sensors:[plain],activities:[]});
   assert.deepEqual(getLabCopy({sensor:plain.definition},plainModules),labDefaults);
   context.activity.version++;
@@ -116,7 +116,7 @@ test('saved metadata cannot inject resources or substitute an unregistered activ
   assert.equal(createGuideProgress(context).getState().ready, false);
   const content = getGuideContent(getExperiment('bmp280')); content.equipment.length = 0;
   assert.ok(getGuideContent(getExperiment('bmp280')).equipment.length > 0);
-  assert.deepEqual(registry.catalog.sensors.map(sensor => sensor.id), ['bmp280', 'magnetometer', 'temperature', 'light-level', 'accelerometer']);
+  assert.deepEqual(new Set(registry.catalog.sensors.map(sensor => sensor.id)), new Set(['bmp280', 'magnetometer', 'temperature', 'light-level', 'accelerometer']));
 });
 
 test('registry rejects duplicate versions, missing runtime and conflicting guide steps before app startup', () => {

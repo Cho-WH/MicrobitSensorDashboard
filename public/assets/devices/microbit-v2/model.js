@@ -1,6 +1,6 @@
 // V2.21 photo-referenced educational model. Dimensions in mm; front +Z, top +Y.
 // Front geometry and sockets adapted from the existing BMP280 wiring model.
-import { Group, Mesh, Shape, Path, ShapeGeometry, ExtrudeGeometry } from '../../../vendor/three-r180.js';
+import { Group, Mesh, Shape, Path, ShapeGeometry, ExtrudeGeometry, PlaneGeometry, MeshBasicMaterial, CanvasTexture } from '../../../vendor/three-r180.js';
 import { material, box, disc, label, addBoardPorts } from '../shared/legacy-primitives.js';
 import { addRearDetails } from './rear.js';
 import { contactLayout } from './contact-layout.js';
@@ -10,6 +10,30 @@ export const boardSpec = Object.freeze({ version:'2.21', width:51.6, height:42, 
   parts:{ processor:[13.4,4.2,-1.6], motion:[17.1,-8.9,-1.6], speaker:[0,1,-3.6], microphone:[7.2,10.7,-1.6], interface:[-15.2,3.3,-1.6] } });
 const pinX=contactLayout.x,pinY=contactLayout.y;
 const gold=material('#d4b567',.72,.3), silver=material('#b7c4cc',.78,.28), ink=material('#171d24',.08,.65);
+const ledPanels=new WeakMap();
+let ledGlowTexture;
+function glowTexture() {
+  if(ledGlowTexture)return ledGlowTexture;
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=32;
+  const context=canvas.getContext('2d'), gradient=context.createRadialGradient(16,16,2,16,16,16);
+  gradient.addColorStop(0,'rgba(255,255,255,.8)');gradient.addColorStop(.35,'rgba(255,255,255,.45)');
+  gradient.addColorStop(.7,'rgba(255,255,255,.12)');gradient.addColorStop(1,'rgba(255,255,255,0)');
+  context.fillStyle=gradient;context.fillRect(0,0,32,32);
+  ledGlowTexture=new CanvasTexture(canvas);return ledGlowTexture;
+}
+
+/** Set one front LED: column/row 0–4 from the top left, brightness 0–1. */
+export function setMicrobitLed(board,column,row,brightness=1) {
+  if(!Number.isInteger(column)||!Number.isInteger(row)||column<0||column>4||row<0||row>4)return;
+  const entry=ledPanels.get(board)?.[row*5+column];
+  if(!entry)return;
+  const {led,glow}=entry;
+  const level=Number.isFinite(brightness)?Math.max(0,Math.min(1,brightness)):0;
+  if(led.userData.brightness===level)return;
+  led.userData.brightness=level;
+  led.material.emissive.set('#ff6b73');led.material.emissiveIntensity=level*2.5;
+  glow.visible=level>0;glow.material.opacity=Math.sqrt(level)*.9;
+}
 
 function pcbOutline() {
   const s=new Shape(); s.moveTo(-24.2,-21);
@@ -56,9 +80,18 @@ export function createMicrobitV2() {
   pcb.geometry.translate(0,0,-.8);pcb.name='pcb';root.add(pcb);
   pinX.forEach((x,i)=>{copperPad(root,x);label(root,['0','1','2','3V','GND'][i],x,-18.1,.94,1.65,'#202a30');});
   for(const {x,column} of contactLayout.fingers)fineContact(root,x,column);
+  const leds=[];ledPanels.set(root,leds);
   for(let row=0;row<5;row++)for(let col=0;col<5;col++){
     const x=(col-2)*4,y=7-row*4;box(root,1.15,1.8,.45,x,y,1.02,silver);
-    box(root,.65,1.18,.12,x,y,1.3,material('#8b2738',.15,.4));
+    // Every LED owns its emissive material, including across separate board instances.
+    const led=box(root,.65,1.18,.12,x,y,1.3,material('#444444',.15,.4).clone());
+    led.name=`led-${col}-${row}`;led.userData.brightness=0;
+    // A small shared alpha texture suggests diffusion without lights or full-screen bloom.
+    // Keep its red out of filmic tone mapping, which otherwise washes it toward orange.
+    const glow=new Mesh(new PlaneGeometry(3.2,3.8),new MeshBasicMaterial({
+      map:glowTexture(),color:'#ff1528',transparent:true,opacity:0,depthWrite:false,toneMapped:false,
+    }));
+    glow.position.z=.1;glow.visible=false;led.add(glow);leds.push({led,glow});
   }
   for(const [x,t] of [[-20,'A'],[20,'B']]){
     box(root,6.2,6.2,1.6,x,0,1.6,silver);disc(root,1.95,2.1,x,0,3.05,ink);

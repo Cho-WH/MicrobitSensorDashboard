@@ -1,6 +1,7 @@
-// Adapted from Cho-WH/bme280@59c5c149 js/bluetooth.js and this repository's
+// Adapted from Cho-WH/bme280@59c5c149 and MicrobitSensorDashboard@5d80407
 // js/bluetooth.js: UART discovery and cleanup retained; framing is byte-bounded and streaming.
 import { getBluetoothSupport } from './browser-support.js';
+import { waitForConnection } from './connection-wait.js';
 const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const UART_002 = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 const UART_003 = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
@@ -60,7 +61,7 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     // Deliberately no await before the chooser: the caller's click remains the activation boundary.
     return bluetooth.requestDevice({ filters: deviceFilters, optionalServices: [UART_SERVICE] });
   }
-  async function connect(selectedDevice, { reuseConnection = false, serviceDiscoveryTimeoutMs = 0 } = {}) {
+  async function connect(selectedDevice, { reuseConnection = false, serviceDiscoveryTimeoutMs = 0, connectionTimeoutMs = 0, signal = undefined } = {}) {
     checkAvailable();
     if (reuseConnection && device) throw new Error('이전 측정 연결의 제어권을 먼저 정리하세요.');
     if (device) await disconnect();
@@ -68,17 +69,13 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     device = selectedDevice; framer.reset();
     const current = () => token === epoch && device === selectedDevice;
     const assertCurrent = () => { if (!current()) throw new DOMException('연결 시도가 취소되었습니다.', 'AbortError'); };
-    async function discover(promise) {
-      if (!serviceDiscoveryTimeoutMs) return promise;
-      let timer;
+    async function discover(promise, timeoutMs = serviceDiscoveryTimeoutMs) {
       try {
-        return await Promise.race([promise, new Promise((_, reject) => {
-          timer = setTimeout(() => {
-            if (current()) void disconnect();
-            reject(Object.assign(new Error('UART 서비스·특성 조회 시간이 초과됐습니다.'), { code: 'timeout' }));
-          }, serviceDiscoveryTimeoutMs);
-        })]);
-      } finally { clearTimeout(timer); }
+        return await waitForConnection(promise, { signal, timeoutMs });
+      } catch (error) {
+        if (current() && (error.code === 'timeout' || error.name === 'AbortError')) await disconnect();
+        throw error;
+      }
     }
     gattListener = event => {
       if (!current() || event?.target !== selectedDevice) return;
@@ -86,7 +83,13 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     };
     device.addEventListener('gattserverdisconnected', gattListener);
     if (reuseConnection && !device.gatt?.connected) throw new DOMException('넘겨받을 GATT 연결이 끊겼습니다.', 'NetworkError');
-    const server = reuseConnection ? device.gatt : await device.gatt?.connect(); assertCurrent();
+    const connecting = reuseConnection ? Promise.resolve(device.gatt) : device.gatt?.connect();
+    // A timed-out OS request can still finish. Do not leave an orphan connected,
+    // or disconnect the same device after a newer attempt has taken ownership.
+    Promise.resolve(connecting).then(() => {
+      if (!current() && device !== selectedDevice && selectedDevice.gatt?.connected) selectedDevice.gatt.disconnect();
+    }, () => {});
+    const server = await discover(connecting, connectionTimeoutMs); assertCurrent();
     if (!server) throw new Error('장치의 Bluetooth 서비스에 연결하지 못했습니다.');
     const discoveredService = await discover(server.getPrimaryService(UART_SERVICE)); assertCurrent();
     service = discoveredService;
@@ -108,7 +111,7 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
     if (!notifier) notifier = classified.find(c => c.uuid === (writer?.uuid?.toLowerCase() === UART_003 ? UART_002 : UART_003))?.characteristic ?? null;
     if (!writer || !notifier || writer === notifier) throw new Error('장치의 UART 쓰기·수신 특성을 확인하지 못했습니다.');
   }
-  async function startNotifications(handler) {
+  async function startNotifications(handler, { timeoutMs = 0, signal = undefined } = {}) {
     if (!notifier) throw new Error('장치의 수신 통로가 준비되지 않았습니다.');
     const target = notifier, token = epoch;
     target.removeEventListener('characteristicvaluechanged', notificationListener);
@@ -118,7 +121,12 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
       framer.push(target.value);
     };
     target.addEventListener('characteristicvaluechanged', notificationListener);
-    await target.startNotifications();
+    try {
+      await waitForConnection(target.startNotifications(), { signal, timeoutMs });
+    } catch (error) {
+      if (token === epoch) await disconnect();
+      throw error;
+    }
   }
   async function sendStartCommand(command) {
     if (!writer) throw new Error('장치의 쓰기 통로가 준비되지 않았습니다.');

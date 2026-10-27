@@ -1,6 +1,6 @@
 // Preparation copy adapted from G/ui/action-help-content.js and G/guide/steps.js.
 export const uiCopy = {
-  home: { sensorTitle: '온도·기압 측정', sensorDescription: '외장 BMP280 센서로 온도와 기압의 변화를 함께 살펴보세요.' },
+  home: { sensorTitle: '온도·기압 측정', sensorEquipment: 'BMP280 · 외장 센서', sensorDescription: '온도와 기압의 변화를 함께 살펴봐요.' },
   guide: { receptionNote: '온도와 기압을 함께 확인해요. 센서가 손이나 물체에 닿지 않게 두고 값이 안정될 때까지 기다리세요. 기압 단위는 hPa예요.' },
 };
 export const equipment = [
@@ -8,7 +8,7 @@ export const equipment = [
   { id: 'sensor', name: 'BMP280 센서', help: '온도와 기압을 측정해요. 습도는 이 센서의 측정 항목이 아니에요.' },
   { id: 'board', name: '확장 보드', help: 'micro:bit에 센서 연결선을 꽂을 수 있게 해 주는 보드예요. 그림에서는 sensor:bit를 사용합니다.' },
   { id: 'wires', name: '연결선 4개', help: '확장 보드와 센서의 단자 모양에 맞는 선을 준비하세요. 수는 핀, 암은 핀이 들어가는 구멍이에요.' },
-  { id: 'usb', name: 'USB 데이터 케이블', help: 'micro:bit의 Micro-B 단자에 맞는 데이터 전송용 케이블이 필요해요. 충전 전용 케이블로는 프로그램을 설치할 수 없어요.' },
+  { id: 'usb', name: 'USB 데이터 케이블', help: '처음 프로그램을 넣을 때는 Micro-B 데이터 케이블이 필요해요. 센서 실험실의 다른 프로그램이 있다면 무선으로 바꿀 수 있어요. USB로 설치할 때는 충전 전용 케이블을 사용할 수 없어요.' },
 ];
 export const wiring = [
   { id: 'vcc', board: 'V · 3.3V', sensor: 'VCC', role: '전원', description: 'USB와 배터리를 분리한 상태에서 연결하세요. 확장 보드의 V와 센서의 VCC를 연결합니다. 전압을 선택할 수 있다면 3.3V로 맞추세요.' },

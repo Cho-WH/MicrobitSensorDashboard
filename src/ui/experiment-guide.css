@@ -2,24 +2,21 @@
 .measurement-heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; flex-wrap: wrap; }
 .measurement-heading-actions a { color: var(--sl-muted); font-size: 0.8125rem; }
 .measurement-heading-actions button { gap: 8px; font-size: 0.8125rem; padding: 9px 13px; }
-.measurement-heading-actions svg, .experiment-guide-label svg { width: 17px; height: 17px; flex-shrink: 0; }
-#show-experiment-guide, .experiment-guide-label { display: inline-flex; align-items: center; gap: 8px; font-family: inherit; font-size: 0.8125rem; font-weight: 600; line-height: 1.4; letter-spacing: normal; color: var(--sl-navy); }
+.measurement-heading-actions svg { width: 17px; height: 17px; flex-shrink: 0; }
+#show-experiment-guide { display: inline-flex; align-items: center; gap: 8px; font-family: inherit; font-size: 0.8125rem; font-weight: 600; line-height: 1.4; letter-spacing: normal; color: var(--sl-navy); }
 
-.experiment-guide { width: min(900px, calc(100% - 32px)); height: min(800px, calc(100dvh - 40px)); max-height: calc(100dvh - 40px); padding: 0; overflow: hidden; border: 1px solid var(--sl-line); border-radius: 14px; color: var(--sl-navy); background: white; box-shadow: 0 24px 80px #213d4733; }
-.experiment-guide[open] { display: flex; flex-direction: column; animation: experiment-guide-enter 160ms ease-out; }
-.experiment-guide::backdrop { background: #213d4766; }
-.experiment-guide-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 28px 20px; flex-shrink: 0; }
-.experiment-guide-label { margin: 0 0 8px; }
-.experiment-guide h2 { margin: 0; font-size: 1.5625rem; letter-spacing: -.04em; }
-.experiment-guide h2:focus { outline: none; }
-button.experiment-guide-close { justify-content: center; min-width: 36px; min-height: 36px; padding: 7px; border: 0; background: transparent; color: var(--sl-muted); }
-.experiment-guide-close svg { width: 20px; height: 20px; }
+.experiment-guide { height:min(800px,calc(100dvh - 40px)); }
+.experiment-guide-single { height:fit-content; }
+.experiment-guide-single .experiment-guide-page { min-height:0; align-items:center; }
+.experiment-guide-single .experiment-guide-paging { display:flex; justify-content:flex-end; }
+.experiment-guide-single .experiment-guide-copy h3 { font-size:1.125rem; line-height:1.65; margin-bottom:20px; }
+.experiment-guide[open] { animation: experiment-guide-enter var(--sl-motion-panel) var(--sl-motion-panel-easing); }
 .experiment-guide-pages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 28px; border-bottom: 1px solid var(--sl-line); flex-shrink: 0; }
-.experiment-guide-pages button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; min-height: 48px; padding: 10px 8px; gap: 8px; background: transparent; font-size: 0.8125rem; font-weight: 500; color: var(--sl-muted); transition: color 160ms, border-color 160ms, background 160ms; }
-.experiment-guide-pages button span { font-size: 0.75rem; font-variant-numeric: tabular-nums; }
-.experiment-guide-pages button[aria-current] { border-color: var(--sl-selection-text); color: var(--sl-selection-text); background: #f4f8f6; font-weight: 700; }
-.experiment-guide-pages button:hover { background: #f4f8f6; }
-.experiment-guide-body { flex: 1; min-height: 0; padding: 26px 28px 20px; overflow: auto; overscroll-behavior: contain; }
+.experiment-guide-pages { --sl-tab-text:var(--sl-muted); --sl-tab-weight:500; }
+:root[data-visual-theme="luminous"] .experiment-guide-pages button { border:0; border-bottom:2px solid transparent; min-height:48px; padding:10px 8px; gap:8px; font-size:var(--sl-type-label); }
+:root[data-visual-theme="luminous"] .experiment-guide-pages button span { font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+:root[data-visual-theme="luminous"] .experiment-guide-pages button[aria-current] { border-bottom-color:var(--sl-tab-line); }
+.experiment-guide .ui-dialog-body { padding-top:24px; }
 .experiment-guide-page { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 30px; min-height: 345px; }
 .experiment-guide-visual { margin: 0; display: flex; flex-direction: column; }
 .experiment-guide-image { display: block; width: 100%; height: auto; min-height: 0; margin: auto 0; border-radius: 8px; object-fit: contain; }
@@ -34,7 +31,6 @@ button.experiment-guide-close { justify-content: center; min-width: 36px; min-he
 .experiment-guide-range strong { display: block; color: var(--sl-selection-text); font-weight: 600; margin-bottom: 4px; }
 .experiment-guide-range span { color: var(--sl-muted); }
 .experiment-guide-caution { grid-column: 1 / -1; margin: 0; padding: 10px 12px; border-left: 2px solid #bc8750; background: #faf7f1; font-size: 0.75rem; line-height: 1.7; color: #75552f; }
-.experiment-guide-footer { padding: 16px 28px; border-top: 1px solid var(--sl-line); flex-shrink: 0; }
 .experiment-guide-paging { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
 .experiment-guide-paging button { min-width: 112px; padding: 10px 14px; font-size: 0.8125rem; }
 .experiment-guide-paging button:first-child { justify-self: start; }
@@ -50,23 +46,20 @@ button.experiment-guide-close { justify-content: center; min-width: 36px; min-he
   .experiment-guide-page { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 22px; }
 }
 @media(max-width: 580px) {
-  .experiment-guide { height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); width: calc(100% - 24px); }
-  .experiment-guide-header { padding: 18px 18px 12px; }
-  .experiment-guide h2 { font-size: 1.25rem; }
+  .experiment-guide { height:calc(100dvh - 32px); }
+  .experiment-guide-single { height:fit-content; }
   .experiment-guide-pages { padding: 0 12px; }
-  .experiment-guide-pages button { font-size: 0.6875rem; padding: 8px 2px; gap: 5px; }
-  .experiment-guide-body { padding: 18px; }
+  :root[data-visual-theme="luminous"] .experiment-guide-pages button { font-size: 0.6875rem; padding: 8px 2px; gap: 5px; }
   .experiment-guide-page { grid-template-columns: minmax(0, 1fr); min-height: 0; gap: 20px; }
   .experiment-guide-image { max-height: 260px; }
   .experiment-guide-visual figcaption { padding-top: 8px; }
   .experiment-guide-copy h3 { font-size: 1.3125rem; margin-bottom: 18px; }
-  .experiment-guide-footer { padding: 14px 18px; }
   .experiment-guide-paging { gap: 8px; }
   .experiment-guide-paging button { min-width: 94px; padding: 10px; }
 }
 @media(prefers-reduced-motion: reduce) {
   .experiment-guide[open] { animation: none; }
-  .experiment-guide-pages button { transition: none; }
+  :root[data-visual-theme="luminous"] .experiment-guide-pages button { transition: none; }
 }
 .experiment-recording-flow { list-style:none; display:grid; gap:16px; padding:24px; margin:auto 0; background:var(--sl-surface-soft); border-radius:12px; }
 .experiment-recording-flow li { display:grid; gap:8px; padding:16px; background:white; border:1px solid var(--sl-line); border-radius:8px; }

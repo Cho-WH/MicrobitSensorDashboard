@@ -67,12 +67,14 @@ async function click(selector) {
   await painted();
 }
 await until(()=>!app.getState().busy);
+if($('.experiment-guide')?.open)await click('.experiment-guide [data-guide-next]');
 $('#run-name').value = '작은 변화 관찰하기';
 if (state !== 'idle') {
   await click('#connect');
   if (sensor === 'magnetometer') { await advance(1000); await click('[data-device-action="skip"]'); }
   await advance(2000);
   if (sensor === 'magnetometer') await click('[data-view="measure"]');
+  if($('.experiment-guide')?.open)await click('.experiment-guide [data-guide-next]');
   if (state !== 'preview') {
     await click('#start-recording');
     await advance(24000);

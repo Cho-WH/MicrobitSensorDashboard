@@ -1,6 +1,5 @@
 // A simulated BLE boundary. Decoding, timing and readiness use the real Transport.
 import { getSensorRuntime } from '../catalog/index.js';
-import { getFirmwareArtifact } from './firmware.js';
 
 /** @param {()=>ReturnType<import('../catalog/index.js').getExperiment>} getContext
  * @param {{timers?:any,now?:()=>number}} options */
@@ -9,7 +8,7 @@ export function createMockBleClient(getContext, { timers = globalThis, now = () 
   function stopStreaming() { timers.clearInterval(timer); timer = null; }
   function startStreaming() {
     if (timer !== null) return;
-    const runtime = getSensorRuntime(getContext()), firmware = getFirmwareArtifact(runtime.definition.firmware.id, runtime.definition.firmware.version);
+    const runtime = getSensorRuntime(getContext()), firmware = runtime.definition.firmware;
     timer = timers.setInterval(() => notify?.(runtime.mockLine(now())), firmware.sampleIntervalMs);
   }
   const device = { name: '모의 micro:bit' };

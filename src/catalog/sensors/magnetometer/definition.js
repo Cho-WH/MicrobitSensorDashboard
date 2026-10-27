@@ -1,6 +1,6 @@
 // Four fields and the start command come from firmware/examples/magnetometer.js.
 import { getFirmwareArtifact } from '../../../device/firmware.js';
-const artifact = getFirmwareArtifact('magnetometer-uart');
+const artifact = getFirmwareArtifact('sensor-lab-magnetometer');
 export const magnetometer = {
   id: 'magnetometer', version: 1, name: '내장 자기장 센서', boards: ['micro:bit-v2'], codecId: 'magnetometer-csv-v2',
   defaultVisibleChannelIds: ['magneticStrength'],
@@ -20,5 +20,5 @@ export const magnetometer = {
   defaultGraph: { xColumnId: 'receivedAt', yColumnId: 'magneticStrength', type: 'line', connectGaps: false, view: 'measured' },
   preparation: ['micro:bit V2의 내장 자기장 센서를 사용합니다. 외부 센서 배선은 필요하지 않습니다.',
     '연결 후 앱에서 보정을 시작하고 micro:bit의 안내에 따라 기울이세요.',
-    '이번 보정을 생략할 수도 있어요. 생략 여부는 실험과 함께 남으며 측정값에 영향을 줄 수 있어요.'],
+    '자기장 보정을 생략할 수도 있어요. 생략 여부는 실험과 함께 남으며 측정값에 영향을 줄 수 있어요.'],
 };

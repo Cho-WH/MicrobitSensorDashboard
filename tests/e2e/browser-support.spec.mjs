@@ -91,6 +91,7 @@ for (const [reason, options] of [['insecure', { secure: false }], ['blocked', { 
   test(`connection guidance distinguishes ${reason} from needing another browser`, async ({ page }) => {
     await environment(page, options);
     await page.goto('/sensors/temperature/?view=measure');
+    await page.locator('.experiment-guide [data-guide-next]').click();
     await expect(page.locator('#connection-notice')).toBeVisible();
     await expect(page.locator('#connection-notice')).toHaveAttribute('data-support', reason);
     await expect(page.locator('#connection-bluefy')).toBeHidden();

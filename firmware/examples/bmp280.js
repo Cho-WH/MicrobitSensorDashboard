@@ -1,4 +1,3 @@
-// Build-only replacement candidate. The published v1 and saved sessions are unchanged.
 let streaming = false
 let connected = false
 let sensorReady = false
@@ -10,7 +9,7 @@ bluetooth.onBluetoothConnected(function () {
     streaming = false
     sensorReady = false
     request += 1
-    basic.clearScreen()
+    SensorDisplay.setMode("connected")
 })
 
 bluetooth.onBluetoothDisconnected(function () {
@@ -18,17 +17,19 @@ bluetooth.onBluetoothDisconnected(function () {
     streaming = false
     sensorReady = false
     request += 1
-    basic.clearScreen()
+    SensorDisplay.setMode("waiting")
 })
 
 bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
     command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim().toLowerCase()
     streaming = connected && command == "bme"
     request += 1
+    SensorDisplay.setMode(streaming ? "streaming" : connected ? "connected" : "waiting")
 })
 
 basic.clearScreen()
 bluetooth.startUartService()
+SensorDisplay.start(true)
 basic.forever(function () {
     if (connected && streaming) {
         let currentRequest = request
@@ -46,7 +47,7 @@ basic.forever(function () {
                 sensorReady = false
             }
         }
-        basic.pause(100)
+        basic.pause(DEFAULT_SAMPLE_INTERVAL_MS)
     } else {
         basic.pause(50)
     }

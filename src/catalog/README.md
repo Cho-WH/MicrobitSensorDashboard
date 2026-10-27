@@ -25,6 +25,10 @@
 
 ## 공통 화면과 문구
 
+측정 화면 안내는 센서·활동의 `guide.experimentGuide`에 선언한다. 활동 안내가 있으면 우선하며,
+공통 `ui/experiment-guide.js`가 최초 자동 표시·다시 보기·초점 복귀를 맡는다. 내장 센서 위치 안내는
+각 센서의 `content.js`와 `shared/location-guide.js`를 사용한다. 한 장짜리 안내는 단계 탐색을 생략한다.
+
 ### 시간 그래프의 공통 축
 
 채널의 `quantity`와 `unit`이 모두 명시되고 각각 일치하면 하나의 세로축과 스케일을 사용한다.
@@ -46,11 +50,13 @@ X/Y/Z 성분과 크기는 동일한 물리량 ID·저장 단위를 지정한다.
 활동 정의의 선택 항목 `channelNames`는 채널 ID별 표시 이름이다. 새 실험을 구성할 때
 센서 채널의 이름만 바꾸며 ID·단위·범위·물리량·수집 방식은 유지한다. 준비·측정·분석·출력은
 그 실험의 같은 이름을 사용한다. 기존 저장 자료의 채널 이름과 원자료는 다시 쓰지 않는다.
-활동의 탐구 질문과 소개는 `uiCopy.preview.question`·`description`에 둔다. 소개는 홈 활동
-카드에서도 재사용하며 비어 있는 공통 미리보기에는 표시하지 않는다.
-센서 선택 카드의 제목·설명은 `uiCopy.home.sensorTitle`·`sensorDescription`에 둔다.
-비어 있으면 센서 이름·측정 항목 목록을 사용하며, 활동 카드에는 센서 카드 문구를 상속하지 않는다.
+활동의 탐구 질문과 소개는 `uiCopy.preview.question`·`description`에 두며 비어 있는 공통 미리보기에는 표시하지 않는다.
+센서 선택 카드의 제목·사용 센서·설명은 `uiCopy.home.sensorTitle`·`sensorEquipment`·`sensorDescription`에 둔다.
+제목·설명이 비어 있으면 센서 이름·측정 항목 목록을 사용한다. 활동 카드는 `activityTitle`·`activityEyebrow`·`activityDescription`을 사용하며 제목이 비면 활동 이름을 쓴다.
+활동의 `curriculum`·`curriculumDetail`은 검증한 교육과정 연결을 표시한다. 사용 센서는 해당 센서의 문구를 상속하고, 관련 활동 목록은 등록된 `sensorIds`에서 파생한다.
 카드의 짧은 제목은 표시용으로만 쓰고 저장된 센서 정의의 이름을 바꾸지 않는다.
+
+게이뤼삭의 교육과정 연결은 경기도교육청 [2022 개정 교육과정 고등학교 과목 선택 안내자료](https://www.goe.go.kr/resource/old/BBSMSTR_000000030136/BBS_202404250409254370.pdf) 인쇄면 112의 ‘물질과 에너지 → 물질의 세 가지 상태 → 이상 기체 방정식’을 근거로 한다. 이 활동은 일정한 부피·기체량에서 온도–압력 관계를 탐구하며, 성취기준 전체의 충족을 뜻하지 않는다.
 
 `lab.html`과 `src/ui/`의 화면 모듈은 모든 실험실이 함께 사용하는 템플릿이다.
 상단 메뉴·파일·미리보기·준비·측정·분석·해석·저장 목록·확인 창의 기본 문구는
@@ -85,6 +91,8 @@ export default {
 자리표시자를 사용한다. 문구 변경은 입력 초안·원자료·분석 내용을 변경하지 않는다.
 
 ## 준비 안내의 고정 슬롯
+
+보드의 공통 동작·명령·LED 표시는 [센서 프로그램 공통 동작 규약](../../docs/sensor-program-contract.md)을 따른다. 사용자 안내의 명칭은 ‘센서 프로그램’으로 통일하며, USB·무선은 설치 방법으로 구분한다.
 
 공통 순서는 준비물 → **sensor.beforeProgram** → USB·프로그램 → 연결 →
 **sensor.afterConnect** → 새 값 수신 → **activity.afterReception**이다.

@@ -57,6 +57,7 @@
   --sl-shadow-menu:0 12px 36px #0b1f3b22; --sl-shadow-dialog:0 24px 80px #0b1f3b30;
   --sl-backdrop:#0b1f3b50;
   --sl-motion-control:140ms; --sl-motion-panel:220ms;
+  --sl-motion-panel-easing:cubic-bezier(.22,1,.36,1);
 }
 
 @media(prefers-reduced-motion:reduce) {

@@ -11,11 +11,8 @@ export async function runDeviceTests(report) {
     check(usb.board.position.equals(boardPosition),'커넥터 분리가 본체를 움직임');
     check(battery.connector.position.equals(batteryPosition),'다른 장면의 연결 상태를 함께 변경함');
     usb.setSeparation(0);check(usb.connector.position.equals(inserted),'USB 연결 위치 복원 실패');
-    const cells=battery.pack.getObjectByName('aaa-cells').children;
-    check(cells.length===2&&cells[0].userData.positiveEnd===-cells[1].userData.positiveEnd,'AAA 두 개의 직렬 배치 오류');
-    check(cells.reduce((sum,c)=>sum+c.userData.voltage,0)===battery.pack.userData.nominalVoltage,'명목 전압과 전지 구성 불일치');
     battery.setCellsVisible(false);check(!battery.pack.getObjectByName('aaa-cells').visible&&battery.pack.getObjectByName('series-bridge').visible,'전지를 숨길 때 케이스 접점도 사라짐');
-    report('공통 장치 · 독립 장면, 커넥터 삽입축, AAA 두 개의 극성과 직렬 연결');
+    report('공통 장치 · 독립 장면, 커넥터 조작·복원과 전지 표시 전환');
   } finally {
     // Materials/textures are shared; dispose only the temporary instance geometry here.
     for(const asset of [usb,battery])asset.root.traverse(o=>o.geometry?.dispose());

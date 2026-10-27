@@ -1,5 +1,5 @@
 import { getFirmwareArtifact } from '../../../device/firmware.js';
-const artifact = getFirmwareArtifact('light-level-uart');
+const artifact = getFirmwareArtifact('sensor-lab-light-level');
 export const lightLevel = {
   id: 'light-level', version: 1, name: '내장 밝기(조도) 센서', boards: ['micro:bit-v2'], codecId: 'light-level-csv-v1',
   defaultVisibleChannelIds: ['lightLevel'],

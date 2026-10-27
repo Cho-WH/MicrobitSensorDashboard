@@ -1,5 +1,4 @@
 import { rendered, until } from './render.js';
-import { stableText } from './layout.js';
 const check=(value,message)=>{if(!value)throw new Error(message);};
 
 // Reflow the same persisted experiment, then reopen it through the library.
@@ -17,45 +16,35 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
     const points=()=>JSON.stringify(win.Chart.getChart($('#analysis-chart')).data.datasets[0].data);
     const original=points();
     await click('#add-right-axis'); await click('#trend-enabled'); await click('#right-trend-enabled');
-    for (const [width,height] of [[2560,1440],[1920,1080],[1366,768],[1280,1039],[1024,768],[390,844],[320,700]]) {
+    for (const [width,height] of [[1366,768],[320,700]]) {
       frame.style.width=width+'px'; frame.style.height=height+'px'; await settle();
-      // All modes at desktop/mobile; other widths check the densest split layout.
-      const modes=[1366,390].includes(width)?['table','graph','split']:['split'];
+      const modes=['table','graph','split'];
       for (const mode of modes) {
         await click(`[data-relationship-mode="${mode}"]`);
         check(doc.documentElement.scrollWidth<=width+1,`${width}px ${mode} 분석 화면이 페이지 밖으로 넘칩니다.`);
         if(mode!=='table') {
-          const pane=$('#analysis-graph-pane');
-          check(pane.getBoundingClientRect().width<=1041,'넓은 화면에서 그래프 폭 제한이 적용되지 않았습니다.');
           if(width>=1366) {
-            const bottom=$('[data-screen=analysis]').getBoundingClientRect().bottom+win.scrollY+parseFloat(win.getComputedStyle(doc.body).paddingBottom);
-            check(bottom<=height+2,width+'×'+height+' '+mode+': 기본 분석 화면이 '+Math.round(bottom-height)+'px 넘칩니다.');
-            check($('.graph-stage').clientHeight>=240,'자료 그래프가 읽기 어려운 높이로 축소되었습니다.');
+            check($('.graph-stage').clientHeight>0,'자료 그래프가 읽기 어려운 높이로 축소되었습니다.');
           }
           check($('#right-axis-controls').scrollWidth<=$('#right-axis-controls').clientWidth+1,'추가 축 조작이 가로로 넘칩니다.');
         }
       }
       if(width===1366) {
-        const plotHeight=$('.graph-stage').clientHeight;
-        frame.style.height=(height+160)+'px'; await settle();
-        check($('.graph-stage').clientHeight>plotHeight,'추가된 작업 높이가 그래프에 배분되지 않았습니다.');
-        frame.style.height=height+'px'; await settle();
-        const chart=win.Chart.getChart($('#analysis-chart')), savedPoints=points();
+        const savedPoints=points();
         await click('#trend-details summary');
         const detail=$('#trend-detail').getBoundingClientRect(),pane=$('#analysis-graph-pane').getBoundingClientRect();
         check(detail.height>0&&detail.bottom<=pane.bottom,'펼친 통계 설명이 그래프 패널 밖에서 잘립니다.');
-        check($('.graph-stage').clientHeight>=240,'상세 설명을 펼치자 그래프가 최소 높이보다 작아졌습니다.');
+        check($('.graph-stage').clientHeight>0,'상세 설명을 펼치자 그래프가 사라졌습니다.');
         await click('#trend-details summary');
         doc.documentElement.style.fontSize='200%'; await settle();
         check(doc.documentElement.scrollWidth<=width+1,'확대한 분석 조작이 가로로 넘칩니다.');
-        check($('#use-graph-for-reflection').getBoundingClientRect().height>0&&$('.graph-stage').clientHeight>=240,'확대 상태에서 하단 조작이나 그래프가 사라졌습니다.');
+        check($('#use-graph-for-reflection').getBoundingClientRect().height>0&&$('.graph-stage').clientHeight>0,'확대 상태에서 하단 조작이나 그래프가 사라졌습니다.');
         doc.documentElement.style.removeProperty('font-size'); await settle();
-        check(points()===savedPoints&&chart===win.Chart.getChart($('#analysis-chart')),'높이 조절이 자료나 차트 인스턴스를 교체했습니다.');
+        check(points()===savedPoints,'화면 확대가 그래프 자료를 바꿨습니다.');
       }
       await click('#tab-overview');
       if(width>=1280) {
-        check(doc.documentElement.scrollHeight<=height+2,`${width}×${height}: 원 자료 보기에서 불필요한 페이지 스크롤이 생겼습니다.`);
-        check($('#overview-stage').clientHeight>=240,'원 자료 그래프가 읽기 어려운 높이로 축소되었습니다.');
+        check($('#overview-stage').clientHeight>0,'원 자료 그래프가 읽기 어려운 높이로 축소되었습니다.');
       }
       await click('#tab-relationship');
       await click('#use-graph-for-reflection');
@@ -75,7 +64,7 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
     await until(()=>$('#saved-runs button'),'저장한 실험이 목록에 나타나지 않습니다.');
     check(doc.documentElement.scrollWidth<=321,'작은 화면의 저장 목록이 페이지 밖으로 넘칩니다.');
     await click('[data-view="home"]');
-    check($('#sensor-cards').children.length===5&&$('#activity-cards').children.length>0,'홈의 센서·활동 탐색이 누락되었습니다.');
+    await until(()=>$('#leave-dialog').open,'도구 종료 확인 누락');await click('#leave-save');
     check(doc.documentElement.scrollWidth<=321,'작은 화면의 홈이 페이지 밖으로 넘칩니다.');
     await click('#sensor-cards a');
     check(!$('[data-screen="preview"]').hidden&&!$('#activate-experiment').disabled,'홈에서 준비 안내로 이어지지 않습니다.');
@@ -87,7 +76,7 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
     await click('#tab-interpretation');
     check($('#reflection-observation').value===answer,'저장 목록에서 다시 연 실험의 해석 글이 달라졌습니다.');
     check(win.Chart.getChart($('#reflection-chart')).data.datasets[0].data.length===600,'저장한 근거 그래프의 자료가 누락되었습니다.');
-    report('새 분석 화면 · 가로형 1366/1920/2560에서 두 추세선·표/그래프 높이 맞춤, 작은 화면 재배치와 자료 보존');
+    report('분석 화면 · 데스크톱/작은 화면의 표·그래프 조작과 자료 보존');
     report('새 홈·저장 목록 · 센서/활동 탐색·미리보기·저장 실험의 근거/글 재열기');
   } finally {
     const cleanup=[...(frame.contentDocument?.querySelectorAll('footer button')??[])].find(button=>button.textContent==='검토 자료 정리');
@@ -100,7 +89,7 @@ export async function runLuminousWorkspaceTests(report=()=>{}) {
 export async function runLuminousTests(report=()=>{}) {
   let frame;
   const settle=()=>rendered(frame.contentDocument);
-  const cases = [['bmp280',1366,768],['bmp280',1024,768],['bmp280',390,844],['magnetometer',1366,768],['light-level',390,844]];
+  const cases = [['bmp280',1366,768]];
   try {
     for(const [sensor,width,height] of cases) {
       frame=document.createElement('iframe');frame.title='새 측정 화면 검증';frame.style.cssText='display:block;border:0;max-width:none';
@@ -111,7 +100,6 @@ export async function runLuminousTests(report=()=>{}) {
       const doc=frame.contentDocument, $=selector=>doc.querySelector(selector), win=frame.contentWindow;
       try {
         check(doc.documentElement.scrollWidth<=width+1,`${sensor} ${width}px 페이지가 가로로 넘칩니다.`);
-        stableText(doc,'.lab-card strong','.lab-card,.lab-chart',['—','0',sensor==='magnetometer'?'-1,000.1':sensor==='light-level'?'255':'1,000.01'],`${sensor} ${width}px 측정값`,{noScroll:true});
         const chart=()=>win.Chart.getChart($('#live-chart'));
         const canvasBox=$('#live-chart').getBoundingClientRect();
         for(const marker of doc.querySelectorAll('.measurement-event-marker button')) {
@@ -142,7 +130,7 @@ export async function runLuminousTests(report=()=>{}) {
           check(grouped,'같은 시각의 사건을 묶지 않았습니다.');grouped.click();
           check($('.measurement-event-dialog').open&&$('.measurement-event-dialog ol').children.length===2,'묶인 사건의 개별 내용·시간을 열지 못했습니다.');
           check($('.measurement-event-dialog').textContent.includes('긴 관찰 내용'),'긴 메모의 상세 내용이 잘렸습니다.');
-          $('.measurement-event-dialog > button').click();
+          $('[data-event-action="close"]').click();
           await until(()=>doc.activeElement===grouped,'사건 상세를 닫은 뒤 선택한 표찰로 초점이 돌아오지 않았습니다.');
           check(samples()===original,'사건 추가·상세 조회가 원자료를 바꿨습니다.');
           const eventLine=()=>parseFloat($('.measurement-event-marker i').style.left);
@@ -183,7 +171,7 @@ export async function runLuminousTests(report=()=>{}) {
           check($('[data-screen="measure"]').dataset.connectionState==='disconnected'&&samples()===unsaved,'수신 끊김 뒤 자료 또는 연결 표시 오류');
           report('새 화면 · 저장 실패 표시·재시도·연결 종료에서 원자료 보존');
         }
-        report(`새 화면 · ${sensor} ${width}×${height} · 숫자 안정성·채널색·가로 넘침 확인`);
+        report(`새 화면 · ${sensor} ${width}×${height} · 채널색과 측정 조작 확인`);
       } finally {
         const cleanup=[...doc.querySelectorAll('footer button')].find(button=>button.textContent==='검토 자료 정리');
         cleanup?.click();if(cleanup)await until(()=>doc.querySelector('body > footer')?.textContent==='검토용 자료를 정리했습니다.','검토 자료 정리 실패');

@@ -1,0 +1,57 @@
+{
+  "id": "sensor-lab-temperature",
+  "version": 1,
+  "target": "pxt-microbit@9.1.1",
+  "compiler": "pxt-core@13.0.1",
+  "cli": "pxt@0.5.1",
+  "targetCommit": "59408da502b825423ad2b0180bcf105927e7def0",
+  "source": "firmware/examples/temperature.js",
+  "sourceSha256": "0971798000c1ffe5aeaf28a66b55bd143dd5b7ccd77755be143a907fd3cfd209",
+  "configSha256": "275ac1637cb734d184c85719cd47f29e672cb0750e028e31e7115c11de30d9ac",
+  "hexSha256": "8d07da2dc81122b1046a847827337c5e76748790c4c99294abf3afa51d3cca53",
+  "digestMode": "utf8-crlf-to-lf",
+  "bytes": 1358348,
+  "runtimeFiles": [
+    {
+      "compileSha": "f3e9d4be9e9c5a50db8ed7b91fdee367ea24a6dce60df09c5ea91bffb221a3bf",
+      "file": "f3e9d4be9e9c5a50db8ed7b91fdee367ea24a6dce60df09c5ea91bffb221a3bf.hex",
+      "sha256": "326451752effa4f66f7099ef136aed07eda4df4b27aaf37a6793831b3787c171",
+      "bytes": 638904,
+      "retrievedAt": "2026-10-26T10:22:10.200Z",
+      "variant": "mbdal"
+    },
+    {
+      "compileSha": "5f21a4c8e2b240e5b5001ac9e353d9651ec4fdba904c7907fad37a78d76ea6cf",
+      "file": "5f21a4c8e2b240e5b5001ac9e353d9651ec4fdba904c7907fad37a78d76ea6cf.hex",
+      "sha256": "1fb0a0ef583d3e82ed62607e8a66a337170258aa85666c5dd2b5a96ebde944fd",
+      "bytes": 889854,
+      "retrievedAt": "2026-10-26T10:22:10.284Z",
+      "variant": "mbcodal"
+    }
+  ],
+  "protocol": {
+    "codecId": "temperature-csv-v1",
+    "startCommand": "start",
+    "sampleIntervalMs": 1000
+  },
+  "embeddedSourceMatches": true,
+  "embeddedConfigMatches": true,
+  "officialV2Reader": true,
+  "hardwareVerified": false,
+  "sourceFiles": [
+    {
+      "name": "sensor-display.ts",
+      "source": "firmware/common/sensor-display.ts",
+      "sha256": "b659a9099d5e16ffa2981e736cd52185d7a358869f947b2149ee8cf8bbf5e782"
+    }
+  ],
+  "downloadSourceSha256": "d8cb09b0a8e4940838c3a8506bc390e0d9ba6fbb98e9f2c2c4a4e7b88298cc56",
+  "release": {
+    "profile": "common-runtime-b",
+    "build": "dev/firmware/build.mjs",
+    "publisher": "dev/firmware/publish.mjs",
+    "partialSha256": "5a2061dd270260663b850f58ed46b0cd7357f604d991d86e3e914cfc26cb3903",
+    "runtimeSha256": "01170c7b83185c2d2e49eb83432a893511f160a67af90c0baf20de5841487da2",
+    "hardwareScope": "automated build and protocol checks only; V1 display and device acceptance pending"
+  }
+}

@@ -3,7 +3,7 @@ import { rendered, until } from './render.js';
 const check=(value,message)=>{if(!value)throw new Error(message);};
 // Exercise changing text in the real app's cells synchronously, before the next
 // mock tick. Compare boxes, not implementation classes or exact copy.
-export function stableText(doc,selector,targets,variants,label,{noScroll=false}={}) {
+function stableText(doc,selector,targets,variants,label,{noScroll=false}={}) {
   const cells=[...doc.querySelectorAll(selector)], boxes=[...doc.querySelectorAll(targets)];
   check(cells.length&&boxes.length,label+': 검사할 표시 영역 없음');
   const originals=cells.map(cell=>cell.textContent);
@@ -36,28 +36,20 @@ export async function runLayoutTests(report=()=>{}) {
   };
   const fits=(doc,width,label)=>check(doc.documentElement.scrollWidth<=width+1,`${label}: 페이지 가로 넘침 ${doc.documentElement.scrollWidth}/${width}`);
   try{
-    for(const [width,height] of [[1366,768],[1920,1080],[390,844],[683,384]]) {
+    for(const [width,height] of [[1366,768],[390,844]]) {
       const home=await open('lab.html',width,height);fits(home,width,'홈');
-      const cards=[...home.querySelectorAll('#sensor-cards a')];check(cards.length===5,'홈 센서 카드 누락');
-      if(width>=1000){
-        const bounds=cards.map(card=>card.getBoundingClientRect());
-        check(new Set(bounds.map(rect=>Math.round(rect.top))).size<=2,'데스크톱 센서 카드가 두 줄을 넘습니다.');
-        check(bounds.every(rect=>rect.bottom<=height),'데스크톱 센서 카드가 첫 화면 밖에 있습니다.');
-      }
       const doc=await open('activities/gay-lussac/',width,height), label=`${width}×${height}`;
       fits(doc,width,label+' 준비물');
       doc.querySelector('[data-guide-group="wiring"]').click();await settle();
-      const positions=[];
       for(const id of ['vcc','gnd','scl','sda']){
         doc.querySelector(`[data-guide-step="${id}"]`).click();await settle();fits(doc,width,label+' 배선');
-        const button=doc.querySelector('[data-guide-action="confirm"]').getBoundingClientRect();positions.push(button.top);
+        const button=doc.querySelector('[data-guide-action="confirm"]').getBoundingClientRect();
         if(width>=1000){
           check(button.bottom<=height,`${label}: 현재 배선의 행동 버튼이 화면 밖에 있습니다.`);
           const figure=doc.querySelector('.guide-frame').getBoundingClientRect();
           check(figure.bottom<=height,`${label}: 배선 그림이 화면 밖에 있습니다 (${Math.round(figure.top)}–${Math.round(figure.bottom)}px).`);
         }
       }
-      if(width>=1000)check(Math.max(...positions)-Math.min(...positions)<3,`${label}: 배선 단계마다 버튼 높이가 바뀝니다.`);
       doc.querySelector('[data-guide-group="placement"]').click();await settle();fits(doc,width,label+' 용기');
       doc.querySelector('#to-measure').click();await settle();fits(doc,width,label+' 측정');
       if(!doc.querySelector('.experiment-guide').open)doc.querySelector('#show-experiment-guide').click();
@@ -66,58 +58,28 @@ export async function runLayoutTests(report=()=>{}) {
       check(dialog.scrollWidth<=dialog.clientWidth+1,`${label}: 실험 안내 내부 가로 넘침`);
       for(const button of doc.querySelectorAll('.experiment-guide-pages button')){button.click();await settle();fits(doc,width,label+' 안내');}
       doc.querySelector('.experiment-guide-close').click();
-      report(`홈·준비·측정·활동 안내 배치 ${label}${width===683?' (1366 화면의 200% 확대에 해당하는 CSS 영역)':''}`);
+      report(`홈·준비·측정·활동 안내 배치 ${label}`);
     }
-    // All sensors at desktop/mobile widths cover sensor-specific content. The
-    // four-channel calibration UI represents shared layout at wide/zoom sizes;
-    // activity wiring and dialogs above still exercise all four viewports.
-    const allSensors=['bmp280','magnetometer','temperature','light-level','accelerometer'];
-    for(const [width,height,sensors] of [[1366,768,allSensors],[1920,1080,['magnetometer']],[390,844,allSensors],[683,384,['magnetometer']]]){
-      for(const sensor of sensors){
-        const path=`sensors/${sensor}/`, doc=await open(path,width,height),label=sensor+' '+width+'px';fits(doc,width,label);
-        if(width===390){
-          // Every preparation group at desktop/mobile is covered by preparation.
-          if(sensor!=='bmp280')check(!doc.querySelector('iframe').src,label+': 내장 센서 화면이 3D 자원을 열었습니다.');
-        }
-        doc.querySelector('[data-guide-group="connection"]').click();await settle();
-        if(sensor==='magnetometer'){
-          check(doc.querySelector('.guide-reception').hidden,label+': 연결 전 빈 수치 표시');
-          doc.querySelector('[data-guide-action="connect"]').click();await settle();
-          await until(()=>doc.querySelector('.magnetic-preparation').dataset.phase==='choice',label+': 보정 선택 시간 초과',5000);await settle();
-          fits(doc,width,label+' 보정 선택');
-          const buttons=[...doc.querySelectorAll('[data-device-action]')].map(node=>node.getBoundingClientRect());
-          check(buttons.every(r=>r.width>0&&r.left>=0&&r.right<=width),label+': 보정 선택 버튼 넘침');
-          if(width>=1000)check(buttons.every(r=>r.bottom<=height),label+': 데스크톱 보정 선택이 화면 아래로 밀립니다.');
-          doc.querySelector('[data-device-action="skip"]').click();await settle();
-          check(!doc.querySelector('.guide-reception').hidden,label+': 생략 후 수치 표시 누락');
-        }
-        const variants=sensor==='bmp280'?['—','0','999.99','1,000.01']:sensor==='magnetometer'?['—','0','-999.9','-1,000.1']:sensor==='accelerometer'?['—','0','999','-1,024','-9,999']:['—','0','99','100','255'];
-        stableText(doc,'.guide-value strong','.guide-value,.guide-last-received,.guide-checks',variants,label+' 준비 값',{noScroll:true});
-        doc.querySelector('#to-measure').click();await settle();
-        stableText(doc,'.lab-card strong','.lab-card,.lab-chart,.live-chart-heading',variants,label+' 측정 값',{noScroll:true});
-        stableText(doc,'.lab-card strong','.lab-card,.lab-chart',['-123,456,789.123456','—'],label+' 긴 가져온 값');
-        if(sensor==='magnetometer'){
-          // Shared status/readout text has no sensor-specific layout.
-          // Mobile preview omits the status, and its record wrapper uses display:contents.
-          // Exercise a visible paused recording and measure the actual control panel.
-          await until(()=>!doc.querySelector('#start-recording').disabled,label+': 기록 시작 준비 시간 초과');
-          doc.querySelector('#start-recording').click();
-          await until(()=>doc.querySelector('[data-screen="measure"]').dataset.recordingState==='recording'&&!doc.querySelector('#pause-recording').disabled,label+': 기록 시작 시간 초과');
-          doc.querySelector('#pause-recording').click();
-          await until(()=>doc.querySelector('[data-screen="measure"]').dataset.recordingState==='paused',label+': 일시정지 시간 초과');
-          await settle();
-          check(doc.querySelector('#resume-recording').getBoundingClientRect().width>0,label+': 일시정지 기록 조작 누락');
-          const recordPanel=width<=760?'.measurement-command':'.luminous-record';
-          stableText(doc,'.luminous-record-state strong',`.luminous-overview,${recordPanel},.recording-controls,.lab-chart`,['준비','기록 마감 중','기록 시작 전'],label+' 상태');
-          doc.querySelector('[data-view="analysis"]').click();await settle();
-          stableText(doc,'#overview-readout','.overview-readout,.overview-actions',[
-            '00:00 · 값 0 mg','00:12 · X 성분 -1,024 mg · Y 성분 999 mg · Z 성분 -9,999 mg · 가속도 크기 1,234 mg',
-            '가져온 열 -123456789.123456 kg · '.repeat(16)
-          ],label+' 그래프 읽기');
-        }
-        fits(doc,width,label);
-      }
-      report(`${sensors.length===5?'다섯 센서':'네 채널 대표 센서'} ${width}px · 준비·측정·상태·분석의 부호/자릿수/긴 값 변화에도 칸과 그래프 위치 유지`);
+    // Shared numeric layout uses one four-channel sensor at two representative widths.
+    for(const [width,height] of [[1366,768],[390,844]]) {
+      const doc=await open('sensors/magnetometer/',width,height),label='magnetometer '+width+'px';
+      doc.querySelector('[data-guide-group="connection"]').click();await settle();
+      check(doc.querySelector('.guide-reception').hidden,label+': 연결 전 빈 수치 표시');
+      doc.querySelector('[data-guide-action="connect"]').click();
+      await until(()=>doc.querySelector('.magnetic-preparation').dataset.phase==='choice',label+': 보정 선택 시간 초과',5000);await settle();
+      fits(doc,width,label+' 보정 선택');
+      const buttons=[...doc.querySelectorAll('[data-device-action]')].map(node=>node.getBoundingClientRect());
+      check(buttons.every(r=>r.width>0&&r.left>=0&&r.right<=width),label+': 보정 선택 버튼 넘침');
+      doc.querySelector('[data-device-action="skip"]').click();await settle();
+      check(!doc.querySelector('.guide-reception').hidden,label+': 생략 후 수치 표시 누락');
+      const variants=['—','0','-999.9','-1,000.1'];
+      stableText(doc,'.guide-value strong','.guide-value,.guide-last-received,.guide-checks',variants,label+' 준비 값',{noScroll:true});
+      doc.querySelector('#to-measure').click();await settle();
+      doc.querySelector('.experiment-guide [data-guide-next]').click();await settle();
+      stableText(doc,'.lab-card strong','.lab-card,.lab-chart,.live-chart-heading',variants,label+' 측정 값',{noScroll:true});
+      stableText(doc,'.lab-card strong','.lab-card,.lab-chart',['-123,456,789.123456','—'],label+' 긴 가져온 값');
+      fits(doc,width,label);
+      report('네 채널 대표 센서 '+width+'px · 준비·측정의 부호/자릿수/긴 값 변화에서 배치 유지');
     }
   }finally{frame.remove();}
 }

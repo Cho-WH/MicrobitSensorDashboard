@@ -1,3 +1,4 @@
+import { createBluetoothProgrammer } from './bluetooth-programmer.js';
 // Adapted from Cho-WH/bme280 gay-lussac/guide/programmer-adapter.js at
 // 59c5c149450f970bace2deaa183857c275595853. Full V2 flashing remains official.
 import { createUSBConnection, createUniversalHexFlashDataSource } from '../../public/vendor/microbit-usb-1.0.0.js';
@@ -19,7 +20,7 @@ const busyStatuses = new Set(['loading', 'connecting', 'flashing']);
  * @param {{firmwareId:string,version?:number,onState?:(state:any)=>void,canInstall?:()=>boolean,
  * beforeFlash?:()=>Promise<void>,createConnection?:any,makeSource?:any,fetchFile?:any,crypto?:any,supported?:()=>boolean}} options
  */
-export function createProgrammer({ firmwareId, version = 1, onState = (_state) => {}, canInstall = () => false,
+export function createUsbProgrammer({ firmwareId, version = null, onState = (_state) => {}, canInstall = () => false,
   beforeFlash = async () => {}, createConnection = createUSBConnection, makeSource = createUniversalHexFlashDataSource,
   fetchFile = globalThis.fetch, crypto = globalThis.crypto,
   supported = () => !!(/** @type {Navigator & {usb?:object}} */ (globalThis.navigator))?.usb && globalThis.isSecureContext,
@@ -116,4 +117,27 @@ export function createProgrammer({ firmwareId, version = 1, onState = (_state) =
     try { await usb?.disconnect(); } finally { usb?.dispose(); }
   }
   return { prepare, install, dispose, getState: () => ({ ...state, canInstall: !!source && !state.busy && allowed() }) };
+}
+
+/** One installation mode at a time; both adapters report the same guide facts.
+ * @param {any} options */
+export function createProgrammer(options) {
+  let mode = 'usb', adapter, disposed = false;
+  const create = () => (mode === 'usb' ? createUsbProgrammer : createBluetoothProgrammer)({ ...options,
+    onState: state => { if (!disposed) options.onState?.({ ...state, mode }); } });
+  adapter = create();
+  return {
+    prepare: () => adapter.prepare(), install: () => adapter.install(),
+    cancel: () => adapter.cancel?.(), takeConnection: () => adapter.takeConnection?.() ?? Promise.resolve(null),
+    getState: () => ({ ...adapter.getState(), mode }),
+    async setMode(next) {
+      if (disposed || !['usb', 'wireless'].includes(next) || next === mode || adapter.getState().busy) return;
+      await adapter.dispose();
+      if (disposed) return;
+      mode = next; adapter = create();
+      options.onState?.({ ...adapter.getState(), mode });
+      await adapter.prepare();
+    },
+    async dispose() { disposed = true; await adapter.dispose(); },
+  };
 }

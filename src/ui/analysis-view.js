@@ -17,6 +17,7 @@ import { exportAnalysisPng, createChartView } from './chart-view.js';
 import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 import { readVisualTheme } from './visual-theme.js';
 import { createAnalysisLayout } from './analysis-layout.js';
+import { createPanelTransition } from './panel-transition.js';
 
 export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) => {} }) {
   let copy = getLabCopy(null);
@@ -30,11 +31,11 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   let overview = null, overviewKey = null, range = null, toastRevision = null, toastTimer = null, currentModel = null;
   const number = value => value.toLocaleString('ko-KR');
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const transitions = new Map();
   function animate(element, move = true) {
-    if (reduced() || element.hidden) return;
-    element.getAnimations().forEach(a => a.cancel());
-    element.animate([{ opacity: .55, ...(move ? { transform: 'translateY(6px)' } : {}) }, { opacity: 1, ...(move ? { transform: 'translateY(0)' } : {}) }],
-      { duration: 240, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    if (element.hidden) return;
+    if (!transitions.has(element)) transitions.set(element, createPanelTransition(element));
+    transitions.get(element).play([element], move ? {} : {frames:[{opacity:.45},{opacity:1}]});
   }
   function dismissToast() { clearTimeout(toastTimer); toastRevision = null; $('analysis-toast').hidden = true; }
   function notify(text) {
@@ -296,6 +297,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     $('apply-new-data').textContent = formatCopy(copy.analysis.newData,{count:number(added)}); $('apply-new-data').hidden = !added; $('apply-new-data').disabled = !saved.writable || !added;
   }
   function reset() {
+    transitions.forEach(transition => transition.cancel());
     clearTimeout(layoutTimer); layoutTimer = null;
     store = null; workspace = null; task = 'overview'; tableOpen = allColumns = overviewTableOpen = false; relationshipMode = 'split'; revealedColumnId = null; focusedId = null; currentModel = null;
     closeExclusion(); filters.close(); calculations.close(); graph.reset(); reflection.reset(); overview?.dispose(); overview = null; overviewKey = null; range.reset(); dismissToast();
@@ -320,6 +322,6 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
       return exportAnalysisPng(model, { name, theme });
     },
     reset,
-    dispose() { reset(); events.abort(); table.dispose(); },
+    dispose() { reset(); transitions.forEach(transition => transition.dispose()); transitions.clear(); events.abort(); table.dispose(); },
   };
 }

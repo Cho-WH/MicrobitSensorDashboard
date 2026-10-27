@@ -7,4 +7,4 @@ import gayLussac from './activities/gay-lussac/index.js';
 import { createRegistry } from './registry.js';
 
 // The single registration point. UI, routes, codecs, guides and policies resolve here.
-export const registry = createRegistry({ sensors: [bmp280, magnetometer, temperature, lightLevel, legacyAccelerometer, accelerometer], activities: [gayLussac] });
+export const registry = createRegistry({ sensors: [magnetometer, legacyAccelerometer, accelerometer, temperature, lightLevel, bmp280], activities: [gayLussac] });

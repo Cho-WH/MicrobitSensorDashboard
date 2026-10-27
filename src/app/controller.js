@@ -24,9 +24,11 @@ import { renderEventList } from '../ui/event-content.js';
 import { bindAppShell } from '../ui/app-shell.js';
 import { createConnectionNotice } from '../ui/connection-notice.js';
 import { createShareView } from '../ui/share-view.js';
+import { renderHomeCards } from '../ui/home-view.js';
 
 // Connects modules and owns navigation only. Source records live exclusively in RunStore.
-export function createController(root = document, { repository = null, deviceTransport = null, historyEnabled = true, initialUrl = location.href } = {}) {
+export function createController(root = document, { repository = null, deviceTransport = null, historyEnabled = true, initialUrl = location.href,
+  loadPage = (url, replace) => replace ? location.replace(url) : location.assign(url) } = {}) {
   const $ = id => root.getElementById(id), abort = new AbortController(), { signal } = abort;
   bindAppShell(root, { signal });
   const input = id => findElement(root, 'input', '#' + id);
@@ -35,7 +37,8 @@ export function createController(root = document, { repository = null, deviceTra
   let context = null, store = null, session = null, screen = 'home';
   let copy = getLabCopy(null), copyContext;
   let preview = null, previewPoints = [], previewSequence = 0, attempt = 0, connected = false, connecting = false, busy = false;
-  let leaving = false;
+  let leaving = false, navigatingDocument = false;
+  let connectionRequest = 0, handingOff = false;
   let renderRequested = true, renderedEvents = -1, renderedContext = null, exportedRevision = -1;
   const mock = new URL(initialUrl).searchParams.get('mock') === '1';
   const repo = repository ?? createRepository({ onUnavailable: message => showError(message) });
@@ -43,7 +46,9 @@ export function createController(root = document, { repository = null, deviceTra
   const connectionNotice = createConnectionNotice(root, { signal });
   let targetContext = null, runtime = null, programmer = null, programmerState = {}, installed = false, recordingSourceAllowed = false;
   let deviceState = transport.getState();
-  const guide = createGuideView($('guide-host'), { onInstall: () => act(install), onConnect: options => act(()=>connect(options)),
+  const guide = createGuideView($('guide-host'), { onInstall: () => act(install),
+    onInstallMode: mode => act(async () => { if (canInstall()) { installed = false; await programmer?.setMode(mode); } }),
+    onCancelInstall: () => programmer?.cancel(), onConnect: options => act(()=>connect(options)),
     onDisconnect: () => disconnect().catch(showError), onChange: () => { renderRequested = true; }, onMeasure:()=>navigate('measure'), onError: showError,
     onDeviceAction: action => act(async()=>{if(!context || !runtime || screen !== 'prepare' || session?.getState().recording) return; await transport.performAction(action);}) });
   const dialogs = createRecordDialogs(root.querySelector('.lab-shell'));
@@ -67,6 +72,7 @@ export function createController(root = document, { repository = null, deviceTra
     busy = true; clearError(); renderRequested = true;
     try { await work(); } catch(error) { showError(error); }
     finally {
+      if (navigatingDocument) return;
       busy = false; renderRequested = false; render();
       if (recordFocus && screen === 'measure' && !recordFocus.getClientRects().length
         && [recordFocus, document.body, $('recording-status')].some(element => element === document.activeElement)) {
@@ -87,6 +93,8 @@ export function createController(root = document, { repository = null, deviceTra
     renderRequested = true;
   }
   async function disconnect() {
+    ++connectionRequest;
+    if (handingOff) programmer?.cancel();
     connected = false; connecting = false; preview = null; previewPoints = [];
     session?.disconnected();
     await transport.disconnect(); deviceState=transport.getState(); attempt=deviceState.attemptId;
@@ -94,7 +102,7 @@ export function createController(root = document, { repository = null, deviceTra
   }
   function canInstall() {
     const saved = store?.getState(), current = session?.getState();
-    return !!context && canUseDevice() && screen === 'prepare' && !mock && !connected && !connecting
+    return !!context && !!runtime && !runtime.definition.firmware.stale && canUseDevice() && screen === 'prepare' && !mock && !connected && !connecting
       && (!saved || (saved.writable && saved.status === 'clean' && (!current || current.state === 'ended')));
   }
   function resetPreparation() {
@@ -103,7 +111,7 @@ export function createController(root = document, { repository = null, deviceTra
     recordingSourceAllowed = !store || store.getState().source !== 'import' || canResumeImportedRun(store.getRun());
     deviceState = transport.getState();
     guide.open(context, {reset:true});
-    if (runtime) programmer = createProgrammer({ firmwareId: runtime.definition.firmware.id,
+    if (runtime && !runtime.definition.firmware.stale) programmer = createProgrammer({ firmwareId: runtime.definition.firmware.id,
       version: runtime.definition.firmware.version, canInstall, beforeFlash: disconnect,
       onState: state => {
         programmerState = state; if (state.installedThisSession) installed = true; renderRequested = true;
@@ -120,8 +128,16 @@ export function createController(root = document, { repository = null, deviceTra
     if (!context || !canUseDevice() || !['prepare','measure'].includes(screen)) throw new Error('이 자료에는 장치를 연결할 수 없습니다. 새 실험을 준비하세요.');
     if (session?.getState().recording) throw new Error('기록을 일시정지한 뒤 장비를 다시 연결하세요.');
     if (connected || connecting) return;
+    const request = ++connectionRequest;
     connecting = true; renderRequested = true;
     try {
+      handingOff = programmerState.mode === 'wireless' && !!programmerState.connectionAvailable;
+      const installedDevice = handingOff ? await programmer.takeConnection() : null;
+      handingOff = false;
+      if (request !== connectionRequest) {
+        if (installedDevice?.gatt?.connected) installedDevice.gatt.disconnect();
+        return;
+      }
       await transport.connect(context, accept, state => {
         const wasConnected = connected;
         deviceState = state; attempt = state.attemptId;
@@ -129,9 +145,9 @@ export function createController(root = document, { repository = null, deviceTra
         if (screen==='measure' && state.devicePreparation && !state.devicePreparation.allowReadings) navigate('prepare');
         if (wasConnected && !connected) { preview = null; previewPoints = []; session?.disconnected(); }
         renderRequested = true;
-      },{reuseDevice});
-    } catch(error) { await disconnect(); throw error; }
-    finally { connecting = false; renderRequested = true; }
+      },{reuseDevice, device: installedDevice, reuseConnection: !!installedDevice?.gatt?.connected});
+    } catch(error) { if (request === connectionRequest) { await disconnect(); throw error; } }
+    finally { handingOff = false; if (request === connectionRequest) connecting = false; renderRequested = true; }
   }
   function hasFreshReading() { return connected && transport.getState().confirmed; }
   function readyToRecord() { return !!context && canUseDevice() && hasFreshReading(); }
@@ -157,16 +173,20 @@ export function createController(root = document, { repository = null, deviceTra
     if (session && !['ended','preview'].includes(session.getState().state)) await session.finish();
     if (store?.getState().writable) await store.flush();
   }
-  async function confirmTransition({ask = true} = {}) {
-    if (!store) return true;
-    if (!analysis.flush()) return false;
-    if ((ask && (session?.getState().recording || store.getState().status !== 'clean')) || (store.getState().temporary && exportedRevision !== store.getState().runRevision)) {
+  async function confirmTransition({ask = true, exit = false} = {}) {
+    if (!store && !exit) return true;
+    if (!exit && !analysis.flush()) return false;
+    const temporary = store?.getState().temporary;
+    if (exit || (ask && (session?.getState().recording || store.getState().status !== 'clean')) || (temporary && exportedRevision !== store.getState().runRevision)) {
       const dialog = dialogElement('leave-dialog');
-      $('leave-save').textContent = store.getState().temporary ? copy.dialogs.exportLeave : session?.getState().recording ? copy.dialogs.finishLeave : copy.dialogs.saveLeave;
+      $('leave-dialog-title').textContent = exit ? copy.dialogs.exitTitle : copy.dialogs.leaveTitle;
+      dialog.querySelector('p').textContent = exit ? temporary ? copy.dialogs.exitTemporaryNote : copy.dialogs.exitNote : copy.dialogs.leaveNote;
+      dialog.querySelector('button[value="cancel"]').textContent = exit ? copy.dialogs.cancelExit : copy.dialogs.stay;
+      $('leave-save').textContent = temporary ? copy.dialogs.exportLeave : exit ? copy.dialogs.exit : session?.getState().recording ? copy.dialogs.finishLeave : copy.dialogs.saveLeave;
       dialog.returnValue = '';
       const answer = await new Promise(resolve => { dialog.addEventListener('close', () => resolve(dialog.returnValue), { once:true }); dialog.showModal(); });
       if (answer !== 'save') return false;
-      if (store.getState().temporary) await exportFile('json');
+      if (temporary) await exportFile('json');
     }
     await persistCurrent(); return true;
   }
@@ -174,11 +194,18 @@ export function createController(root = document, { repository = null, deviceTra
     await store?.close();
     analysis.reset(); session = null; store = null; exportedRevision = -1; renderedEvents = -1;
   }
-  // Selection and cross-lab navigation share this boundary. Save failure keeps the owner and device.
-  async function leaveExperiment() {
+  // Save before replacing the document. The browser releases the old page's
+  // connections; do not start another device teardown before this navigation.
+  async function leaveExperiment(nextContext, nextScreen, push = true) {
     leaving = true; render();
     try {
-      if (!await confirmTransition({ask:false})) return false;
+      if (!await confirmTransition({ask:false, exit:!!context})) return 'cancelled';
+      if (context && historyEnabled) {
+        loadPage(routeUrl(nextContext, nextScreen, {mock}).href, !push);
+        navigatingDocument = true;
+        return 'navigating';
+      }
+      // Embedded controllers with navigation disabled retain their local lifecycle.
       await programmer?.dispose();
       await disconnect();
       await releaseCurrent();
@@ -188,27 +215,37 @@ export function createController(root = document, { repository = null, deviceTra
       preview = null; previewPoints = []; previewSequence = 0;
       input('run-name').value = ''; input('event-note').value = '';
       guide.close(); experimentGuide.close(); measurement.reset();
-      return true;
-    } finally { leaving = false; renderRequested = true; }
+      return 'left';
+    } finally { leaving = navigatingDocument; renderRequested = true; }
   }
   async function exitToHome(push = true) {
-    if (!await leaveExperiment()) return false;
-    navigate('home', push); return true;
+    const result = await leaveExperiment(null, 'home', push);
+    if (result !== 'left') return result;
+    navigate('home', push); return 'left';
   }
   async function browse(next, push = true) {
-    if (!await leaveExperiment()) return false;
+    const result = await leaveExperiment(next, 'preview', push);
+    if (result !== 'left') return result;
     targetContext = next;
     const nextCopy = getLabCopy(next);
     applyLabCopy(root.querySelector('[data-screen="preview"]'), nextCopy);
     $('preview-title').textContent = next.activity?.name ?? next.sensor.name;
+    $('preview-description').textContent = nextCopy.preview.description || nextCopy.home.sensorDescription;
     $('preview-preparation').replaceChildren(...next.preparation.map(text => { const item=document.createElement('li'); item.textContent=text; return item; }));
-    $('preview-channels').textContent=next.channels.map(channel=>channel.name+' ('+channel.unit+')').join(' · ');
+    $('preview-channels').replaceChildren(...next.channels.map(channel => {
+      const item = document.createElement('span'); item.textContent = channel.name;
+      const unit = document.createElement('small'); unit.textContent = ' ' + channel.unit; item.append(unit); return item;
+    }));
     const preparation=getGuideContent(next);
-    $('preview-equipment').textContent=[...preparation.equipment,...preparation.activityEquipment].map(item=>item.name).join(' · ');
+    $('preview-equipment').replaceChildren(...[...preparation.equipment,...preparation.activityEquipment].map(item => {
+      const entry = document.createElement('li'); entry.textContent = item.name; return entry;
+    }));
+    $('preview-curriculum-section').hidden = !nextCopy.home.curriculum;
+    $('preview-curriculum').textContent = [nextCopy.home.curriculum, nextCopy.home.curriculumDetail].filter(Boolean).join(' · ');
     $('preview-transition-note').textContent = store ? nextCopy.preview.transitionNote : '';
     share.setTarget(next);
     navigate('preview', push);
-    return true;
+    return 'left';
   }
   async function activateExperiment(prepared=false) {
     const next = targetContext;
@@ -224,10 +261,11 @@ export function createController(root = document, { repository = null, deviceTra
   async function applyLocation(url = location.href) {
     try {
       const route = parseRoute(url);
-      if (route.screen === 'home') { if (!await exitToHome(false)) restoreLocation(); return; }
-      if (route.screen === 'preview') { if (!await browse(route.context, false)) restoreLocation(); return; }
+      if (route.screen === 'home') { if (await exitToHome(false) === 'cancelled') restoreLocation(); return; }
+      if (route.screen === 'preview') { if (await browse(route.context, false) === 'cancelled') restoreLocation(); return; }
       if (route.context && !sameExperiment(route.context, context)) {
-        if (!await leaveExperiment()) { restoreLocation(); return; }
+        const result = await leaveExperiment(route.context, route.screen, false);
+        if (result !== 'left') { if (result === 'cancelled') restoreLocation(); return; }
         context = route.context; renderedContext = null; resetPreparation();
       }
       navigate(route.screen === 'analysis' && !store ? 'saved' : route.screen, false);
@@ -391,6 +429,9 @@ export function createController(root = document, { repository = null, deviceTra
       findElement(root,'a','.skip-link').textContent = copy.common.skip;
     }
     deviceState=transport.getState();
+    // Until installation hands over its board, the common connect action uses
+    // that board rather than offering a different/previous measurement device.
+    const canReconnect=deviceState.canReconnect&&!programmerState.connectionAvailable;
     connectionNotice.render({ screen, support: transport.getSupport?.() ?? (transport.isSupported() ? 'supported' : 'unsupported'), busy: busy || !!programmerState.busy });
     const saved = store?.getState(), current = session?.getState(), recording = current?.recording;
     const measurementScreen = findElement(root,'section','[data-screen="measure"]');
@@ -402,7 +443,7 @@ export function createController(root = document, { repository = null, deviceTra
     if (context) guide.render({attemptId:attempt,connected,connecting,deviceMessage:deviceState.message,deviceName:deviceState.deviceName,receptionReady:hasFreshReading(),receivedAt:deviceState.lastReceivedAt,latest:preview,
       firmwareInstalled:installed ? context.firmware : false,calibration:deviceState.calibration ?? 'unknown',devicePreparation:deviceState.devicePreparation,
       busy:busy || programmerState.busy,recording:recording || current?.state === 'finishing',programmerState,mock,
-      canInstall:canInstall(),canReconnect:deviceState.canReconnect,unsupported:!transport.isSupported(),canConnect:canUseDevice() && !recording && !connected && !connecting && transport.isSupported()});
+      canInstall:canInstall(),canReconnect,unsupported:!transport.isSupported(),canConnect:canUseDevice() && !recording && !connected && !connecting && transport.isSupported()});
     $('current-experiment').hidden = !store || screen !== 'saved';
     $('current-experiment-label').textContent = saved ? saved.name + ' · ' + (recording ? copy.common.recordingActive : copy.measurement.stored) : '';
     $('prepare-title').textContent = context ? formatCopy(copy.prepare.title, {name: context.activity?.name ?? context.sensor.name}) : '';
@@ -421,13 +462,13 @@ export function createController(root = document, { repository = null, deviceTra
     }
     input('run-name').disabled = !!store || busy;
     const connectionDisabled = recording || connected || connecting || busy || !canUseDevice() || (!mock && !transport.isSupported()) || !!programmerState.busy;
-    const reconnectHidden = !deviceState.canReconnect || connected || connecting;
+    const reconnectHidden = !canReconnect || connected || connecting;
     button('connect').disabled = connectionDisabled;
     for (const id of ['reconnect', 'measurement-reconnect']) {
       button(id).hidden = reconnectHidden;
       button(id).disabled = connectionDisabled;
     }
-    $('connect').textContent=deviceState.canReconnect?copy.common.chooseDevice:mock?copy.common.mockConnect:copy.common.connect;
+    $('connect').textContent=canReconnect?copy.common.chooseDevice:mock?copy.common.mockConnect:copy.common.connect;
     button('disconnect').disabled = (!connected && !connecting) || !!programmerState.busy;
     button('start-recording').disabled = !!store || busy || !readyToRecord() || !navigator.locks;
     button('pause-recording').disabled = !recording || busy;
@@ -445,7 +486,9 @@ export function createController(root = document, { repository = null, deviceTra
       if (nextControl && !button(nextControl).disabled && !button(nextControl).hidden) button(nextControl).focus({preventScroll:true});
       else { $('recording-status').tabIndex=-1; $('recording-status').focus({preventScroll:true}); }
     }
-    $('show-experiment-guide').hidden=!getGuideContent(context).experimentGuide;
+    const measurementGuide=getGuideContent(context).experimentGuide;
+    $('show-experiment-guide').hidden=!measurementGuide;
+    $('show-experiment-guide').textContent=measurementGuide?.buttonLabel??getLabCopy(context).measurement.guide;
     experimentGuide.setRecording(Boolean(recording));
     $('sample-count').textContent = saved ? formatCopy(copy.measurement.count, {count:saved.sampleCount.toLocaleString('ko-KR')}) : copy.measurement.previewNote;
     $('sample-count').dataset.preview=String(!saved);
@@ -495,19 +538,14 @@ export function createController(root = document, { repository = null, deviceTra
     if (busy || programmerState.busy) { restoreLocation(); return; }
     void act(()=>applyLocation());
   },{signal});
-  const cards = [
-    ...catalog.sensors.map(item => ({ name:item.name, next:getExperiment(item.id), target:'sensor-cards', description:item.channels.map(c=>c.name).join(' · ') })),
-    ...catalog.activities.map(item => ({ name:item.name, next:getExperiment(item.sensorIds[0],item.id), target:'activity-cards', description:labDefaults.home.activityDescription })),
-  ];
-  for (const item of cards) {
-      const next = item.next;
-      const cardCopy = getLabCopy(next);
-      const link = document.createElement('a'); link.className='experiment-card'; link.href=routeUrl(next,'preview',{mock}).href;
-      const title=document.createElement('strong'),description=document.createElement('span');
-      title.textContent=next.activity ? item.name : cardCopy.home.sensorTitle || item.name;
-      description.textContent=(next.activity ? cardCopy.preview.description : cardCopy.home.sensorDescription) || item.description;
-      link.append(title,description);link.addEventListener('click',event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();void act(()=>browse(next));},{signal});$(item.target).append(link);
-  } listen('retry-save',()=>store.flush());
+  const homeItem = context => ({ context, copy: getLabCopy(context).home });
+  renderHomeCards(root, {
+    sensors: catalog.sensors.map(item => homeItem(getExperiment(item.id))),
+    activities: catalog.activities.map(item => homeItem(getExperiment(item.sensorIds[0], item.id))),
+    linkTo: next => routeUrl(next, 'preview', { mock }).href,
+    onSelect: next => { void act(() => browse(next)); }, signal,
+  });
+  listen('retry-save',()=>store.flush());
   listen('export-json',()=>exportFile('json'));listen('export-csv',()=>exportFile('csv'));
   $('open-file').addEventListener('click',()=>input('file-input').click(),{signal});
   input('file-input').addEventListener('change',()=>{const file=input('file-input').files[0];input('file-input').value='';act(()=>readFile(file));},{signal});

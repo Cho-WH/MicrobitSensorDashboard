@@ -1,11 +1,14 @@
 // Ported from G/ui/guide-layout.js at 59c5c149. Measures inert copies, never live controls.
-/** @param {{content:HTMLElement,progress:HTMLElement,equipment:HTMLElement,steps:import('../guide/types.js').GuideStep[],
+import { createPanelTransition } from './panel-transition.js';
+/** @param {{root:HTMLElement,content:HTMLElement,progress:HTMLElement,equipment:HTMLElement,steps:import('../guide/types.js').GuideStep[],
  * measureSteps:import('../guide/types.js').GuideStep[],createMeasurement:(step:import('../guide/types.js').GuideStep)=>HTMLElement}} options */
-export function createGuideLayout({ content, progress, equipment, steps, measureSteps, createMeasurement }) {
-  let measuredWidth = 0, measuredFont = '', lastStep = null;
-  let animation = null, disposed = false;
+export function createGuideLayout({ root, content, progress, equipment, steps, measureSteps, createMeasurement }) {
+  let measuredWidth = 0, measuredFont = '';
+  let disposed = false;
+  const panelTransition = createPanelTransition(content, { disclosureRoot: root });
   const stepOrder = new Map(steps.map((step, index) => [step.id, index]));
-  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  stepOrder.set('quick', -1);
+  stepOrder.set('summary', steps.length);
 
   function fitEquipment() {
     if (disposed || !equipment.getClientRects().length) return;
@@ -62,19 +65,14 @@ export function createGuideLayout({ content, progress, equipment, steps, measure
     progress.style.setProperty('--active-step-width', `${bounds.width}px`);
   }
 
-  function transition(stepId) {
-    if (disposed || lastStep === stepId) return;
-    const previous = lastStep;
-    lastStep = stepId;
-    animation?.cancel();
-    animation = null;
-    if (!previous || motion.matches) return;
+  /** @param {string} stepId @param {string} previous
+   * @param {import('./panel-transition.js').PanelHeight[]} previousHeights */
+  function transition(stepId, previous, previousHeights) {
+    if (disposed || previous === stepId) return;
     const direction = stepOrder.get(stepId) > stepOrder.get(previous) ? 1 : -1;
-    const style = getComputedStyle(content);
-    animation = content.animate(
+    panelTransition.play([content], { previousHeights, frames:
       [{ transform: `translateX(${direction * 20}px)`, opacity: 0.65 }, { transform: 'translateX(0)', opacity: 1 }],
-      { duration: parseFloat(style.getPropertyValue('--guide-motion-duration')), easing: style.getPropertyValue('--guide-motion-easing').trim() },
-    );
+    });
   }
   const observer = new ResizeObserver(() => { measure(); syncProgress(); fitEquipment(); });
   observer.observe(content);
@@ -84,14 +82,11 @@ export function createGuideLayout({ content, progress, equipment, steps, measure
   const fontsChanged = () => { measure(true); syncProgress(); fitEquipment(); };
   document.fonts?.addEventListener('loadingdone', fontsChanged);
   document.fonts?.ready.then(fontsChanged);
-  const motionChanged = () => { if (motion.matches) animation?.cancel(); };
-  motion.addEventListener('change', motionChanged);
-  return { measure, syncProgress, transition, dispose() {
+  return { measure, syncProgress, transition, captureHeights:panelTransition.capture, transitionContent:panelTransition.play, dispose() {
     disposed = true;
     observer.disconnect();
     window.removeEventListener('resize', fitEquipment);
     document.fonts?.removeEventListener('loadingdone', fontsChanged);
-    motion.removeEventListener('change', motionChanged);
-    animation?.cancel();
+    panelTransition.dispose();
   } };
 }

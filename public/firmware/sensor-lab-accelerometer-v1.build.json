@@ -1,0 +1,57 @@
+{
+  "id": "sensor-lab-accelerometer",
+  "version": 1,
+  "target": "pxt-microbit@9.1.1",
+  "compiler": "pxt-core@13.0.1",
+  "cli": "pxt@0.5.1",
+  "targetCommit": "59408da502b825423ad2b0180bcf105927e7def0",
+  "source": "firmware/examples/accelerometer.js",
+  "sourceSha256": "50539aa37b754b26524d16793f6a3d532a1d193cd14c476f63f2187ae8e7f7bd",
+  "configSha256": "9e4d72a9904dc2fe7f2692f0c59005242978ad66cae64d07b6ef89b42c34b201",
+  "hexSha256": "9dddd4d8f247e3507dc95dfd6ca5f2a12cc6f40719711ba9b04ce366fcad0757",
+  "digestMode": "utf8-crlf-to-lf",
+  "bytes": 1359884,
+  "runtimeFiles": [
+    {
+      "compileSha": "f3e9d4be9e9c5a50db8ed7b91fdee367ea24a6dce60df09c5ea91bffb221a3bf",
+      "file": "f3e9d4be9e9c5a50db8ed7b91fdee367ea24a6dce60df09c5ea91bffb221a3bf.hex",
+      "sha256": "326451752effa4f66f7099ef136aed07eda4df4b27aaf37a6793831b3787c171",
+      "bytes": 638904,
+      "retrievedAt": "2026-10-26T10:22:10.200Z",
+      "variant": "mbdal"
+    },
+    {
+      "compileSha": "5f21a4c8e2b240e5b5001ac9e353d9651ec4fdba904c7907fad37a78d76ea6cf",
+      "file": "5f21a4c8e2b240e5b5001ac9e353d9651ec4fdba904c7907fad37a78d76ea6cf.hex",
+      "sha256": "1fb0a0ef583d3e82ed62607e8a66a337170258aa85666c5dd2b5a96ebde944fd",
+      "bytes": 889854,
+      "retrievedAt": "2026-10-26T10:22:10.284Z",
+      "variant": "mbcodal"
+    }
+  ],
+  "protocol": {
+    "codecId": "accelerometer-csv-v1",
+    "startCommand": "start",
+    "sampleIntervalMs": 100
+  },
+  "embeddedSourceMatches": true,
+  "embeddedConfigMatches": true,
+  "officialV2Reader": true,
+  "hardwareVerified": false,
+  "sourceFiles": [
+    {
+      "name": "sensor-display.ts",
+      "source": "firmware/common/sensor-display.ts",
+      "sha256": "b659a9099d5e16ffa2981e736cd52185d7a358869f947b2149ee8cf8bbf5e782"
+    }
+  ],
+  "downloadSourceSha256": "1ce60ec81bce63b4ecc107835d18625225bbf02081f5bf9d215a1e682b5a9d02",
+  "release": {
+    "profile": "common-runtime-b",
+    "build": "dev/firmware/build.mjs",
+    "publisher": "dev/firmware/publish.mjs",
+    "partialSha256": "7308eae350710152e084390e687b989b372ebaa8853dd9606ddf1ccc34fbbe4d",
+    "runtimeSha256": "01170c7b83185c2d2e49eb83432a893511f160a67af90c0baf20de5841487da2",
+    "hardwareScope": "automated build and protocol checks only; V1 display and device acceptance pending"
+  }
+}

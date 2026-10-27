@@ -37,6 +37,22 @@ function fixture(sensor = 'bmp280', ble = fakeBle()) {
     connect: options => transport.connect(context, input => inputs.push(input), state => states.push(state), options) };
 }
 
+test('measurement handoff retries only connection preparation and sends the trusted start once after recovery', async () => {
+  const f = fixture('temperature'), device = { name: 'installed micro:bit', gatt: { connected: true } };
+  let attempts = 0;
+  f.ble.connect = async () => { if (++attempts < 3) throw new DOMException('Rebooting', 'NetworkError'); };
+  const pending = f.connect({ device, reuseConnection: true });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(attempts, 1); assert.equal(f.ble.commands.length, 0);
+  await f.timers.advance(2000); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(attempts, 2); assert.equal(f.ble.commands.length, 0);
+  await f.timers.advance(4000); await pending;
+  assert.equal(attempts, 3); assert.equal(f.ble.requests, 0);
+  assert.deepEqual(f.ble.commands, ['start']);
+  assert.equal(f.transport.getState().status, 'connected');
+  await f.transport.disconnect();
+});
+
 test('BMP280 sends at most five bme commands and rejects invalid channels for its three-second first-reading deadline', async () => {
   const f = fixture(); await f.connect();
   f.ble.handlers[0]('25,0,0'); f.ble.handlers[0]('abc,0,1000');
@@ -48,12 +64,13 @@ test('BMP280 sends at most five bme commands and rejects invalid channels for it
 });
 
 test('magnetic handshake handles silence, old numeric firmware and write failure; timeout cleans up and permits a fresh reconnect', async () => {
-  for(const scenario of ['silent','numeric-only','write-failure']) {
+  for(const scenario of ['silent','numeric-only','write-failure','calibrating-only']) {
     const f=fixture('magnetometer'), originalSend=f.ble.sendStartCommand;
     if(scenario==='write-failure') f.ble.sendStartCommand=async function(command){this.commands.push(command);throw new Error('write failed');};
     await f.connect();const oldNotify=f.ble.handlers[0];
     assert.deepEqual(f.ble.commands,['prepare']);
     if(scenario==='numeric-only')oldNotify('1,2,3,4');
+    if(scenario==='calibrating-only')oldNotify('@mag,2,calibrating');
     await f.timers.advance(9999);
     assert.equal(f.transport.getState().status,'connected');assert.equal(f.transport.getState().confirmed,false);
     assert.equal(f.inputs.length,0);
@@ -77,7 +94,7 @@ test('magnetic handshake handles silence, old numeric firmware and write failure
 
 test('calibration acknowledgements gate readings, cannot be forged by wrong-order statuses, and never become samples', async () => {
   const f=fixture('magnetometer');await f.connect();const notify=f.ble.handlers[0];
-  notify('@mag,2,calibrated');notify('@mag,2,choice');notify('@mag,2,skipped');
+  notify('@mag,2,choice');notify('@mag,2,calibrated');notify('@mag,2,skipped');
   assert.equal(f.transport.getState().calibration,'unknown');
   await f.transport.performAction('calibrate');await f.transport.performAction('skip');
   assert.deepEqual(f.ble.commands,['prepare','calibrate']);
@@ -91,6 +108,37 @@ test('calibration acknowledgements gate readings, cannot be forged by wrong-orde
   oldNotify('@mag,2,calibrated');oldNotify('1,2,3,4');
   assert.equal(f.transport.getState().devicePreparation.phase,'handshake');assert.equal(f.transport.getState().calibration,'unknown');
   await f.transport.disconnect();assert.equal(f.timers.tasks.size,0);
+});
+
+test('reconnecting to a calibrated board uses fresh completion and still requires fresh readings', async () => {
+  const f=fixture('magnetometer');await f.connect();const oldNotify=f.ble.handlers[0];
+  oldNotify('@mag,2,choice');await f.transport.performAction('calibrate');oldNotify('@mag,2,calibrating');
+  await f.transport.disconnect();await f.connect({reuseDevice:true});
+  oldNotify('@mag,2,calibrating');oldNotify('@mag,2,calibrated');
+  assert.equal(f.transport.getState().devicePreparation.phase,'handshake');
+  const notify=f.ble.handlers[1];notify('@mag,2,calibrating');
+  assert.equal(f.transport.getState().devicePreparation.phase,'handshake');
+  assert.equal(f.transport.getState().calibration,'unknown');
+  assert.equal(f.ble.requests,1);assert.deepEqual(f.ble.commands,['prepare','calibrate','prepare']);
+  notify('1,2,3,4');await f.timers.advance(1000);
+  assert.equal(f.transport.getState().status,'connected');assert.equal(f.inputs.length,0);
+  notify('@mag,2,calibrated');
+  assert.equal(f.transport.getState().calibration,'device-reported');assert.equal(f.transport.getState().confirmed,false);
+  for(let i=0;i<3;i++){notify('1,2,3,4');await f.timers.advance(500);}
+  assert.equal(f.transport.getState().confirmed,true);
+  await f.transport.disconnect();
+});
+
+test('early completion survives notification setup and repeated completion cannot extend the reading deadline', async () => {
+  const ble=fakeBle();
+  ble.startNotifications=async handler=>{ble.handlers.push(handler);handler('@mag,2,calibrated');};
+  const f=fixture('magnetometer',ble);await f.connect();
+  assert.equal(f.transport.getState().devicePreparation.phase,'receiving');
+  assert.equal(f.transport.getState().calibration,'device-reported');
+  await f.timers.advance(4999);ble.handlers[0]('@mag,2,calibrated');
+  await f.timers.advance(1);await Promise.resolve();
+  assert.equal(f.transport.getState().status,'disconnected');
+  assert.equal(f.timers.tasks.size,0);
 });
 
 test('missing action acknowledgement, calibration completion or first reading closes the attempt', async () => {
@@ -164,14 +212,35 @@ test('selection starts in the click call, cancellation closes its gate immediate
   assert.equal(ble.handlers.length, 0); assert.equal(f.transport.getState().busy, false); assert.equal(f.timers.tasks.size, 0);
 });
 
-test('cancelling pending GATT setup cleans up before another connection and suppresses notification setup', async () => {
-  const ble = fakeBle(); let finishGatt;
-  ble.connect = () => new Promise(resolve => { finishGatt = resolve; });
-  const f = fixture('bmp280', ble), connecting = f.connect(); await Promise.resolve();
-  const closing = f.transport.disconnect(); f.connect();
-  assert.equal(ble.requests, 1); finishGatt(); await Promise.all([connecting, closing]);
-  assert.equal(ble.handlers.length, 0); assert.ok(ble.cleanups >= 1);
-  ble.connect = async () => {}; await f.connect(); assert.equal(ble.requests, 2); await f.transport.disconnect();
+test('cancel finishes even when GATT setup never returns; late completion cannot disturb the next connection', async () => {
+  for (const stage of ['connect', 'startNotifications']) {
+    const ble = fakeBle(), original = ble[stage]; let finish;
+    ble[stage] = () => new Promise(resolve => { finish = resolve; });
+    const f = fixture('bmp280', ble), connecting = f.connect();
+    await new Promise(resolve => setImmediate(resolve));
+    await f.transport.disconnect(); await connecting;
+    assert.equal(f.transport.getState().busy, false);
+    assert.equal(f.transport.getState().status, 'disconnected');
+    ble[stage] = original; await f.connect();
+    finish(); await new Promise(resolve => setImmediate(resolve));
+    ble.handlers.at(-1)('25,,1000');
+    assert.equal(f.transport.getState().status, 'connected');
+    assert.equal(f.transport.getState().firstReading, true);
+    await f.transport.disconnect();
+  }
+});
+
+test('cancelling installation recovery interrupts backoff and permits a fresh connection', async () => {
+  const f = fixture();
+  f.ble.connect = async () => { throw new DOMException('Rebooting', 'NetworkError'); };
+  const connecting = f.connect({ device: { name: 'installed board' } });
+  await new Promise(resolve => setImmediate(resolve));
+  await f.transport.disconnect(); await connecting;
+  assert.equal(f.transport.getState().busy, false);
+  f.ble.connect = async () => {};
+  await f.connect(); await f.timers.advance(2000);
+  assert.equal(f.transport.getState().status, 'connected');
+  await f.transport.disconnect();
 });
 
 test('cancelled chooser allows retry and untrusted metadata cannot replace the registered command or waiting policy', async () => {

@@ -19,13 +19,17 @@ export function createGuideView(host, callbacks = {}) {
   /** @type {ReturnType<typeof createActionHelp>} */ let help;
   let preparationView = null, suggestion = '';
   let selectedId = '', mode = '3d', viewerState = 'idle', disposed = false, quick = false;
+  /** @type {string|null} */ let renderedStep = null;
+  /** @type {string|null} */ let renderedProgram = null;
   let content = getGuideContent(null), contentAbort = new AbortController();
   const abort = new AbortController(), shell = element('section', 'guide');
+  const compact=matchMedia('(max-width: 850px)');
+  compact.addEventListener('change',()=>paint(),{signal:abort.signal});
   shell.innerHTML = `
     <div class="guide-top"><p class="guide-status" role="status"></p><button type="button" class="quiet-button" data-guide-action="quick" data-copy="guide.quick"></button></div>
     <ol class="guide-progress" data-copy-aria-label="accessibility.guideSteps"></ol>
     <div class="guide-layout">
-      <section class="guide-visual" data-copy-aria-label="accessibility.guideVisual">
+      <section class="guide-visual" data-ui-height data-copy-aria-label="accessibility.guideVisual">
         <div class="guide-equipment"></div>
         <div class="guide-model" hidden>
           <div class="model-toolbar"><div class="viewer-modes" role="group" data-copy-aria-label="accessibility.wiringModes"></div><a class="viewer-large" target="_blank" rel="noopener" data-copy="guide.large"></a></div>
@@ -41,13 +45,13 @@ export function createGuideView(host, callbacks = {}) {
         <details class="guide-power" hidden><summary data-copy="guide.powerHeading"></summary><figure class="guide-device-image"><img alt="" loading="lazy" decoding="async" width="1440" height="900"><figcaption data-copy="guide.powerNote"></figcaption></figure></details>
         <div class="guide-summary" hidden><p class="eyebrow" data-copy="guide.lastCheck"></p><h3 data-copy="guide.summaryTitle"></h3><ul></ul></div>
       </section>
-      <section class="step-panel" data-copy-aria-label="accessibility.guideDescription">
+      <section class="step-panel" data-ui-height data-copy-aria-label="accessibility.guideDescription">
         <ol class="guide-substeps" data-copy-aria-label="accessibility.guideSubsteps"></ol>
         <div class="step-content"><p class="step-counter"></p><h3 class="step-title" tabindex="-1"></h3><p class="step-description"></p><ol class="step-instructions" hidden></ol></div>
         <div class="guide-activity-equipment" hidden></div>
         <p class="guide-evidence"></p>
         <div class="guide-quick" hidden><p data-copy="guide.quickNote"></p><div></div></div>
-        <div class="guide-program" hidden><span class="guide-program-label" data-copy="guide.programTarget"></span><strong class="guide-program-target"></strong><p class="guide-device-status" role="status"></p><progress max="100" data-copy-aria-label="accessibility.installProgress" hidden></progress><div class="guide-program-actions"></div></div>
+        <div class="guide-program" hidden><span class="guide-program-label" data-copy="guide.programTarget"></span><strong class="guide-program-target"></strong><div class="guide-install-notice" role="status" aria-atomic="true"><strong class="guide-install-heading" hidden></strong><p class="guide-device-status"></p></div><p class="guide-install-detail" hidden></p><progress max="100" data-copy-aria-label="accessibility.installProgress" hidden></progress><div class="guide-program-actions"></div></div><div class="guide-install-mode" hidden><p></p></div>
         <p class="guide-connection-status" role="status"></p>
         <div class="guide-device-actions"></div><div class="step-actions"></div><p class="guide-note"></p>
         <details class="wiring-note" hidden><summary></summary><p></p></details>
@@ -56,6 +60,7 @@ export function createGuideView(host, callbacks = {}) {
   host.replaceChildren(shell);
   const status = findElement(shell,'p','.guide-status'), nav = findElement(shell,'ol','.guide-progress');
   const subnav = findElement(shell,'ol','.guide-substeps'), copy = findElement(shell,'div','.step-content');
+  const stepPanels = [findElement(shell,'section','.step-panel'), findElement(shell,'section','.guide-visual')];
   const title = findElement(shell,'h3','.step-title'), description = findElement(shell,'p','.step-description');
   const instructions = findElement(shell,'ol','.step-instructions');
   const evidence = findElement(shell,'p','.guide-evidence'), note = findElement(shell,'p','.guide-note');
@@ -69,6 +74,7 @@ export function createGuideView(host, callbacks = {}) {
   const power = findElement(shell,'details','.guide-power');
   const summary = findElement(shell,'div','.guide-summary'), quickPanel = findElement(shell,'div','.guide-quick');
   const program = findElement(shell,'div','.guide-program'), deviceNotice = findElement(shell,'p','.guide-device-status');
+  const installHeading = findElement(shell,'strong','.guide-install-heading'), installDetail = findElement(shell,'p','.guide-install-detail');
   const connectionNotice = findElement(shell,'p','.guide-connection-status'), bar = findElement(shell,'progress','progress');
   const wiringNote = findElement(shell,'details','.wiring-note'), controls = findElement(shell,'div','.wiring-view-controls');
   /** @type {Map<string,HTMLButtonElement>} */ const buttons = new Map(), stepButtons = new Map(), groupButtons = new Map();
@@ -90,7 +96,6 @@ export function createGuideView(host, callbacks = {}) {
     if (facts.programmerState?.busy) return;
     quick=false; selectedId=id; paint();
     if (focus) title.focus({preventScroll:true});
-    layout?.transition(id); layout?.syncProgress();
   }
   function next() {
     const steps=progress.getState().steps, index=steps.findIndex(step=>step.id===selectedId);
@@ -109,14 +114,21 @@ export function createGuideView(host, callbacks = {}) {
     for (const id of quickChecks.keys()) progress.confirm(id);
     callbacks.onChange?.(progress.getState()); select('connection');
   },actions,'primary');
+  const modePanel=findElement(shell,'div','.guide-install-mode');
+  button('install-mode',labels.guide.wirelessMode,()=>callbacks.onInstallMode?.(facts.programmerState?.mode==='wireless'?'usb':'wireless'),modePanel,'quiet-button install-mode-link');
   const programActions=findElement(shell,'div','.guide-program-actions');
   button('install',labels.guide.install,()=>callbacks.onInstall?.(),programActions,'primary');
+  button('cancel-install',labels.common.cancel,()=>callbacks.onCancelInstall?.(),programActions,'quiet-button');
   button('program-confirm',labels.guide.programConfirm,()=>{
     if (!locked() && progress.confirm('program')) {callbacks.onChange?.(progress.getState()); next();}
   },programActions,'quiet-button');
   button('connect',labels.common.connect,()=>callbacks.onConnect?.({reuseDevice:false}),deviceActions,'primary');
   button('reconnect',labels.common.reconnect,()=>callbacks.onConnect?.({reuseDevice:true}),deviceActions,'primary');
   button('disconnect',labels.common.disconnect,()=>callbacks.onDisconnect?.(),deviceActions);
+  const connectionHelp=element('button','connection-help-trigger',labels.common.connectionHelp);
+  connectionHelp.type='button'; connectionHelp.dataset.connectionHelp='';
+  connectionHelp.setAttribute('aria-haspopup','dialog'); connectionHelp.setAttribute('aria-controls','connection-troubleshooting');
+  deviceActions.append(connectionHelp);
   button('battery',labels.guide.battery,()=>{if (!locked() && progress.beginBatteryCheck()) changed();},deviceActions,'primary');
   const modes=findElement(shell,'div','.viewer-modes');
   button('model',labels.guide.model,()=>{mode='3d'; loadViewer(); paintViewer();},modes);
@@ -240,7 +252,7 @@ export function createGuideView(host, callbacks = {}) {
     }
     messages.cable={label:'케이블 끝 모양',text:content.cableHelp};
     help=createActionHelp(shell,{messages});
-    layout=createGuideLayout({content:copy,progress:nav,equipment,steps,measureSteps:steps.filter(step=>step.group==='wiring'),createMeasurement(step){
+    layout=createGuideLayout({root:shell,content:copy,progress:nav,equipment,steps,measureSteps:steps.filter(step=>step.group==='wiring'),createMeasurement(step){
       const measurement=element('div','step-content'); measurement.append(element('p','step-counter','02 · 배선'),element('h3','step-title',step.title),element('p','step-description',step.description)); return measurement;
     }});
   }
@@ -253,6 +265,18 @@ export function createGuideView(host, callbacks = {}) {
       if(!quick&&preparationView?.supports(currentStep())) selectedId=presentation.stepId;
     }
     const state=progress.getState(), steps=state.steps, step=currentStep(), isSummary=selectedId==='summary';
+    const nextStep=quick?'quick':selectedId, previousStep=renderedStep;
+    const stepChanged=previousStep!==null&&previousStep!==nextStep;
+    const stepHeights=stepChanged?layout.captureHeights(stepPanels):[];
+    const programmer=facts.programmerState??{}, wireless = programmer.mode === 'wireless';
+    const installMode=wireless?'wireless':'usb';
+    const modeChanged=step?.kind==='program'&&!quick&&!program.hidden&&program.dataset.mode&&program.dataset.mode!==installMode;
+    // Progress numbers update in place; only presentation changes start a new transition.
+    const programSignature=JSON.stringify([installMode,programmer.status,programmer.phase,Boolean(programmer.busy),
+      programmer.message,programmer.deviceName,Boolean(programmer.usbRequired),Number.isFinite(programmer.progress)]);
+    const programChanged=wireless&&step?.kind==='program'&&!quick&&!program.hidden
+      &&renderedProgram!==null&&renderedProgram!==programSignature;
+    const previousHeights=modeChanged||programChanged?layout.captureHeights([...stepPanels,program]):[];
     const managed=!quick&&!isSummary&&preparationView?.supports(step);
     const leavingPanel=managed&&!presentation.hideValues&&preparationHost.contains(document.activeElement);
     preparationView?.render(facts,managed);
@@ -276,7 +300,10 @@ export function createGuideView(host, callbacks = {}) {
     }
     subnav.hidden=quick||isSummary||steps.filter(item=>item.group===step?.group).length<2;
     setText(title,quick?labels.guide.quickTitle:isSummary?state.canMeasure?labels.guide.readyTitle:labels.guide.receptionTitle:(managed?presentation.title:step?.title)??labels.navigation.prepare);
-    setText(description,quick?labels.guide.quickDescription:isSummary?labels.guide.summaryDescription:(managed?presentation.description:step?.description)??'');
+    const recovery=wireless&&programmer.status==='recovery', usbRequired=wireless&&programmer.usbRequired===true;
+    const wirelessSuccess=wireless&&programmer.status==='success';
+    setText(description,quick?labels.guide.quickDescription:isSummary?labels.guide.summaryDescription:(managed?presentation.description:step?.kind==='program'&&wireless?labels.guide.wirelessDescription:step?.description)??'');
+    description.hidden=!quick&&step?.kind==='program'&&(recovery||usbRequired);
     const instructionItems=quick||isSummary?[]:step?.instructions??[], instructionSignature=JSON.stringify(instructionItems);
     instructions.hidden=!instructionItems.length;
     if(instructions.dataset.signature!==instructionSignature) {
@@ -299,18 +326,36 @@ export function createGuideView(host, callbacks = {}) {
     if(step?.kind==='battery'&&power.dataset.step!==selectedId)power.open=true;
     power.dataset.step=selectedId;
     deviceVisual.hidden=quick||isSummary||!model.hidden||step?.kind!=='program';
-    if (!deviceVisual.hidden&&!deviceVisual.childElementCount) {
+    const visualMode=recovery?'reset':usbRequired?'usb':wirelessSuccess?'installed':wireless?'wireless':'usb';
+    if (!deviceVisual.hidden&&(!deviceVisual.childElementCount||deviceVisual.dataset.mode!==visualMode)) {
+      deviceVisual.dataset.mode=visualMode;
       deviceVisual.innerHTML='<p class="eyebrow" data-copy="guide.usbEyebrow"></p><div class="usb-diagram"><span data-copy="guide.computer"></span><span aria-hidden="true">⟷</span><strong>micro:bit V2</strong></div><h4 data-copy="guide.usbHeading"></h4><p data-copy="guide.usbNote"></p><small data-copy="guide.usbWireless"></small>';
       applyLabCopy(deviceVisual, labels);
+      if(wireless&&!usbRequired){
+        deviceVisual.querySelector('h4').textContent=recovery?labels.guide.resetHeading:wirelessSuccess?labels.guide.installKeepPower:labels.guide.wirelessHeading;
+        deviceVisual.querySelector('p:not(.eyebrow)').textContent=recovery?labels.guide.resetNote:wirelessSuccess?labels.guide.installKeepPowerNote:labels.guide.wirelessNote;
+        deviceVisual.querySelector('small').textContent=labels.guide.wirelessFirstInstall;
+        deviceVisual.querySelector('small').hidden=recovery||wirelessSuccess;
+        if(recovery) deviceVisual.querySelector('.eyebrow').textContent=labels.guide.resetEyebrow;
+      }
       if(content.illustrations){
-        const img=element('img','guide-usb-image');img.src=content.illustrations.usb.src;img.alt=content.illustrations.usb.alt;img.width=1440;img.height=900;img.decoding='async';
-        if (shell.ownerDocument.documentElement.dataset.visualTheme === 'luminous') {
+        const illustration=wireless&&!usbRequired?content.illustrations.battery:content.illustrations.usb;
+        const img=element('img','guide-usb-image');img.src=illustration.src;img.alt=illustration.alt;img.width=1440;img.height=900;img.decoding='async';
+        if(recovery){
+          img.src=new URL('../../public/assets/devices/posters/reset.png',import.meta.url).href;
+          img.alt=labels.guide.resetImageAlt;
+        } else if (visualMode==='usb' && shell.ownerDocument.documentElement.dataset.visualTheme === 'luminous') {
           img.src=new URL('../../public/assets/design/luminous-usb.png',import.meta.url).href;
           img.width=1200;img.height=1000;
         }
         deviceVisual.querySelector('.usb-diagram').replaceWith(img);
       }
     }
+    // Keep the same illustration next to the action on small screens.
+    const inlineReset=!deviceVisual.hidden&&recovery&&compact.matches;
+    shell.dataset.inlineReset=String(inlineReset);
+    const visualParent=inlineReset?program:preparationHost.parentElement;
+    if(deviceVisual.parentElement!==visualParent)visualParent.insertBefore(deviceVisual,inlineReset?programActions:preparationHost);
     if (!model.hidden&&mode==='3d') loadViewer(); paintViewer();
     if (!reception.hidden) {
       for (const channel of context.channels) {
@@ -350,22 +395,59 @@ export function createGuideView(host, callbacks = {}) {
       }));
     }
     quickPanel.hidden=!quick; for (const check of quickChecks.values()) check.disabled=locked();
-    program.hidden=quick||step?.kind!=='program'; const programmer=facts.programmerState??{};
+    program.hidden=quick||step?.kind!=='program';
     const installing=Boolean(programmer.busy||['connecting','flashing'].includes(programmer.status));
     program.dataset.state=programmer.status??'idle'; program.setAttribute('aria-busy',String(installing));
+    program.dataset.mode=installMode;
+    program.dataset.tone=recovery||usbRequired||['error','unavailable'].includes(programmer.status)?'attention':programmer.status==='success'?'success':installing?'progress':'neutral';
     const programMessage=programmer.message||(programmer.status==='success'?labels.guide.programInstalled:labels.guide.programReady);
-    setText(deviceNotice,[programMessage,Number.isFinite(programmer.progress)?`${Math.round(programmer.progress)}%`:'',programmer.deviceName].filter(Boolean).join(' · '));
+    const heading=usbRequired?labels.guide.installUsbRequired:recovery?labels.guide.installRecovery:({
+      loading:labels.guide.installLoading, ready:labels.guide.installReady,
+      connecting:!wireless||programmer.phase==='selecting'?labels.guide.installSelecting:programmer.phase==='finishing'?labels.guide.installFinishing:labels.guide.installWorking,
+      flashing:labels.guide.installWorking, success:labels.guide.installSuccess,
+      cancelled:labels.guide.installCancelled, error:labels.guide.installError, unavailable:labels.guide.installUnavailable,
+    }[programmer.status]??labels.guide.installReady);
+    installHeading.hidden=false; setText(installHeading,heading);
+    setText(deviceNotice,recovery?labels.guide.installResetAction:programMessage);
+    const detail=[programmer.deviceName,programmer.status==='flashing'&&Number.isFinite(programmer.progress)?`${Math.round(programmer.progress)}%`:''].filter(Boolean).join(' · ');
+    setText(installDetail,detail); installDetail.hidden=!detail;
+    const recoveryActions=recovery||usbRequired;
+    modePanel.hidden=program.hidden||recoveryActions||wireless&&installing;
+    setText(modePanel.querySelector('p'),wireless?labels.guide.usbModeHint:labels.guide.wirelessModeHint);
+    const modeButton=buttons.get('install-mode'), modeParent=recoveryActions?programActions:modePanel;
+    if(modeButton.parentElement!==modeParent)modeParent.append(modeButton);
+    modeButton.textContent=wireless?labels.guide.usbMode:labels.guide.wirelessMode;
+    modeButton.classList.toggle('primary',usbRequired); modeButton.classList.toggle('quiet-button',!usbRequired);
+    modeButton.classList.toggle('install-mode-link',!recoveryActions);
+    modeButton.disabled=locked()||facts.mock===true||facts.canInstall===false;
     bar.hidden=programmer.status!=='flashing'; if (programmer.progress==null) bar.removeAttribute('value'); else bar.value=programmer.progress;
     const deviceText=connectionStep?(facts.unsupported?labels.guide.unsupported:facts.deviceMessage??''):'';
-    setText(connectionNotice,deviceText); connectionNotice.hidden=!deviceText||Boolean(managed&&facts.connected&&presentation.hideValues);
+    if (connectionNotice.dataset.message !== deviceText) {
+      connectionNotice.dataset.message=deviceText;
+      const resetLabel='리셋 버튼', resetIndex=deviceText.indexOf(resetLabel);
+      if (resetIndex < 0) setText(connectionNotice,deviceText);
+      else {
+        const resetHelp=element('button','connection-help-inline',resetLabel);
+        resetHelp.type='button'; resetHelp.dataset.connectionHelp='';
+        resetHelp.setAttribute('aria-haspopup','dialog'); resetHelp.setAttribute('aria-controls','connection-troubleshooting');
+        connectionNotice.replaceChildren(deviceText.slice(0,resetIndex),resetHelp,deviceText.slice(resetIndex+resetLabel.length));
+      }
+    }
+    connectionNotice.hidden=!deviceText||Boolean(managed&&facts.connected&&presentation.hideValues);
     const show=new Set(['previous']);
     if (quick) show.add('quick-confirm'); else if (isSummary) show.add('measure'); else if (!preparationView?.handlesProgression(step?.id)) {
       show.add(['manual','calibration'].includes(step?.kind) ? 'confirm' : 'next');
     }
     if (connectionStep && state.canMeasure) show.add('measure');
-    if (step?.kind==='program'&&!quick) {show.add('install'); show.add('program-confirm');}
+    if (step?.kind==='program'&&!quick) {
+      if(!usbRequired&&(!wireless||!installing))show.add('install');
+      if(programmer.status!=='success'&&(!wireless||!installing&&!recoveryActions))show.add('program-confirm');
+      if(wireless&&programmer.busy)show.add('cancel-install');
+      if(wireless&&(installing||recoveryActions))show.delete('next');
+    }
     if (connectionStep) {if (facts.connected||facts.connecting) show.add('disconnect'); else {show.add('connect'); if (facts.canReconnect) show.add('reconnect');} if (step?.kind==='battery') show.add('battery');}
-    for (const id of ['previous','confirm','next','measure','quick-confirm','install','program-confirm','connect','reconnect','disconnect','battery']) {const node=buttons.get(id); node.hidden=!show.has(id); node.disabled=locked();}
+    connectionHelp.hidden=!connectionStep;
+    for (const id of ['previous','confirm','next','measure','quick-confirm','install','program-confirm','cancel-install','connect','reconnect','disconnect','battery']) {const node=buttons.get(id); node.hidden=!show.has(id); node.disabled=locked();}
     buttons.get('previous').disabled=Boolean(facts.programmerState?.busy)||(!quick&&index===0); buttons.get('previous').hidden=quick;
     buttons.get('confirm').textContent=step?.action??labels.guide.confirm; buttons.get('confirm').disabled ||= step?.kind==='calibration'&&!facts.connected;
     buttons.get('next').disabled=locked()||!step?.complete; buttons.get('next').textContent=index===steps.length-1?labels.guide.nextSummary:labels.guide.nextConfirmed;
@@ -375,6 +457,10 @@ export function createGuideView(host, callbacks = {}) {
     buttons.get('install').disabled ||= facts.canInstall===false||facts.mock===true||programmer.status==='unavailable';
     buttons.get('install').setAttribute('aria-busy',String(installing));
     buttons.get('install').textContent=programmer.busy?labels.guide.installing:['error','cancelled'].includes(programmer.status)?labels.guide.retryInstall:programmer.status==='success'?labels.guide.reinstall:labels.guide.install;
+    if(wireless) buttons.get('install').textContent=programmer.busy?labels.guide.installing:programmer.status==='recovery'?labels.guide.retryConnection:['error','cancelled'].includes(programmer.status)?labels.guide.wirelessRetry:programmer.status==='success'?labels.guide.reinstall:labels.guide.wirelessInstall;
+    buttons.get('install').classList.toggle('primary',!wirelessSuccess); buttons.get('install').classList.toggle('quiet-button',wirelessSuccess);
+    buttons.get('install').disabled ||= programmer.usbRequired===true;
+    buttons.get('cancel-install').disabled=false;
     buttons.get('connect').disabled ||= facts.canConnect===false; buttons.get('connect').textContent=facts.canReconnect?labels.common.chooseDevice:facts.mock?labels.common.mockConnect:labels.common.connect;
     buttons.get('reconnect').disabled ||= facts.canConnect===false;
     buttons.get('disconnect').textContent=facts.connecting?labels.common.cancelConnection:labels.common.disconnect; buttons.get('disconnect').disabled=Boolean(facts.programmerState?.busy);
@@ -382,6 +468,11 @@ export function createGuideView(host, callbacks = {}) {
     const noteText=facts.recording?labels.guide.reconnectNote:facts.mock&&step?.kind==='program'?labels.guide.mockProgramNote:step?.kind==='program'?'':step?.kind==='battery'&&state.observations.battery.startedAt!==null?step.complete?labels.guide.batterySeen:labels.guide.batteryWaiting:step?.kind==='calibration'&&!managed?labels.guide.calibrationNote:'';
     setText(note,noteText); note.hidden=!noteText;
     copy.dataset.group=step?.group??''; layout?.measure(); layout?.syncProgress();
+    renderedStep=nextStep;
+    renderedProgram=program.hidden?null:programSignature;
+    if(stepChanged) layout?.transition(nextStep,previousStep,stepHeights);
+    else if(modeChanged) layout?.transitionContent([description,program,deviceVisual],{previousHeights});
+    else if(programChanged) layout?.transitionContent([],{previousHeights});
   }
   return {
     /** @param {import('../guide/types.js').ExperimentContext} nextContext */
@@ -391,7 +482,7 @@ export function createGuideView(host, callbacks = {}) {
       if (reset||context?.sensor?.id!==nextContext.sensor.id||context?.sensor?.version!==nextContext.sensor.version) {viewer?.dispose(); viewer=null; viewerState='idle'; mode='3d'; frame.removeAttribute('src'); delete frame.dataset.step; delete model.dataset.viewerState;}
       context=structuredClone(nextContext); content=getGuideContent(context); labels=getLabCopy(context);
       if (!progress||reset) {progress=createGuideProgress(context); facts={}; selectedId='equipment';} else progress.setContext(context);
-      quick=prepared; if (quick) selectedId='quick'; else if (!currentStep()) selectedId='equipment'; buildContent(); paint();
+      quick=prepared; if (quick) selectedId='quick'; else if (!currentStep()) selectedId='equipment'; renderedStep=null; renderedProgram=null; buildContent(); paint();
     },
     /** @param {import('../guide/types.js').GuideFacts} nextFacts */
     render(nextFacts) {if (!progress||disposed) return; facts={...nextFacts}; progress.setAttempt(facts.attemptId); progress.observe(facts); paint();},

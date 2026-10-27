@@ -16,7 +16,8 @@
     "test:e2e:large": "playwright test --grep @large",
     "build": "node scripts/build.mjs",
     "build:firmware": "node dev/firmware/build.mjs",
-    "check:firmware": "node dev/firmware/build.mjs magnetometer --check"
+    "check:firmware": "node --test tests/unit/firmware.test.mjs tests/unit/sensor-display.test.mjs",
+    "publish:firmware": "node dev/firmware/publish.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

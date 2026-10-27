@@ -1,7 +1,7 @@
-import { equipment } from './content.js';
+import { experimentGuide, equipment } from './content.js';
 import { deviceIllustrations } from '../shared/device-illustrations.js';
 /** @type {import('../../../guide/types.js').SensorGuide} */
-export const guide = {
+export const guide = { experimentGuide,
   equipment,
   illustrations: deviceIllustrations,
   equipmentDescription: 'micro:bit V2와 데이터 전송이 가능한 USB 케이블, 배터리를 준비하세요.',

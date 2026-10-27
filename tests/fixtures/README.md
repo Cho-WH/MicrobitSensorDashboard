@@ -16,8 +16,8 @@ text and a newline. `expected.json` contains the original validated snapshot,
 graph, reflection model, and visible table rows. These distinguish analysis
 scope from table filtering and protect raw numeric precision and frozen evidence.
 
-`dashboard-default.csv` was generated with `js/utils/csv.js` from the existing
-MicrobitSensorDashboard checkout and the default x/y/z/strength columns. It
+`dashboard-default.csv` was generated with the historical
+[MicrobitSensorDashboard CSV exporter](https://github.com/Cho-WH/MicrobitSensorDashboard/blob/5d804071108bc61056c1eaf15d143acfc3bf135a/js/utils/csv.js) and the default x/y/z/strength columns. It
 contains zero, negative values and a backwards timestamp.
 
 No hardware readings, accuracy certification, or new measurements are claimed

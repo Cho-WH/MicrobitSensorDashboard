@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createDiagnostics, modeRequestProblem, services, parseRegion, parseStatus } from '../../dev/bluetooth-install/diagnostics.js';
+import { createDiagnostics, modeRequestProblem, services, parseRegion, parseStatus } from '../../src/device/bluetooth-protocol.js';
 import { bluetoothFixture } from '../fixtures/bluetooth-diagnostics.mjs';
 
 function setup(options, overrides = {}) {
@@ -98,12 +98,13 @@ test('candidate reset requires V2 + supported protocol + regions + confirmation;
   await client.connect(f.device); assert.equal((await client.diagnose()).status.mode, 0);
   await client.reset(1); assert.deepEqual(f.writes.at(-1), [0xff, 1]);
 });
-test('service absent vs permission denied is retained; no firmware or reset command is sent', async () => {
-  const { f, client } = setup({ missing: services.partial, denied: services.dfu });
-  await client.connect(f.device); const report = await client.diagnose();
-  assert.equal(report.services.partial.state, 'absent'); assert.equal(report.services.dfu.state, 'denied');
-  assert.equal(report.services.uart.state, 'available'); assert.deepEqual(f.writes, []);
-  await assert.rejects(client.reset(0, { candidateConfirmed: true })); client.disconnect();
+test('service absence and permission denial remain distinct without reset or firmware writes', async () => {
+  for (const [options, state] of [[{ missing: services.partial }, 'absent'], [{ denied: services.partial }, 'denied']]) {
+    const { f, client } = setup(options);
+    await client.connect(f.device); const report = await client.diagnose();
+    assert.equal(report.services.partial.state, state); assert.deepEqual(f.writes, []);
+    await assert.rejects(client.reset(0, { candidateConfirmed: true })); client.disconnect();
+  }
 });
 test('unsupported protocol is reported without speculative region or reset requests', async () => {
   const { f, client } = setup({ protocol: 2 });

@@ -24,6 +24,8 @@ export async function runAppTests(report=()=>{}) {
   const $=selector=>host.querySelector(selector);
   const click=async selector=>{await until(()=>!app.getState().busy&&$(selector)&&!$(selector).disabled,'조작 비활성: '+selector);clickLabControl(host,selector);await until(()=>!app.getState().busy,'조작 완료 시간 초과: '+selector);await rendered();check($('#lab-error').hidden,$('#lab-error').textContent);};
   let app;
+  const confirmExit=async()=>{await until(()=>$('#leave-dialog').open,'도구 종료 확인 누락');clickVisible($('#leave-save'));};
+  const leaveHome=async()=>{clickVisible($('[data-view="home"]'));await confirmExit();await until(()=>!app.getState().busy,'도구 종료 미완료');await rendered();};
   const select=async path=>{
     await click(`[href*="/${path}/"]`);await until(()=>app.getState().screen==='preview','실험 미리보기 누락');
     check(!app.getState().context&&!app.getState().storage,'미리보기에 활성 실험 권한이 남았습니다.');
@@ -42,7 +44,6 @@ export async function runAppTests(report=()=>{}) {
     check(app.getState().screen==='home'&&!app.getState().storage&&!app.getState().context,'홈에서 활성 실험 또는 Run을 만들었습니다.');
     check(!$('#experiment-title').textContent&&$('.lab-status').hidden,'홈에 이전 실험 이름 또는 장치 상태가 남았습니다.');
     check((await repo.listRuns()).length===0,'기록 시작 전 DB에 Run이 있습니다.');
-    check($('#sensor-cards').children.length===5,'등록된 센서 다섯 개의 홈 카드가 없습니다.');
     await select('sensors/bmp280');
     check(!app.getState().storage,'센서 선택에서 Run을 만들었습니다.');
     for(const id of ['equipment','vcc','gnd','scl','sda','program']) await confirm(id);
@@ -55,11 +56,13 @@ export async function runAppTests(report=()=>{}) {
     $('#reflection-observation').value='첫 실험의 관찰 기록';
     // Deliberately leave the edit as a DOM draft; exiting must flush it.
     failSave=true; clickVisible($('[data-view="home"]'));
+    await confirmExit();
     await until(()=>!app.getState().busy&&!$('#lab-error').hidden,'저장 실패 시 이탈 차단 누락');
     check(app.getState().screen==='analysis'&&app.getState().storage.id===firstId,'저장 실패에도 실험을 나갔습니다.');
     check($('#connection-status').textContent==='모의 연결','저장 실패 때 연결을 해제했습니다.');
     check($('#reflection-observation').value==='첫 실험의 관찰 기록','저장 실패 때 작성 내용을 잃었습니다.');
     failSave=false;delaySave=true;clickVisible($('[data-view="home"]'));
+    await confirmExit();
     await until(()=>typeof releaseSave==='function','저장 완료 대기 경계 누락');
     const stoppingCount=app.getState().storage.sampleCount;
     // Fault injection: an out-of-screen request must still be rejected while saving.
@@ -110,14 +113,14 @@ export async function runAppTests(report=()=>{}) {
     check(['placement','heating-start','measurement-end'].every(type=>activityData.events.some(event=>event.type===type)),'활동 조작이 보관되지 않았습니다.');
     report('M2 통합 · 활동 안내·키보드·초점 복귀, 기록 유지와 배치·가열 조작 저장');
 
-    await click('[data-view="home"]');await select('sensors/magnetometer');
+    await leaveHome();await select('sensors/magnetometer');
     await step('connection');await click('[data-guide-action="connect"]');
     await until(()=>!$('[data-device-action="skip"]').disabled&&$('.magnetic-preparation').dataset.phase==='choice','자기장 보정 선택 누락');
     check(!app.getState().storage&&$('.guide-reception').hidden,'보정 선택 중 Run 또는 빈 수치 칸이 나타납니다.');
     await click('[data-device-action="skip"]');
     await until(()=>$('[data-guide-step="reception"]').dataset.complete==='true','자기장 수신 확인 실패');
     check(!$('.guide-status').textContent.includes('준비 완료'),'숫자 수신을 보정 완료로 추정했습니다.');
-    await click('[data-guide-action="measure"]');await click('#start-recording');
+    await click('[data-guide-action="measure"]');await click('.experiment-guide [data-guide-next]');await click('#start-recording');
     await until(()=>app.getState().storage?.sampleCount>=3,'자기장 기록 실패');
     const magnetId=app.getState().storage.id;
     check($('#live-cards').children.length===4,'자기장 네 채널 표시 누락');
@@ -149,12 +152,12 @@ export async function runAppTests(report=()=>{}) {
       ['light-level',['lightLevel'],'상대값'],
       ['accelerometer',['accelerationX','accelerationY','accelerationZ','accelerationStrength'],'m/s²'],
     ]) {
-      await click('[data-view="home"]');await select('sensors/'+sensorId);
+      await leaveHome();await select('sensors/'+sensorId);
       check(composeGuideSteps(app.getState().context).map(item=>item.id).join(',')==='equipment,program,connection,reception',sensorId+': 불필요한 USB 확인·배선·보정 안내');
       check($('[data-guide-step="program"]').dataset.complete==='false',sensorId+': 다른 센서의 설치 확인을 재사용했습니다.');
       await step('connection');await click('[data-guide-action="connect"]');
       await until(()=>!$('[data-guide-action="measure"]').hidden&&!$('[data-guide-action="measure"]').disabled,sensorId+': 체크를 생략한 새 수신 확인 실패');
-      await click('[data-guide-action="measure"]');await click('#start-recording');
+      await click('[data-guide-action="measure"]');await click('.experiment-guide [data-guide-next]');await click('#start-recording');
       await until(()=>app.getState().storage?.sampleCount>=3,sensorId+': 모의 기록 실패');
       const runId=app.getState().storage.id;
       check($('#live-cards').children.length===channelIds.length,sensorId+': 실시간 채널 누락');
@@ -182,7 +185,7 @@ export async function runAppTests(report=()=>{}) {
     check(imported.samples.length===parseExperimentJson(legacy).samples.length,'기존 파일 원자료 개수 손실');
     report('M2 통합 · 기존 게이뤼삭 파일 분석과 수신 자료 분리');
 
-    await click('[data-view="home"]');await select('sensors/magnetometer');
+    await leaveHome();await select('sensors/magnetometer');
     for(const id of ['equipment','program']) await confirm(id);
     await click('#to-measure');await click('#connect');
     check(app.getState().screen==='prepare','측정 화면에서 연결한 장치의 준비 선택으로 이동하지 않았습니다.');

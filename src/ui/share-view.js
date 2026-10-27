@@ -12,16 +12,17 @@ export function createShareView(preview) {
   mobile.setAttribute('aria-haspopup', 'dialog'); mobile.setAttribute('aria-controls', 'tool-share-dialog');
   findElement(preview, 'div', '.preview-heading').append(mobile);
   const inline = findElement(preview, 'aside', '#tool-share-inline');
-  const dialog = element('dialog', 'tool-share-dialog'); dialog.id = 'tool-share-dialog';
-  const heading = element('h2'); heading.id = 'tool-share-title';
-  const close = element('button', 'tool-share-close', '닫기'); close.type = 'button'; close.dataset.uiAction = 'quiet';
-  const header = element('div', 'tool-share-dialog-heading'); header.append(heading, close); dialog.append(header);
+  const dialog = element('dialog', 'ui-dialog tool-share-dialog'); dialog.id = 'tool-share-dialog'; dialog.dataset.dialogSize='compact';
+  const heading = element('h2','ui-dialog-title'); heading.id = 'tool-share-title';
+  const close = element('button', 'ui-dialog-close tool-share-close', '닫기'); close.type = 'button'; close.setAttribute('aria-label','도구 공유 닫기');
+  const header = element('header', 'ui-dialog-header'), body=element('div','ui-dialog-body'), footer=element('footer','ui-dialog-footer');
+  header.append(heading, close); dialog.append(header, body, footer);
   dialog.setAttribute('aria-labelledby', heading.id); preview.append(dialog);
   let url = '', title = '', filename = '', revision = 0, qr = null, anchor = null;
-  function panel(host, expandable) {
+  function panel(host, expandable, actionHost = host) {
     const note = element('p', 'tool-share-note', '실험 소개 화면으로 연결됩니다.');
     const image = element('div', 'tool-share-qr');
-    const actions = element('div', 'tool-share-actions');
+    const actions = element('div', expandable ? 'tool-share-actions' : 'ui-dialog-actions');
     const copy = element('button', '', '링크 복사'); copy.type = 'button'; copy.dataset.uiAction = 'primary';
     const save = element('button', '', 'QR 저장'); save.type = 'button';
     const status = element('p', 'tool-share-status'); status.setAttribute('role', 'status');
@@ -34,7 +35,8 @@ export function createShareView(preview) {
       expand.setAttribute('aria-haspopup', 'dialog'); expand.setAttribute('aria-controls', dialog.id);
       expand.addEventListener('click', () => open(expand), {signal}); actions.append(expand);
     }
-    actions.append(save); host.append(note, image, actions, fallback, status);
+    actions.append(save); host.append(note, image);
+    actionHost.append(actions); host.append(fallback, status);
     copy.addEventListener('click', async () => {
       if (!url) return;
       const current = revision, value = url;
@@ -62,7 +64,7 @@ export function createShareView(preview) {
     return { image, copy, save, expand, status, fallback };
   }
   const label = element('h3', 'tool-share-label', '도구 공유'); inline.append(label);
-  const panels = [panel(inline, true), panel(dialog, false)];
+  const panels = [panel(inline, true), panel(body, false, footer)];
   function open(button) {
     anchor = button; heading.textContent = title; dialog.showModal();
   }

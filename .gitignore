@@ -20,7 +20,5 @@ coverage/
 test-results/
 playwright-report/
 
-# Bluetooth experiment raw logs stay local; concise summaries are versioned.
-/dev/bluetooth-install/results/*
-!/dev/bluetooth-install/results/README.md
-!/dev/bluetooth-install/results/*-summary.json
+# Local hardware/debug logs; never cleared by the test runner.
+/.local/logs/

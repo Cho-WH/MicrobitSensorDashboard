@@ -7,14 +7,14 @@ bluetooth.onBluetoothConnected(function () {
     connected = true
     streaming = false
     commandVersion += 1
-    basic.clearScreen()
+    SensorDisplay.setMode("connected")
 })
 
 bluetooth.onBluetoothDisconnected(function () {
     connected = false
     streaming = false
     commandVersion += 1
-    basic.clearScreen()
+    SensorDisplay.setMode("waiting")
 })
 
 bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
@@ -23,26 +23,28 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () 
     commandVersion += 1
     let startRequest = commandVersion
     streaming = false
-    basic.clearScreen()
+    SensorDisplay.setMode(connected ? "connected" : "waiting")
 
     if (connected && command == "start") {
         // The first call enables LED light sensing and returns a placeholder zero.
         // Keep the display enabled and blank; later zero readings are valid darkness.
         input.lightLevel()
-        basic.pause(100)
+        basic.pause(DEFAULT_SAMPLE_INTERVAL_MS)
         if (connected && commandVersion == startRequest) {
             streaming = true
+            SensorDisplay.setMode("streaming")
         }
     }
 })
 
 basic.clearScreen()
 bluetooth.startUartService()
+SensorDisplay.start(false)
 
 basic.forever(function () {
     if (connected && streaming) {
         sendSample()
-        basic.pause(100)
+        basic.pause(DEFAULT_SAMPLE_INTERVAL_MS)
     } else {
         basic.pause(50)
     }

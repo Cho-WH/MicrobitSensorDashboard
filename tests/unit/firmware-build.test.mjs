@@ -5,13 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { createPairingTrial } from '../../dev/firmware/pairing-trial.mjs';
+import { getFirmwareArtifact } from '../../src/device/firmware.js';
 import { hash, inside, readJson, normalizeText, parseArgs, createPlans, prepareToolchain, buildCandidate } from '../../dev/firmware/build-support.mjs';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const config = await readJson(new URL('../../dev/firmware/targets.json', import.meta.url));
 const template = await readJson(new URL('../../dev/firmware/pxt-template.json', import.meta.url));
-const { readRuntime } = createRequire(import.meta.url)('../../dev/firmware/offline.cjs');
+const { readRuntime } = createRequire(import.meta.url)('../../dev/firmware/runtime-cache.cjs');
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'sensor-lab-firmware-test-'));
   t.after(async () => { inside(tmpdir(), root); await rm(root, { recursive: true, force: true }); });
@@ -20,13 +20,18 @@ async function fixture(t) {
 
 test('target selection and common profile preserve the exact published magnetic config and accept a new source target', async () => {
   const plans = createPlans(config, template, repository), names = [...plans.keys()];
-  assert.deepEqual(parseArgs([], names).targets, ['magnetometer']);
+  assert.deepEqual(parseArgs([], names, config.releases).targets, config.releases);
+  assert.deepEqual(parseArgs(['--all'], names, config.releases).targets, config.releases);
+  assert.deepEqual(parseArgs(['analog-raw'], names, config.releases).targets, ['analog-raw']);
   assert.deepEqual(parseArgs(['--all'], names).targets, names);
   assert.equal(parseArgs(['--list'], names).list, true);
   assert.equal(parseArgs(['temperature', '--check'], names).check, true);
-  for (const args of [['unknown'], ['--publish'], ['--all','temperature'], ['--all','--check'], ['--list','--check']]) assert.throws(() => parseArgs(args, names));
-  const old = await readJson(new URL('../../public/firmware/magnetometer-uart-v2.build.json', import.meta.url));
-  assert.equal(hash(plans.get('magnetometer').config), old.configSha256);
+  for (const args of [['unknown'], ['--publish'], ['--all','temperature'], ['--all','--check'], ['--list','--check'], ['--check']]) assert.throws(() => parseArgs(args, names));
+  const published = getFirmwareArtifact('sensor-lab-magnetometer');
+  const record = await readJson(new URL('../../' + published.source.buildRecord, import.meta.url));
+  const release = plans.get('magnetometer');
+  assert.equal(hash(release.config), record.configSha256);
+  assert.equal(release.version, published.version);
   const next = structuredClone(config);
   next.targets['test-sensor'] = { ...next.targets.temperature, id: 'test-uart', name: 'test-sensor', source: 'firmware/examples/test-sensor.ts' };
   const added = createPlans(next, template, repository).get('test-sensor');
@@ -48,32 +53,14 @@ test('bad build identities, output collisions, source traversal and remote depen
   }
 });
 
-test('pairing trial changes only the mode setting and isolates outputs from the baseline', () => {
-  const original = JSON.stringify(template);
-  const baseline = createPlans(config, template, repository).get('temperature');
-  const trial = createPairingTrial(config, template, repository);
-  const modified = JSON.parse(trial.config);
-  assert.equal(modified.yotta.config['microbit-dal'].bluetooth.pairing_mode, 1);
-  modified.yotta.config['microbit-dal'].bluetooth.pairing_mode = 0;
-  assert.deepEqual(modified, JSON.parse(baseline.config));
-  assert.equal(JSON.stringify(template), original);
-  assert.equal(trial.sourcePath, baseline.sourcePath);
-  assert.deepEqual(trial.protocol, baseline.protocol);
-  assert.notEqual(trial.key, baseline.key);
-  assert.notEqual(trial.artifact, baseline.artifact);
-  for (const target of ['accelerometer', 'magnetometer', 'bmp280', 'analog-raw', 'temperature-light']) {
-    const candidate = createPairingTrial(config, template, repository, target);
-    assert.equal(JSON.parse(candidate.config).yotta.config['microbit-dal'].bluetooth.open, 1);
-  }
-  assert.throws(() => createPairingTrial(config, template, repository, 'unknown'), /Unknown/);
-});
-
 test('additional local source is embedded, hashed and included in the standalone download; a mismatch preserves the candidate', async t => {
   const root = await fixture(t), input = join(root, 'firmware/examples'), drivers = join(root, 'firmware/drivers');
   await mkdir(input, { recursive: true }); await mkdir(drivers, { recursive: true });
   const main = 'readSensor()\n', driver = 'function readSensor() {}\n', hex = ':00000001FF\n';
   await writeFile(join(input, 'bmp280.js'), main); await writeFile(join(drivers, 'bmp280.ts'), driver);
-  const plan = createPlans(config, template, root).get('bmp280');
+  const isolated = structuredClone(config);
+  isolated.targets.bmp280.additionalSources = { 'bmp280-driver.ts': 'firmware/drivers/bmp280.ts' };
+  const plan = createPlans(isolated, template, root).get('bmp280');
   const options = { root, toolchain: config.toolchain, runtime: { files: [] }, readV2: async () => hex,
     compile: async project => { await mkdir(join(project,'built'), { recursive: true }); await writeFile(join(project,'built/binary.hex'),hex); },
     unpack: async () => ({ source: JSON.stringify({ 'main.ts': main, 'bmp280-driver.ts': driver, 'pxt.json': plan.config }) }) };
@@ -104,14 +91,14 @@ test('wrong compiler versions or native cache bytes fail before changing compile
     await writeFile(join(root, 'node_modules', name, 'package.json'), JSON.stringify({ version }));
   }
   const cli = join(root, 'node_modules/pxtcli.json'); await writeFile(cli, 'unchanged');
-  await mkdir(join(root, 'runtime-cache'));
+  await mkdir(join(root, 'runtime-cache-pairing'));
   const sha = 'a'.repeat(64), bytes = Buffer.from('native');
   const runtime = { target: `pxt-microbit@${toolchain.target}`, pxt: `pxt-core@${toolchain.compiler}`, files: [{ compileSha: sha, file: `${sha}.hex`, sha256: hash(bytes), bytes: bytes.length }] };
-  await writeFile(join(root, 'runtime-cache/manifest.json'), JSON.stringify(runtime));
-  await writeFile(join(root, 'runtime-cache', `${sha}.hex`), 'wrong');
+  await writeFile(join(root, 'runtime-cache-pairing/manifest.json'), JSON.stringify(runtime));
+  await writeFile(join(root, 'runtime-cache-pairing', `${sha}.hex`), 'wrong');
   await assert.rejects(prepareToolchain(root, toolchain), /Runtime cache changed/);
   assert.equal(await readFile(cli, 'utf8'), 'unchanged');
-  await writeFile(join(root, 'runtime-cache', `${sha}.hex`), bytes);
+  await writeFile(join(root, 'runtime-cache-pairing', `${sha}.hex`), bytes);
   await writeFile(join(root, 'node_modules/pxt-core/package.json'), '{"version":"0.0.0"}');
   await assert.rejects(prepareToolchain(root, toolchain), /Expected pxt-core/);
   assert.equal(await readFile(cli, 'utf8'), 'unchanged');
@@ -121,7 +108,9 @@ test('failed compilation, missing binary, bad HEX, embedded mismatches and chang
   const root = await fixture(t);
   await mkdir(join(root, 'firmware/examples'), { recursive: true });
   await writeFile(join(root, 'firmware/examples/temperature.js'), 'let temperature = 0\r\n');
-  const plan = createPlans(config, template, root).get('temperature'), source = 'let temperature = 0\n', hex = ':00000001FF\n';
+  const isolated = structuredClone(config);
+  delete isolated.targets.temperature.additionalSources;
+  const plan = createPlans(isolated, template, root).get('temperature'), source = 'let temperature = 0\n', hex = ':00000001FF\n';
   const unpack = async () => ({ source: JSON.stringify({ 'main.ts': source, 'pxt.json': plan.config }) });
   const options = { root, toolchain: config.toolchain, runtime: { files: [] }, readV2: async () => hex, unpack,
     compile: async project => { await mkdir(join(project, 'built'), { recursive: true }); await writeFile(join(project, 'built/binary.hex'), hex); } };

@@ -1,5 +1,10 @@
 const kelvin = { id: 'calc-kelvin', name: '절대온도', unit: 'K', lhs: { kind: 'column', columnId: 'temperatureC' }, op: '+', rhs: { kind: 'constant', value: 273.15 } };
 export const uiCopy = {
+  home: {
+    activityEyebrow: '게이뤼삭 실험', activityTitle: '공기를 데우면 압력은 어떻게 변할까?',
+    activityDescription: '부피가 일정한 밀폐 용기 속 공기를 데우며, 온도와 압력의 관계를 찾아봐요.',
+    curriculum: '고등학교 · 물질과 에너지', curriculumDetail: '2022 개정 · 이상 기체 방정식',
+  },
   preview: {
     eyebrow: '게이뤼삭 실험',
     question: '밀폐한 공기를 데우면 압력은 어떻게 달라질까요?',

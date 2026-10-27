@@ -1,19 +1,12 @@
 // Shared Node/browser fake. No native Bluetooth calls or persistent browser state.
 export function bluetoothFixture(options = {}) {
   const ids = { partial: 'e97dd91d-251d-470a-a062-fa1922dfa9a8', info: '0000180a-0000-1000-8000-00805f9b34fb',
-    dfu: '0000fe59-0000-1000-8000-00805f9b34fb', uart: '6e400001-b5a3-f393-e0a9-e50e24dcca9e' };
+    uart: '6e400001-b5a3-f393-e0a9-e50e24dcca9e' };
   const writes = [], requests = [], state = { mode: options.mode ?? 1, connects: 0, disconnects: 0,
     controlSubscribed: false, uartSubscribed: false,
     programHash: options.programHash ?? options.runtimeHash ?? '11f3cd7e54807276', packets: 0, batches: [], expectedSequence: 0 };
   let batch = [], lastNack = false;
-  const device = new EventTarget(), control = new EventTarget(), rx = new EventTarget(), dfuButton = new EventTarget();
-  Object.assign(dfuButton, { uuid: '8ec90004-f315-4f60-9fb8-838830daea50', properties: { write: true, indicate: true },
-    async startNotifications() { if (options.dfuDenied) throw new DOMException('Insufficient authentication', 'SecurityError'); },
-    async writeValueWithResponse(bytes) {
-      writes.push(['dfu-entry', ...bytes]);
-      dfuButton.value = new DataView(Uint8Array.of(0x20, 1, options.dfuRejected ? 4 : 1).buffer);
-      dfuButton.dispatchEvent(new Event('characteristicvaluechanged'));
-    } });
+  const device = new EventTarget(), control = new EventTarget(), rx = new EventTarget();
   const missing = () => { throw new DOMException('Not present', 'NotFoundError'); };
   device.name = 'BBC micro:bit [trial]'; device.id = 'test-device-only';
   function notify(bytes) {
@@ -80,7 +73,6 @@ export function bluetoothFixture(options = {}) {
     if (options.denied === uuid) throw new DOMException('Not permitted', 'SecurityError');
     if (options.missing === uuid) return missing();
     if (uuid === ids.partial) return { getCharacteristic: async () => control };
-    if (uuid === ids.dfu) return { getCharacteristics: async () => options.fullDfu ? [dfuButton] : [] };
     if (uuid === ids.uart) return { getCharacteristics: async () => [rx, tx] };
     if (uuid === ids.info) return { getCharacteristic: async id => ({ readValue: async () => new DataView(new TextEncoder().encode(
       { [0x2a24]: options.model ?? 'BBC micro:bit V2', [0x2a25]: 'test-serial', [0x2a26]: 'test-runtime' }[id]).buffer) }) };

@@ -9,12 +9,15 @@ export function createPreparationSession({ send, onChange, onError, timers = glo
   }
   return {
     getState,
-    start() { move('handshake', 10000, '자기장 프로그램의 응답이 없어요. 최신 프로그램을 설치하고 다시 연결하세요.'); },
+    start() {
+      // Notifications may already have reported the board's current state.
+      if (phase === 'handshake') move('handshake', 10000, '자기장 프로그램의 응답이 없어요. 기기가 보정 중이라면 보정을 완료한 뒤 다시 연결하세요. 그 외에는 micro:bit 뒤쪽의 리셋 버튼을 누른 뒤 다시 연결하세요.');
+    },
     accept(input) {
       if (disposed || input.type !== 'device-status') return;
       if (input.status === 'choice' && phase === 'handshake') move('choice');
       else if (input.status === 'calibrating' && phase === 'starting') move('calibrating', 120000, '보정이 끝나지 않았어요. 보드의 안내를 확인하고 다시 연결하세요.');
-      else if (input.status === 'calibrated' && phase === 'calibrating') { calibration = 'device-reported'; move('receiving'); }
+      else if (input.status === 'calibrated' && ['handshake', 'calibrating'].includes(phase)) { calibration = 'device-reported'; move('receiving'); }
       else if (input.status === 'skipped' && phase === 'skipping') { calibration = 'skipped'; move('receiving'); }
     },
     async act(action) {

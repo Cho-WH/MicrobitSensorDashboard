@@ -36,5 +36,5 @@ export function getGuideContent(context, modules = registry) {
   return structuredClone({ equipment: guide?.equipment ?? [], activityEquipment: activityGuide?.equipment ?? [],
     wiring: guide?.wiring ?? [], cableHelp: guide?.cableHelp ?? '', viewer: guide?.viewer ?? null, illustrations: guide?.illustrations ?? null,
     calibrationInstructions: guide?.calibrationInstructions ?? [], setupImage: activityGuide?.setupImage ?? null,
-    experimentGuide: activityGuide?.experimentGuide ?? null });
+    experimentGuide: activityGuide?.experimentGuide ?? guide?.experimentGuide ?? null });
 }

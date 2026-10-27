@@ -87,7 +87,10 @@ export async function runRecordTests(report=()=>{}) {
     clickVisible($('#delete-run-dialog button[type=button]'));await idle();check(await repo.readSnapshot(id),'삭제 취소로 원자료 손실');
     failDelete=true;await click(`[data-delete-run="${id}"]`);await until(()=>$('#delete-run-dialog')?.open,'삭제 확인 없음');submit('#delete-run-dialog');
     await until(()=>$('#delete-run-dialog .record-dialog-error').textContent.includes('삭제 실패'),'삭제 실패 알림 없음');check(await repo.readSnapshot(id),'삭제 실패로 자료 손실');
-    failDelete=false;submit('#delete-run-dialog');await idle();check(!await repo.readSnapshot(id),'삭제 재시도 실패');
+    failDelete=false;submit('#delete-run-dialog');
+    // Removing the active run also leaves its tool; acknowledge the existing exit confirmation.
+    await until(()=>$('#leave-dialog').open,'현재 실험 삭제 후 도구 종료 확인 없음');
+    clickVisible($('#leave-save'));await idle();check(!await repo.readSnapshot(id),'삭제 재시도 실패');
     report('실험 관리 · 이름 저장·단일 작성자 잠금·삭제 확인/취소·삭제 실패/재시도');
 
     const dialogs=createRecordDialogs(host), snapshot=structuredClone(added);let exported;

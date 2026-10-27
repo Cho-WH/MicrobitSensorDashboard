@@ -1,0 +1,34 @@
+/* Shared native-dialog layout, based on the experiment-method guide.
+   Views own content, close/submit behavior and focus return. */
+[data-visual-theme="luminous"] dialog.ui-dialog {
+  width:min(var(--ui-dialog-width,560px),calc(100vw - 32px));
+  max-width:calc(100vw - 32px); max-height:calc(100dvh - 32px);
+  padding:0; overflow:hidden;
+}
+.ui-dialog[data-dialog-size="compact"] { --ui-dialog-width:460px; }
+.ui-dialog[data-dialog-size="wide"] { --ui-dialog-width:900px; }
+.ui-dialog[open], .ui-dialog-form { display:flex; flex-direction:column; }
+.ui-dialog-form { flex:1; min-height:0; margin:0; overflow:hidden; }
+.ui-dialog-header { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--sl-space-4); padding:24px 28px 20px; flex-shrink:0; }
+.ui-dialog-header > div { min-width:0; }
+.ui-dialog-dismiss { flex-shrink:0; margin:0; }
+.ui-dialog-label { margin:0 0 var(--sl-space-2); color:var(--sl-navy); font-size:var(--sl-type-label); font-weight:600; line-height:1.4; }
+.ui-dialog .ui-dialog-title { margin:0; color:var(--sl-navy); font-size:1.5625rem; line-height:1.45; letter-spacing:-.04em; word-break:keep-all; overflow-wrap:anywhere; }
+.ui-dialog[data-dialog-size="compact"] .ui-dialog-title { font-size:1.25rem; }
+.ui-dialog-title:focus { outline:none; }
+[data-visual-theme="luminous"] .ui-dialog button.ui-dialog-close {
+  --sl-button-bg:transparent; --sl-button-text:var(--sl-muted); --sl-button-line:transparent;
+  flex-shrink:0; width:var(--sl-target); min-height:var(--sl-target); padding:8px; border:0;
+}
+.ui-dialog-body { flex:1; min-height:0; padding:0 28px 24px; overflow:auto; overscroll-behavior:contain; }
+.ui-dialog-description { margin:0; color:var(--sl-muted); font-size:var(--sl-type-control); line-height:1.75; }
+.ui-dialog-footer { flex-shrink:0; padding:16px 28px; border-top:1px solid var(--sl-line); }
+.ui-dialog-actions { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:var(--sl-space-2); margin:0; }
+.ui-dialog-actions > button { min-width:88px; }
+@media(max-width:580px) {
+  .ui-dialog-header { padding:18px 18px 16px; }
+  .ui-dialog .ui-dialog-title { font-size:1.25rem; }
+  .ui-dialog-body { padding:0 18px 18px; }
+  .ui-dialog-footer { padding:14px 18px; }
+  .ui-dialog-actions > button { flex:1 1 auto; }
+}

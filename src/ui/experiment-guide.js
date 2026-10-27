@@ -3,10 +3,13 @@ import { createUuid } from '../domain/uuid.js';
 import { getGuideContent } from '../guide/steps.js';
 import { createExperimentGuidePreferences } from '../guide/experiment-guide-preferences.js';
 import { element, findElement } from './dom.js';
+import { createPanelTransition } from './panel-transition.js';
 
 /** @param {HTMLElement} host */
 export function createExperimentGuide(host) {
-  const dialog=element('dialog','experiment-guide'); host.append(dialog);
+  const dialog=element('dialog','ui-dialog experiment-guide'); dialog.dataset.dialogSize='wide'; host.append(dialog);
+  const transition=createPanelTransition(dialog);
+  const preferenceCache=new Map();
   let guide=null, pageIndex=0, preferences=null, recording=false, controller=new AbortController();
   /** @type {HTMLElement|null} */ let returnFocus=null;
   /** @type {HTMLElement[]} */ let pages=[];
@@ -19,21 +22,31 @@ export function createExperimentGuide(host) {
     findElement(dialog,'button','[data-guide-next]').textContent=target===pages.length-1?'측정하러 가기':'다음 →';
     findElement(dialog,'span','[data-guide-count]').textContent=`${target+1} / ${pages.length}`;
     findElement(dialog,'div','.experiment-guide-body').scrollTop=0;
-    if (animate&&target!==pageIndex&&!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      pages[target].getAnimations().forEach(animation=>animation.cancel());
-      pages[target].animate([{opacity:0,transform:`translateX(${direction*10}px)`},{opacity:1,transform:'translateX(0)'}],{duration:180,easing:'ease-out'});
-    }
+    if (animate&&target!==pageIndex) transition.play([pages[target]], {
+      frames:[{opacity:0,transform:`translateX(${direction*10}px)`},{opacity:1,transform:'translateX(0)'}],
+    });
+    else transition.cancel();
     pageIndex=target;
   }
   function build(next) {
     controller.abort(); controller=new AbortController(); const signal=controller.signal;
-    guide=next; preferences=createExperimentGuidePreferences(next.id,next.version);
-    dialog.innerHTML=`<header class="experiment-guide-header"><div><p class="experiment-guide-label">실험 방법</p><h2 tabindex="-1"></h2></div><button type="button" class="experiment-guide-close" aria-label="실험 방법 닫기">✕</button></header><nav class="experiment-guide-pages" aria-label="실험 방법 단계"></nav><div class="experiment-guide-body"></div><footer class="experiment-guide-footer"><div class="experiment-guide-paging"><button type="button" data-guide-previous>이전</button><span class="experiment-guide-count" data-guide-count></span><button type="button" class="primary" data-guide-next>다음 →</button></div><div class="experiment-guide-options"><label class="experiment-guide-preference"><input type="checkbox" data-suppress-guide>이 안내 자동으로 열지 않기</label><p class="experiment-guide-recording" data-guide-recording>안내를 보는 동안에도 측정값은 기록돼요.</p></div></footer>`;
+    guide=next;
+    const key=`${next.id}@${next.version}`;
+    if(!preferenceCache.has(key))preferenceCache.set(key,createExperimentGuidePreferences(next.id,next.version));
+    preferences=preferenceCache.get(key);
+    dialog.innerHTML=`<header class="ui-dialog-header"><div><p class="ui-dialog-label">실험 방법</p><h2 class="ui-dialog-title" tabindex="-1"></h2></div><button type="button" class="ui-dialog-close experiment-guide-close" aria-label="실험 방법 닫기">✕</button></header><nav class="experiment-guide-pages" aria-label="실험 방법 단계"></nav><div class="ui-dialog-body experiment-guide-body"></div><footer class="ui-dialog-footer"><div class="experiment-guide-paging"><button type="button" data-guide-previous>이전</button><span class="experiment-guide-count" data-guide-count></span><button type="button" class="primary" data-guide-next>다음 →</button></div><div class="experiment-guide-options"><label class="experiment-guide-preference"><input type="checkbox" data-suppress-guide>이 안내 자동으로 열지 않기</label><p class="experiment-guide-recording" data-guide-recording>안내를 보는 동안에도 측정값은 기록돼요.</p></div></footer>`;
     const heading=findElement(dialog,'h2','h2'); heading.id='experiment-guide-'+createUuid(); heading.textContent=next.title; dialog.setAttribute('aria-labelledby',heading.id);
+    const single=next.pages.length===1, label=next.label??'실험 방법';
+    dialog.classList.toggle('experiment-guide-single',single);
+    findElement(dialog,'p','.ui-dialog-label').textContent=label;
+    findElement(dialog,'button','.experiment-guide-close').setAttribute('aria-label',`${label} 닫기`);
+    findElement(dialog,'button','[data-guide-previous]').hidden=single;
+    findElement(dialog,'span','[data-guide-count]').hidden=single;
     const body=findElement(dialog,'div','.experiment-guide-body'), nav=findElement(dialog,'nav','nav');
+    nav.hidden=single;
     pages=[]; pageButtons=[];
     next.pages.forEach((page,index)=>{
-      const button=element('button','',`${index+1} ${page.label}`); button.type='button'; nav.append(button); pageButtons.push(button);
+      const button=element('button','ui-tab',`${index+1} ${page.label}`); button.type='button'; nav.append(button); pageButtons.push(button);
       const section=element('section','experiment-guide-page'), visual=element('figure','experiment-guide-visual');
       if (page.image) { const img=element('img','experiment-guide-image'); img.src=page.image; img.alt=page.alt; img.loading='lazy'; visual.append(img); }
       else {
@@ -42,7 +55,9 @@ export function createExperimentGuide(host) {
         visual.append(flow);
       }
       visual.append(element('figcaption','',page.caption));
-      const copy=element('div','experiment-guide-copy'); copy.append(element('p','eyebrow',`STEP ${String(index+1).padStart(2,'0')}`),element('h3','',page.title));
+      const copy=element('div','experiment-guide-copy');
+      if(!single)copy.append(element('p','eyebrow',`STEP ${String(index+1).padStart(2,'0')}`));
+      copy.append(element('h3','',page.title));
       const list=element('ol','experiment-guide-instructions');
       for(const [title,text] of page.instructions){const li=element('li');li.append(element('h4','',title),element('p','',text));list.append(li);}
       copy.append(list);section.append(visual,copy);if(page.caution)section.append(element('p','experiment-guide-caution',page.caution));
@@ -57,7 +72,7 @@ export function createExperimentGuide(host) {
     findElement(dialog,'button','[data-guide-next]').addEventListener('click',()=>{if(pageIndex===pages.length-1)dialog.close();else showPage(pageIndex+1);},{signal});
     findElement(dialog,'button','.experiment-guide-close').addEventListener('click',()=>dialog.close(),{signal});
     const checkbox=findElement(dialog,'input','[data-suppress-guide]'); checkbox.addEventListener('change',()=>preferences.setSuppressed(checkbox.checked),{signal});
-    dialog.addEventListener('close',()=>{if(returnFocus?.isConnected&&returnFocus.getClientRects().length)returnFocus.focus({preventScroll:true});returnFocus=null;},{signal});
+    dialog.addEventListener('close',()=>{transition.cancel();if(returnFocus?.isConnected&&returnFocus.getClientRects().length)returnFocus.focus({preventScroll:true});returnFocus=null;},{signal});
   }
   return {
     show(context,{automatic=false,anchor=document.activeElement}={}) {
@@ -71,6 +86,6 @@ export function createExperimentGuide(host) {
     },
     setRecording(active){recording=active;if(guide)findElement(dialog,'p','[data-guide-recording]').hidden=!active;},
     close(){returnFocus=null;recording=false;if(dialog.open)dialog.close();},
-    dispose(){returnFocus=null;controller.abort();if(dialog.open)dialog.close();dialog.remove();},
+    dispose(){returnFocus=null;controller.abort();transition.dispose();if(dialog.open)dialog.close();dialog.remove();},
   };
 }

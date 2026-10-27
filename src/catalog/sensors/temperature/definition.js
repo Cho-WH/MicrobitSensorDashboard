@@ -1,5 +1,5 @@
 import { getFirmwareArtifact } from '../../../device/firmware.js';
-const artifact = getFirmwareArtifact('temperature-uart');
+const artifact = getFirmwareArtifact('sensor-lab-temperature');
 export const temperature = {
   id: 'temperature', version: 1, name: '내장 온도 센서', boards: ['micro:bit-v2'], codecId: 'temperature-csv-v1',
   defaultVisibleChannelIds: ['temperatureC'],

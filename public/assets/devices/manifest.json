@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "assetVersion": "1.3.0",
+  "assetVersion": "1.3.6",
   "units": "mm",
   "coordinates": { "front": "+Z", "top": "+Y", "rightFromFront": "+X" },
   "runtime": "../../vendor/three-r180.js",
@@ -13,7 +13,7 @@
   ],
   "scenes": { "entry": "scenes.js", "factory": "createDeviceScene", "ids": ["board", "usb", "battery"] },
   "preview": "../../viewers/devices/index.html",
-  "posters": { "generator": "../../../dev/device-assets/render-posters.html", "sourceAssetVersion": "1.3.0", "images": { "board": "posters/board.png", "usb": "posters/usb.png", "battery": "posters/battery.png", "bmp280": "posters/bmp280.png", "expansion-board": "posters/expansion-board.png", "jumper-wires": "posters/jumper-wires.png" } },
+  "posters": { "generator": "../../../dev/device-assets/render-posters.html", "sourceAssetVersion": "1.3.6", "images": { "board": "posters/board.png", "usb": "posters/usb.png", "battery": "posters/battery.png", "reset": "posters/reset.png", "bmp280": "posters/bmp280.png", "expansion-board": "posters/expansion-board.png", "jumper-wires": "posters/jumper-wires.png", "sensor-temperature": "posters/sensor-temperature.png", "sensor-motion": "posters/sensor-motion.png", "sensor-light": "posters/sensor-light.png" } },
   "sources": [
     { "url": "https://tech.microbit.org/docs/hardware/assets/Microbit_V2_Assembly.pdf", "usage": "접점 중심의 좌우 대칭 위치 참고" },
     { "url": "https://tech.microbit.org/hardware/edge-connector/", "usage": "1.27 mm 피치, 큰 접점 5개와 가는 접점 20개 구성 참고" },

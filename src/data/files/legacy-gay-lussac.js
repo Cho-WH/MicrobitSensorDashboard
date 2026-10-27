@@ -1,5 +1,6 @@
 // Legacy boundary for Cho-WH/bme280 59c5c149450f970bace2deaa183857c275595853.
 import { getExperiment } from '../../catalog/index.js';
+import { getFirmwareIdentity } from '../../device/firmware.js';
 import { unpackSamples } from './compact-samples.js';
 import { checkJson, requireValue, object, validateExperimentSnapshot } from './validation.js';
 
@@ -12,7 +13,10 @@ export function parseLegacyGayLussac(file) {
   for (const s of old.samples) requireValue(object(s) && Number.isFinite(s.receivedAt) && object(s.validity) && ['temperatureC', 'pressureHpa'].every(id =>
     (Number.isFinite(s[id]) && ['valid', 'out-of-range'].includes(s.validity[id]))
       || (s[id] === null && s.validity[id] === 'missing')), '원자료 숫자·유효성 표시를 확인하세요.');
-  const snapshot = { ...old, run: { ...old.run, schemaVersion: 1, context: getExperiment('bmp280', 'gay-lussac'),
+  const context = getExperiment('bmp280', 'gay-lussac'), firmware = getFirmwareIdentity('bmp280-uart', 1);
+  context.firmware = { ...context.firmware, id: firmware.id, version: firmware.version, sha256: firmware.sha256 };
+  context.sensor.firmware = { ...context.firmware };
+  const snapshot = { ...old, run: { ...old.run, schemaVersion: 1, context,
     provenance: { format: file.format, fileVersion: file.version, schemaVersion: 2, runId: old.run.id } },
     samples: old.samples.map(s => {
       const { temperatureC, pressureHpa, validity, ...rest } = s;

@@ -7,45 +7,85 @@
   },
   "targets": {
     "magnetometer": {
-      "id": "magnetometer-uart",
-      "version": 2,
-      "name": "sensor-lab-magnetometer-v2",
+      "id": "sensor-lab-magnetometer",
+      "version": 1,
+      "name": "sensor-lab-magnetometer-v1",
       "description": "Microbit Sensor Lab four-channel magnetic field UART program",
       "source": "firmware/examples/magnetometer.js",
-      "protocol": { "codecId": "magnetometer-csv-v2", "startCommand": "prepare", "sampleIntervalMs": 100 }
+      "protocol": {
+        "codecId": "magnetometer-csv-v2",
+        "startCommand": "prepare",
+        "sampleIntervalMs": 100
+      },
+      "additionalSources": {
+        "sensor-display.ts": "firmware/common/sensor-display.ts"
+      },
+      "displayName": "내장 자기장 센서 프로그램"
     },
     "temperature": {
-      "id": "temperature-uart",
+      "id": "sensor-lab-temperature",
       "version": 1,
       "name": "sensor-lab-temperature-v1",
       "description": "Microbit Sensor Lab built-in temperature UART program",
       "source": "firmware/examples/temperature.js",
-      "protocol": { "codecId": "temperature-csv-v1", "startCommand": "start", "sampleIntervalMs": 1000 }
+      "protocol": {
+        "codecId": "temperature-csv-v1",
+        "startCommand": "start",
+        "sampleIntervalMs": 1000
+      },
+      "additionalSources": {
+        "sensor-display.ts": "firmware/common/sensor-display.ts"
+      },
+      "displayName": "내장 온도 센서 프로그램"
     },
     "light-level": {
-      "id": "light-level-uart",
+      "id": "sensor-lab-light-level",
       "version": 1,
       "name": "sensor-lab-light-level-v1",
       "description": "Microbit Sensor Lab built-in relative light level UART program",
       "source": "firmware/examples/light-level.js",
-      "protocol": { "codecId": "light-level-csv-v1", "startCommand": "start", "sampleIntervalMs": 100 }
+      "protocol": {
+        "codecId": "light-level-csv-v1",
+        "startCommand": "start",
+        "sampleIntervalMs": 100
+      },
+      "additionalSources": {
+        "sensor-display.ts": "firmware/common/sensor-display.ts"
+      },
+      "displayName": "내장 밝기(조도) 센서 프로그램"
     },
     "accelerometer": {
-      "id": "accelerometer-uart",
+      "id": "sensor-lab-accelerometer",
       "version": 1,
       "name": "sensor-lab-accelerometer-v1",
       "description": "Microbit Sensor Lab four-channel acceleration UART program",
       "source": "firmware/examples/accelerometer.js",
-      "protocol": { "codecId": "accelerometer-csv-v1", "startCommand": "start", "sampleIntervalMs": 100 }
+      "protocol": {
+        "codecId": "accelerometer-csv-v1",
+        "startCommand": "start",
+        "sampleIntervalMs": 100
+      },
+      "additionalSources": {
+        "sensor-display.ts": "firmware/common/sensor-display.ts"
+      },
+      "displayName": "내장 가속도 센서 프로그램"
     },
     "bmp280": {
-      "id": "bmp280-uart",
-      "version": 2,
-      "name": "sensor-lab-bmp280-v2",
-      "description": "Build-only BMP280 compensation and coherent sampling candidate",
+      "id": "sensor-lab-bmp280",
+      "version": 1,
+      "name": "sensor-lab-bmp280-v1",
+      "description": "Microbit Sensor Lab BMP280 temperature and pressure UART program",
       "source": "firmware/examples/bmp280.js",
-      "additionalSources": { "bmp280-driver.ts": "firmware/drivers/bmp280.ts" },
-      "protocol": { "codecId": "bmp280-csv-v1", "startCommand": "bme", "sampleIntervalMs": 100 }
+      "additionalSources": {
+        "sensor-display.ts": "firmware/common/sensor-display.ts",
+        "bmp280-driver.ts": "firmware/drivers/bmp280.ts"
+      },
+      "protocol": {
+        "codecId": "bmp280-csv-v1",
+        "startCommand": "bme",
+        "sampleIntervalMs": 100
+      },
+      "displayName": "BMP280 센서 프로그램"
     },
     "analog-raw": {
       "id": "analog-raw-uart",
@@ -53,7 +93,11 @@
       "name": "sensor-lab-analog-raw-v1",
       "description": "Build-only three-channel P0 P1 P2 raw ADC foundation",
       "source": "firmware/examples/analog-raw.js",
-      "protocol": { "codecId": "analog-raw-csv-v1", "startCommand": "start", "sampleIntervalMs": 100 }
+      "protocol": {
+        "codecId": "analog-raw-csv-v1",
+        "startCommand": "start",
+        "sampleIntervalMs": 100
+      }
     },
     "temperature-light": {
       "id": "temperature-light-uart",
@@ -61,7 +105,18 @@
       "name": "sensor-lab-temperature-light-v1",
       "description": "Microbit Sensor Lab built-in temperature and light UART example",
       "source": "firmware/examples/temperature-light.js",
-      "protocol": { "codecId": "temperature-light-csv-v1", "startCommand": "start", "sampleIntervalMs": 1000 }
+      "protocol": {
+        "codecId": "temperature-light-csv-v1",
+        "startCommand": "start",
+        "sampleIntervalMs": 1000
+      }
     }
-  }
+  },
+  "releases": [
+    "temperature",
+    "light-level",
+    "accelerometer",
+    "magnetometer",
+    "bmp280"
+  ]
 }

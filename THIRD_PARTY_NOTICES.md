@@ -14,6 +14,12 @@ M1 ports code from `Cho-WH/bme280`, fixed commit
 under the user's explicit instruction to reuse the Gay-Lussac implementation.
 This app does not import a remote repository at runtime.
 
+The retired dashboard source and its manual MakeCode guide were removed from
+the working tree. The historical implementation remains at
+[MicrobitSensorDashboard 5d80407](https://github.com/Cho-WH/MicrobitSensorDashboard/tree/5d804071108bc61056c1eaf15d143acfc3bf135a).
+Adapted Bluetooth code, shared vendor assets and legacy CSV compatibility
+fixtures retain their source references.
+
 The common device assets in `public/assets/devices/` reuse the pinned BMP280
 viewer's geometry, text and connector helpers. Its bundled Three.js r180 and
 OrbitControls now live in one shared `public/vendor/three-r180.js` ES module;
@@ -43,7 +49,7 @@ illustrations are included in M1.
 
 Third-party files retain their upstream headers and license texts:
 
-- Chart.js 4.5.0: MIT; the existing `vendor/chart.umd.js` is shared by both entries.
+- Chart.js 4.5.0: MIT; the app uses the pinned `vendor/chart.umd.js` bundle.
 - idb 8.0.4: ISC; `public/vendor/idb-LICENSE`.
 - Papa Parse 5.7.0: MIT; `public/vendor/papaparse-LICENSE`.
 - Lucide SVG 0.468.0: ISC; `public/vendor/lucide-LICENSE`.

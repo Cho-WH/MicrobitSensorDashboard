@@ -18,6 +18,7 @@ async function snapshot(page, id, excludeId) {
 test('closed recording page restores saved samples and analysis without reconnecting; downloaded JSON reopens independently', async ({ page, context }) => {
   test.setTimeout(60_000);
   await page.goto('/sensors/accelerometer/?mock=1&view=measure');
+  await page.locator('.experiment-guide [data-guide-next]').click();
   await expect(page.locator('html')).toHaveAttribute('data-app-state', 'ready');
   await page.locator('.luminous-settings').click();
   await page.locator('#connect').click();
@@ -49,6 +50,7 @@ test('closed recording page restores saved samples and analysis without reconnec
   expect(restored.workspace.reflection).toEqual(before.workspace.reflection);
   expect(restored.events.filter(e => e.type === 'interrupted')).toHaveLength(1);
   await reopened.locator('[data-view="measure"]').click();
+  await reopened.locator('.experiment-guide [data-guide-next]').click();
   await expect(reopened.locator('#connect')).toBeEnabled();
   await expect(reopened.locator('#disconnect')).toBeDisabled();
   await expect(reopened.locator('#pause-recording')).toBeDisabled();

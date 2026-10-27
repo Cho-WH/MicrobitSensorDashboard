@@ -1,4 +1,5 @@
 import { registry } from './modules.js';
+import { getFirmwareIdentity } from '../device/firmware.js';
 import { validateChannels, validateGraph } from '../domain/contracts.js';
 export const catalog = registry.catalog;
 
@@ -6,15 +7,20 @@ export const catalog = registry.catalog;
 export function getSensorRuntime(context, modules = registry) {
   const module = modules.getSensor(context?.sensor), definition = module?.definition;
   const activity = context?.activity;
+  let firmware;
+  try { firmware = getFirmwareIdentity(context?.firmware?.id, context?.firmware?.version); } catch { /* Unsupported saved firmware. */ }
+  // Historical UART identities remain metadata-only compatibility references.
   const compatibleActivity = !activity || Boolean(modules.getActivity(activity, context?.sensor));
   if (!definition || module.recording === false || (context.sensor.codecId != null && context.sensor.codecId !== definition.codecId)
-    || context.firmware?.id !== definition.firmware.id || context.firmware?.version !== definition.firmware.version
+    || (context.firmware?.id !== definition.firmware.id && context.firmware?.id !== definition.id + '-uart') || !firmware || firmware.version !== context.firmware.version || firmware.codecId !== definition.codecId
     || (context.firmware?.codecId != null && context.firmware.codecId !== definition.codecId) || !compatibleActivity
     || !Array.isArray(context.channels) || context.channels.length !== definition.channels.length
     || context.channels.some((channel, index) => channel.id !== definition.channels[index].id)) {
     throw Object.assign(new Error('이 센서·프로그램 버전으로 장치를 연결할 수 없습니다. 새 실험을 준비하세요.'), { code: 'unsupported-sensor-runtime' });
   }
-  return { definition: structuredClone(definition), decode: module.decode, mockLine: module.mockLine, preparation: module.preparation };
+  return { definition: structuredClone({ ...definition, firmware: { ...definition.firmware,
+    id: firmware.id, version: firmware.version, sha256: firmware.sha256, startCommand: firmware.startCommand,
+    sampleIntervalMs: firmware.sampleIntervalMs, stale: firmware.stale } }), decode: module.decode, mockLine: module.mockLine, preparation: module.preparation };
 }
 export const getSensorPreparation = context => registry.getSensor(context?.sensor)?.preparation;
 export function getActivityPolicy(context, modules = registry) {

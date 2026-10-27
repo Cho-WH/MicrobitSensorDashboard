@@ -5,30 +5,31 @@ let command = ""
 bluetooth.onBluetoothConnected(function () {
     connected = true
     streaming = false
-    basic.clearScreen()
+    SensorDisplay.setMode("connected")
 })
 
 bluetooth.onBluetoothDisconnected(function () {
     connected = false
     streaming = false
-    basic.clearScreen()
+    SensorDisplay.setMode("waiting")
 })
 
 bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
     command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine))
     command = command.trim().toLowerCase()
     streaming = connected && command == "start"
-    basic.clearScreen()
+    SensorDisplay.setMode(streaming ? "streaming" : connected ? "connected" : "waiting")
 })
 
 input.setAccelerometerRange(AcceleratorRange.EightG)
 basic.clearScreen()
 bluetooth.startUartService()
+SensorDisplay.start(true)
 
 basic.forever(function () {
     if (connected && streaming) {
         sendSample()
-        basic.pause(100)
+        basic.pause(DEFAULT_SAMPLE_INTERVAL_MS)
     } else {
         basic.pause(50)
     }

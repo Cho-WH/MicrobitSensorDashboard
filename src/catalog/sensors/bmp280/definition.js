@@ -1,5 +1,5 @@
 import { getFirmwareArtifact } from '../../../device/firmware.js';
-const artifact = getFirmwareArtifact('bmp280-uart');
+const artifact = getFirmwareArtifact('sensor-lab-bmp280');
 export const bmp280 = {
   id: 'bmp280', version: 1, name: 'BMP280 · 온도와 기압 측정', boards: ['micro:bit-v2'], codecId: 'bmp280-csv-v1',
   defaultVisibleChannelIds: ['temperatureC','pressureHpa'],

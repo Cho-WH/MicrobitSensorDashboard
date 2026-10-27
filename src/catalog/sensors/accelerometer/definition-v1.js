@@ -1,5 +1,5 @@
 import { getFirmwareArtifact } from '../../../device/firmware.js';
-const artifact = getFirmwareArtifact('accelerometer-uart');
+const artifact = getFirmwareArtifact('sensor-lab-accelerometer');
 export const accelerometer = {
   id: 'accelerometer', version: 1, name: '내장 가속도 센서', boards: ['micro:bit-v2'], codecId: 'accelerometer-csv-v1',
   defaultVisibleChannelIds: ['accelerationStrength'],

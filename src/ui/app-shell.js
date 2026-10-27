@@ -1,12 +1,16 @@
 import { bindDisclosureMenu } from './disclosure-menu.js';
 import { findElement } from './dom.js';
+import { createPanelTransition } from './panel-transition.js';
 
 // Bind the static shell. The controller's signal owns these listeners' lifetime.
 // No markup, styles, experiment state or recording permissions are created here.
 export function bindAppShell(root, { signal }) {
+  const transition = createPanelTransition(findElement(root, 'main', '.lab-shell'));
+  signal.addEventListener('abort', () => transition.dispose(), { once: true });
   bindFileButtonPlacement(root, signal);
   bindCompatibilityFit(findElement(root, 'header', '.lab-identity'), signal);
   bindDisclosureMenu(findElement(root, 'details', '.luminous-export'), { signal });
+  bindConnectionHelp(root, signal);
   const settings = findElement(root, 'button', '.luminous-settings');
   const dialog = findElement(root, 'dialog', '#measurement-settings');
   const measure = findElement(root, 'section', '[data-screen="measure"]');
@@ -15,6 +19,24 @@ export function bindAppShell(root, { signal }) {
   dialog.addEventListener('close', () => {
     if (!measure.hidden && settings.getClientRects().length) settings.focus({ preventScroll: true });
   }, { signal });
+}
+
+// All connection entry points open one informational dialog without device actions.
+function bindConnectionHelp(root, signal) {
+  const dialog = findElement(root, 'dialog', '#connection-troubleshooting');
+  const title = findElement(dialog, 'h2', '#connection-troubleshooting-title');
+  let opener = null;
+  root.addEventListener('click', event => {
+    const trigger = event.target instanceof Element ? event.target.closest('[data-connection-help]') : null;
+    if (!(trigger instanceof HTMLButtonElement) || trigger.disabled || dialog.open) return;
+    opener = trigger;
+    dialog.showModal(); title.focus({ preventScroll: true });
+  }, { signal });
+  dialog.addEventListener('close', () => {
+    if (opener?.isConnected && opener.getClientRects().length) opener.focus({ preventScroll: true });
+    opener = null;
+  }, { signal });
+  signal.addEventListener('abort', () => { if (dialog.open) dialog.close(); }, { once: true });
 }
 
 // Move the existing control so focus order follows the visible mobile header.

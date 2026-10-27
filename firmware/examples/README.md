@@ -1,19 +1,23 @@
 # 센서 프로그램 소스와 예제
 
-이 폴더에는 앱에 배포하는 내장 센서 프로그램의 소스와 빌드 전용 예제가 있습니다. 학생용 설치는 앱에서 제공하는 고정 HEX를 사용합니다.
+앱에 설치하는 센서 프로그램의 원본 소스다. 사용자에게는 앱이 제공하는 검증된 설치 파일을 안내한다.
+
+- 동작·통신·표시 기준: [센서 프로그램 공통 동작 규약](../../docs/sensor-program-contract.md)
+- 현재 버전·검증·산출물 관리: [펌웨어 빌드·배포](../../dev/firmware/README.md)
+- 앱의 채널·단위·해석 등록: [센서·활동 모듈](../../src/catalog/README.md)
 
 | 소스 | 용도 |
 |---|---|
-| [magnetometer.js](magnetometer.js) | 앱에서 보정 시작·생략을 선택하는 자기장 v2 |
-| [temperature.js](temperature.js) | 내장 보드 온도 |
-| [light-level.js](light-level.js) | 내장 상대 밝기 |
+| [temperature.js](temperature.js) | 내장 보드 온도. 일반 센서의 연결·시작·중단 구조를 참고할 출발점 |
+| [light-level.js](light-level.js) | 내장 상대 밝기. LED 광센서 준비와 요청 무효화 포함 |
 | [accelerometer.js](accelerometer.js) | 내장 가속도 X/Y/Z·크기 |
-| [bmp280.js](bmp280.js) | [BMP280 드라이버](../drivers/bmp280.ts)를 사용하는 보정식·일괄 읽기 수정 후보. 앱 배포 전 |
-| [analog-raw.js](analog-raw.js) | P0/P1/P2 원시 ADC 기반 검증. 물리량 환산·앱 등록 전 |
-| [temperature-light.js](temperature-light.js) | 온도·밝기 결합 예제. 빌드 전용이며 앱 센서로 등록하지 않음 |
+| [magnetometer.js](magnetometer.js) | 앱에서 선택하는 보정과 이번 부팅 중 완료 기억. 통신 규약 v2 |
+| [bmp280.js](bmp280.js) | 현재 앱의 BMP280 프로그램. [드라이버](../drivers/bmp280.ts)의 보정식·일괄 읽기 사용 |
+| [analog-raw.js](analog-raw.js) | 개발용 P0/P1/P2 원시 ADC 예제. 물리량 환산·앱 등록 전 |
+| [temperature-light.js](temperature-light.js) | 개발용 온도·밝기 결합 예제. 앱 미등록 |
 
-시작 명령·상태 응답·CSV 순서·명목 송신 간격은 [고정 빌드와 센서별 통신 규약](../../dev/firmware/README.md)을 따릅니다. 자기장 v2는 일반 예제의 start 흐름과 다릅니다. 명목 대기 간격은 실제 수신 주기를 보증하지 않습니다.
+등록 5종은 [공통 표시 모듈](../common/sensor-display.ts)을 함께 빌드한다. 새 센서는 `targets.json`의 `additionalSources`에 이 모듈을 포함하고, UART 준비 후 `SensorDisplay.start(true)`를 한 번 호출한다. 연결·송신·보정 전환 시 `setMode()`를 호출하며 표시를 별도로 복제하지 않는다. 조도처럼 LED를 쓰면 안 되는 측정은 `start(false)`로 지정한다. 측정 루프는 공통 `DEFAULT_SAMPLE_INTERVAL_MS`(100ms)를 사용하며 내장 온도는 1000ms 예외다.
 
-새 프로그램은 [template.js](../template.js)를 출발점으로 검토할 수 있습니다. 현재 앱의 채널·단위·해석은 [센서 모듈](../../src/catalog/README.md)에 등록하며 옛 대시보드의 설정 파일을 수정하지 않습니다. 소스 수정 뒤에는 고정 빌드·검증을 거쳐 설치 허용 목록과 배포 HEX를 함께 갱신해야 합니다.
+새 프로그램은 최신 배포 소스와 공통 동작 규약을 함께 참고한다. 예제를 복사했다고 연결·취소·센서별 준비 조건이 자동 충족되는 것은 아니다. 공통 UX 규칙은 센서별로 임의 변경하지 않으며, 네이티브 입력 변경 여부는 빌드 절차에서 확인한다.
 
-앱의 BMP280 설치는 여전히 원본의 고정 HEX v1을 사용합니다. 새 v2 후보는 공통 런타임 빌드·수치 검사까지 확인했으며 실물 검증 전입니다. 원본 배포 파일의 [출처와 라이선스](../../public/firmware/NOTICES.md)를 유지합니다. 새 드라이버의 수학적 근거는 소스에 명시한 Bosch 데이터시트입니다.
+소스 수정 후 새 펌웨어의 빌드·배포와 보드 설치가 필요하다. 과거 자료의 버전·해시·원자료를 새 소스에 맞춰 변경하지 않는다. 외부 드라이버와 보존된 배포본의 [출처·라이선스](../../public/firmware/NOTICES.md)를 유지한다.

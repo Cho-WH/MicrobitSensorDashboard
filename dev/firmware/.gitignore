@@ -1,6 +1,2 @@
 node_modules/
 built/
-projects/*/built/
-projects/*/pxt_modules/
-projects/*/.pxt/
-projects/*/main.ts

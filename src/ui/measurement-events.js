@@ -13,10 +13,12 @@ export function createMeasurementEvents(list, plot, onEditNote = null) {
   const status = element('details', 'measurement-system-events');
   const statusTitle = element('summary'), statusList = element('ol');
   status.append(statusTitle, statusList); list.after(status);
-  const dialog = element('dialog', 'measurement-event-dialog');
-  const heading = element('h2', '', '조작 기록'), detailList = element('ol'), close = element('button', '', '닫기');
+  const dialog = element('dialog', 'ui-dialog measurement-event-dialog'); dialog.dataset.dialogSize='compact';
+  const heading = element('h2', 'ui-dialog-title', '조작 기록'), detailList = element('ol'), close = element('button', '', '닫기');
   heading.id = 'measurement-event-title'; dialog.setAttribute('aria-labelledby', heading.id);
-  close.type = 'button'; dialog.append(heading, detailList, close); plot.after(dialog);
+  const header=element('header','ui-dialog-header'), body=element('div','ui-dialog-body'), footer=element('footer','ui-dialog-footer'), actions=element('div','ui-dialog-actions');
+  header.append(heading); body.append(detailList); actions.append(close); footer.append(actions);
+  close.type = 'button'; close.dataset.eventAction='close'; dialog.append(header, body, footer); plot.after(dialog);
   let records = [], lastEvents = null, lastContext = null, markerKey = '', returnFocus = null;
   let markers = [];
   let writable = false;

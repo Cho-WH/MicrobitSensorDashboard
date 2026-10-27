@@ -108,15 +108,14 @@
 .luminous-channel-note { margin:8px 0px 0px; font-size:var(--sl-type-caption); color:var(--sl-muted); }
 [data-visual-theme="luminous"] #lab-notice:not(:empty) { margin:8px 0px 0px; font-size:var(--sl-type-small); line-height:1.6; padding:4px 10px; background:var(--sl-notice-bg); border-radius:var(--sl-radius-badge); }
 [data-visual-theme="luminous"] #lab-error:not([hidden]) { margin-top:var(--sl-space-3); }
-.luminous-settings-dialog { width:min(500px,calc(100vw - var(--sl-space-8))); max-height:calc(100dvh - 40px); border-radius:var(--sl-radius-shell); }
-[data-visual-theme="luminous"] .luminous-settings-dialog .preparation-panel { padding:0px; border:0px; }
+
 [data-visual-theme="luminous"] .luminous-settings-dialog .lab-controls { display:flex; flex-wrap:wrap; gap:10px; }
 [data-visual-theme="luminous"] .luminous-settings-dialog .lab-controls label { width:100%; margin-bottom:6px; }
 [data-visual-theme="luminous"] .luminous-settings-dialog #run-name { width:100%; }
 .luminous-logo, .luminous-signature, [data-visual-theme="luminous"] .lab-nav { flex-shrink:0; }
 [data-visual-theme="luminous"] .luminous-settings-dialog :is(input, select) { border-color:var(--sl-input-border); }
 [data-visual-theme="luminous"] .skip-link:focus { z-index:30; }
-.luminous-close { width:100%; margin-top:20px; }
+
 @media (min-width: 1600px) {
   [data-visual-theme="luminous"] body { padding-right:42px; }
 }

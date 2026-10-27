@@ -54,19 +54,20 @@ npm run test:e2e:large    # 36,000행 기록·저장·분석·파일 왕복
 ```
 
 `npm run test:e2e`는 대용량 자료 검사를 포함한 전체 브라우저 검사를 실행합니다. 작업 중에는 파일·`--grep`으로 영향 범위를 선택하고, UI 전반 변경은 `test:e2e:ui`, 기록·저장·분석·파일 처리 변경은 관련 검사와 `test:e2e:large`를 실행합니다. 대용량 검사의 행 수·저장 횟수·원자료 왕복 검증은 그대로 유지합니다.
-실행당 별도 8081 서버를 사용하고 검사마다 새 브라우저 환경을 만듭니다. 독립 검사는 최대 2개씩 실행하며, 서버의 명령 상태를 공유하는 Bluetooth 시험 파일 내부는 순차 실행합니다. 열려 있는 앱의 실험 자료·장치 권한과 분리됩니다.
+실행당 별도 8081 서버를 사용하고 검사마다 새 브라우저 환경을 만듭니다. 독립 검사는 최대 2개씩 실행합니다. 열려 있는 앱의 실험 자료·장치 권한과 분리됩니다.
 실패하면 `test-results/`에 화면·네트워크·콘솔 추적을 남깁니다. `npx playwright show-trace <trace.zip>`으로 확인합니다.
 UI 검사는 실제 앱 구조·스타일을 사용하며 모의 장치 입력은 실물 검증과 구분합니다. 앱 흐름·준비 기능 검사는 동작 줄이기 설정으로 실행하고, 레이아웃·측정·분석 화면 검사는 기본 애니메이션을 유지합니다. 상태 변경은 완료 조건으로, 배치는 렌더링·크기 전환 완료로 기다립니다.
 
 작업 중 타입 검사는 타입·의존성 변경 시, 빌드는 빌드 산출물에 영향이 있을 때 실행합니다.
 커밋 직전에만 타입·전체 단위·빌드·전체 브라우저 검사를 함께 실행합니다:
 `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e`.
+센서 프로그램의 정식 V1 5종은 `npm run build:firmware`로 빌드합니다. 발행은 별도 `npm run publish:firmware` 명령이며, 자세한 절차는 [펌웨어 빌드·배포](dev/firmware/README.md)를 따릅니다.
 정적 빌드 결과는 `dist/`에 생성됩니다. 자세한 검사 원칙은 [AGENTS.md](AGENTS.md)를 따릅니다.
 
 GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위 검사·빌드가 성공한 뒤
 `dist/`를 배포합니다. 저장소 Settings → Pages의 Source는 **GitHub Actions**를 사용합니다.
 루트 홈, 다섯 센서, 게이뤼삭 활동의 진입 페이지를 함께 생성하므로 직접 진입과 새로고침을 지원합니다.
-기존 대시보드의 `js/`·`styles.css`는 배포하지 않습니다.
+종료된 대시보드 코드와 MakeCode 수동 편집 안내는 제거했습니다. 당시 구현은 Git 커밋 `5d80407`에서 확인할 수 있습니다. 현재 설치 기준은 [센서 프로그램 공통 동작 규약](docs/sensor-program-contract.md)과 [펌웨어 빌드·배포](dev/firmware/README.md)를 따릅니다.
 
 공유 링크의 기본 공개 주소는 `src/app/deployment.js`에서 관리합니다. 배포 시 `PUBLIC_BASE_URL` 환경 변수에 HTTPS 앱 루트를
 지정하면 빌드가 공유 링크 설정과 OG·canonical 주소에 함께 반영합니다. 끝의 `/`를 정규화하고 검색 매개변수·인증 정보가 있는 주소는 거부합니다.
@@ -84,8 +85,8 @@ GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위
 - [기획](docs/unified-sensor-lab-plan.md) · [기술 설계](docs/unified-sensor-lab-architecture.md)
 - [센서·활동 모듈 등록](src/catalog/README.md)
 - [공통 장치 3D 자산](public/assets/devices/README.md) · [장치 자산 확인 페이지](public/viewers/devices/index.html)
-- [펌웨어 빌드·프로토콜](dev/firmware/README.md)
-- [센서 프로그램 설치 개선 설계](docs/sensor-program-installation-roadmap.md) (M6 Bluetooth 부분 교체 · 개발 시험 중, 제품 미통합)
+- [센서 프로그램 공통 동작 규약](docs/sensor-program-contract.md) · [펌웨어 빌드·배포](dev/firmware/README.md)
+- [센서 프로그램 설치 개선 설계](docs/sensor-program-installation-roadmap.md) (M6 Bluetooth 부분 교체 · 앱 통합 구현, 정식 화면 실물 인수 대기)
 - [저장·파일 계약](docs/unified-sensor-lab-architecture.md#8-저장복원파일) · [구현·검증 이력](docs/history/README.md)
 
 ## 라이선스와 출처

@@ -6,7 +6,7 @@ import { webcrypto } from 'node:crypto';
 import { createProgrammer } from '../../src/device/programmer.js';
 import { getFirmwareArtifact } from '../../src/device/firmware.js';
 
-const firmware = await readFile(new URL('../../public/firmware/bmp280-uart-v1.hex', import.meta.url));
+const firmware = await readFile(new URL('../../public/firmware/sensor-lab-bmp280-v1.hex', import.meta.url));
 const deferred = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; };
 function fixture(overrides = {}) {
   const calls = [];
@@ -22,7 +22,7 @@ function fixture(overrides = {}) {
     disconnect: async () => { calls.push('disconnect'); }, dispose: () => { calls.push('dispose'); },
   };
   const programmer = createProgrammer({
-    firmwareId: 'bmp280-uart', canInstall: () => true, crypto: webcrypto, supported: () => true,
+    firmwareId: 'sensor-lab-bmp280', version: 1, canInstall: () => true, crypto: webcrypto, supported: () => true,
     fetchFile: async () => new Response(firmware), createConnection: () => usb,
     beforeFlash: async () => { calls.push('stop-ble'); }, ...overrides,
   });
@@ -134,11 +134,11 @@ test('only known manifest identities can select firmware, ignoring untrusted fil
   const { programmer } = fixture({ program: { url: 'https://example.invalid/untrusted.hex', sha256: '0'.repeat(64) },
     fetchFile: async url => { requested = url; return new Response(firmware); } });
   await programmer.prepare();
-  assert.equal(requested, getFirmwareArtifact('bmp280-uart').url);
+  assert.equal(requested, getFirmwareArtifact('sensor-lab-bmp280', 1).url);
   assert.equal(programmer.getState().status, 'ready');
   assert.throws(() => fixture({ firmwareId: '__proto__' }), /프로그램 버전/);
   assert.throws(() => fixture({ firmwareId: 'unregistered' }), /프로그램 버전/);
-  assert.throws(() => fixture({ version: 2 }), /프로그램 버전/);
+  assert.throws(() => fixture({ version: 999 }), /프로그램 버전/);
   await programmer.dispose();
 });
 
@@ -170,7 +170,7 @@ test('a completed flash records only installation evidence, never reported firmw
   const { programmer } = fixture(); await programmer.prepare(); await programmer.install();
   assert.equal(programmer.getState().installedThisSession, true);
   assert.equal(programmer.getState().reportedFirmware, null);
-  assert.deepEqual(programmer.getState().expectedFirmware, { id: 'bmp280-uart', version: 1 });
+  assert.deepEqual(programmer.getState().expectedFirmware, { id: 'sensor-lab-bmp280', version: 1 });
   await programmer.dispose();
 });
 

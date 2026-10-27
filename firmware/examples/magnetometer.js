@@ -1,6 +1,8 @@
 // Sensor Lab protocol v2. Preparation status never occupies a measurement row.
 let connected = false
 let phase = "idle"
+// Volatile evidence from this boot only, independent of persisted compass offsets.
+let calibrationComplete = false
 let generation = 0
 
 function report (state = "") {
@@ -9,52 +11,70 @@ function report (state = "") {
 
 bluetooth.onBluetoothConnected(function () {
     connected = true
-    phase = "idle"
     generation += 1
-    basic.clearScreen()
+    if (phase != "calibrating") {
+        phase = "idle"
+        SensorDisplay.setMode("connected")
+    }
 })
 
 bluetooth.onBluetoothDisconnected(function () {
     connected = false
-    phase = "idle"
     generation += 1
-    // End an in-progress compass animation as well as the UART session.
-    control.reset()
+    // Calibration belongs to the board, not to a Bluetooth connection.
+    if (phase != "calibrating") {
+        phase = "idle"
+        SensorDisplay.setMode("waiting")
+    }
 })
 
 bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
     let command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim().toLowerCase()
     if (!connected) return
     if (command == "prepare") {
-        if (phase == "calibrating") {
-            report("calibrating")
-            return
+        if (phase == "calibrating") return
+        if (calibrationComplete) {
+            report("calibrated")
+            phase = "streaming"
+            SensorDisplay.setMode("streaming")
+        } else {
+            phase = "choice"
+            SensorDisplay.setMode("connected")
+            report("choice")
         }
-        generation += 1
-        phase = "choice"
-        basic.clearScreen()
-        report("choice")
     } else if (command == "calibrate" && phase == "choice") {
         phase = "calibrating"
+        SensorDisplay.setMode("calibrating")
         let attempt = generation
         report("calibrating")
         input.calibrateCompass()
-        if (!connected || generation != attempt || phase != "calibrating") return
-        basic.clearScreen()
-        report("calibrated")
-        phase = "streaming"
+        calibrationComplete = true
+        SensorDisplay.setMode(connected ? "connected" : "waiting")
+        phase = "idle"
+        // A later connection asks for the retained completion through prepare.
+        if (connected && generation == attempt) {
+            report("calibrated")
+            phase = "streaming"
+            SensorDisplay.setMode("streaming")
+        }
     } else if (command == "skip" && phase == "choice") {
         report("skipped")
         phase = "streaming"
+        SensorDisplay.setMode("streaming")
     } else if (command == "stop") {
         generation += 1
-        phase = "idle"
+        // Stop transmission without pretending to cancel the native compass routine.
+        if (phase != "calibrating") {
+            phase = "idle"
+            SensorDisplay.setMode("connected")
+        }
     }
 })
 
 input.setAccelerometerRange(AcceleratorRange.EightG)
 basic.clearScreen()
 bluetooth.startUartService()
+SensorDisplay.start(true)
 
 basic.forever(function () {
     if (connected && phase == "streaming") {
@@ -64,7 +84,7 @@ basic.forever(function () {
             convertToText(input.magneticForce(Dimension.Z)) + "," +
             convertToText(input.magneticForce(Dimension.Strength))
         )
-        basic.pause(100)
+        basic.pause(DEFAULT_SAMPLE_INTERVAL_MS)
     } else {
         basic.pause(50)
     }

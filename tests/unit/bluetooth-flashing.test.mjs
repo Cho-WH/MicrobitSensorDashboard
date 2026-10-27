@@ -1,16 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createDiagnostics } from '../../dev/bluetooth-install/diagnostics.js';
-import { trialPrograms } from '../../dev/bluetooth-install/firmware/programs.js';
-import { verifyTrialProgram, blockPackets, loadTrialProgram } from '../../dev/bluetooth-install/partial-flash.js';
+import { createDiagnostics } from '../../src/device/bluetooth-protocol.js';
+import { getFirmwareArtifact } from '../../src/device/firmware.js';
+import { verifyProgram, blockPackets } from '../../src/device/partial-flash.js';
 import { bluetoothFixture } from '../fixtures/bluetooth-diagnostics.mjs';
-const target = trialPrograms[0];
-const original = new Uint8Array(await readFile(new URL('../../dev/bluetooth-install/firmware/' + target.file, import.meta.url)));
+const target = getFirmwareArtifact('sensor-lab-temperature').partial;
+const verifyImage = (id, data) => verifyProgram(id === target.id ? target : undefined, data);
+const original = new Uint8Array(await readFile(new URL(target.url)));
 function setup(options = {}, overrides = {}) {
   const f = bluetoothFixture({ flash: true, disconnectOnFinish: true, fixedFrame: true, mode: 0, runtimeHash: target.runtimeHash, ...options });
   const events = [];
-  const client = createDiagnostics({ bluetooth: f.bluetooth, timeoutMs: 100, support: () => 'supported', onEvent: e => events.push(e), ...overrides });
+  const client = createDiagnostics({ verifyImage, bluetooth: f.bluetooth, timeoutMs: 100, support: () => 'supported', onEvent: e => events.push(e), ...overrides });
   return { f, events, client };
 }
 
@@ -19,10 +20,9 @@ test('pinned binary integrity is checked before any GATT request and copies call
   const corrupt = original.slice(); corrupt[64] ^= 1;
   await assert.rejects(client.flash(target.id, corrupt), /파일 검증/);
   assert.deepEqual(f.writes, []);
-  await assert.rejects(verifyTrialProgram('unregistered', original), /등록/);
-  await assert.rejects(verifyTrialProgram(target.id, original.slice(1)), /크기/);
-  await assert.rejects(loadTrialProgram(target.id, async () => ({ ok: false })), /읽지/);
-  const mutable = original.slice(), checked = verifyTrialProgram(target.id, mutable); mutable.fill(0);
+  await assert.rejects(verifyImage('unregistered', original), /등록/);
+  await assert.rejects(verifyImage(target.id, original.slice(1)), /크기/);
+  const mutable = original.slice(), checked = verifyImage(target.id, mutable); mutable.fill(0);
   assert.deepEqual((await checked).data, original);
 });
 

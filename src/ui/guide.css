@@ -17,7 +17,6 @@
   --sl-tab-line:#ff9464; --sl-tab-hover:var(--sl-stage-overlay);
 }
 
-.guide { --guide-motion-easing:cubic-bezier(.22,1,.36,1); }
 .guide .eyebrow { color:var(--sl-stage-selection); }
 .guide-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
 .guide-status { color:var(--sl-stage-selection); font-size:0.8125rem; font-weight:600; margin:0px; }
@@ -60,6 +59,13 @@
 .guide-program-actions { flex-direction:column; }
 .guide-program progress { width:100%; height:9px; margin:0px 0px 16px; accent-color:var(--sl-stage-selection); }
 .guide-program .quiet-button { font-size:0.75rem; }
+.guide-program { --install-accent:var(--sl-stage-selection); }
+.guide-program[data-tone="attention"] { --install-accent:var(--sl-stage-attention); }
+.guide-program[data-tone="success"] { --install-accent:var(--sl-stage-success); }
+.guide-program .guide-install-notice { border-left:3px solid var(--install-accent); padding:2px 0 2px 12px; margin:16px 0; }
+.guide-program .guide-install-heading { display:block; font-size:1rem; line-height:1.6; color:var(--install-accent); word-break:keep-all; }
+.guide-program .guide-device-status { margin:6px 0 0; color:var(--sl-stage-text); }
+.guide-install-detail { font-size:0.75rem; color:var(--sl-stage-muted); margin:0 0 12px; overflow-wrap:anywhere; }
 .model-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:8px; background:rgb(249, 251, 250); border-bottom:1px solid var(--sl-stage-line); }
 .viewer-modes { display:flex; flex-wrap:wrap; gap:4px; }
 .viewer-modes button, .wiring-view-controls button { font-size:0.75rem; min-height:32px; padding:6px 10px; }
@@ -148,10 +154,8 @@
   .usb-diagram { gap:8px; }
   .usb-diagram span:first-child, .usb-diagram strong { font-size:0.8125rem; padding:18px 10px; }
 }
-:root[data-visual-theme="luminous"] .guide button:disabled { opacity:1; color:var(--sl-disabled-text); background:var(--sl-disabled-bg); border-color:var(--sl-disabled-line); cursor:default; }
 :root[data-visual-theme="luminous"] .guide :is(.guide-top, .guide-substeps, .step-actions, .guide-device-actions, .guide-program-actions, .magnetic-actions, .guide-summary, .viewer-modes, .wiring-view-controls) button:not(.primary) { --sl-button-bg:transparent; --sl-button-text:var(--sl-stage-control-text); --sl-button-line:var(--sl-stage-control-line); --sl-button-hover:var(--sl-stage-overlay); --sl-button-hover-line:var(--sl-stage-selection); --sl-button-pressed:var(--sl-stage-selected-bg); }
 :root[data-visual-theme="luminous"] .guide :is(.guide-substeps button[aria-current], .viewer-modes button[aria-pressed="true"], .wiring-view-controls button[aria-pressed="true"]) { --sl-button-bg:var(--sl-stage-selected-bg); --sl-button-text:var(--sl-stage-text); --sl-button-line:var(--sl-stage-selection); }
-[data-visual-theme="luminous"] .guide { --guide-motion-duration:var(--sl-motion-panel); }
 :root[data-visual-theme="luminous"] .guide { padding:var(--sl-space-6); border:1px solid rgb(32, 60, 92); border-radius:var(--sl-radius-shell); color:var(--sl-stage-text); background:radial-gradient(at 80% 85%, rgb(27, 67, 112), transparent 54%), linear-gradient(135deg, rgb(8, 24, 41), rgb(16, 40, 70)); box-shadow:rgba(11, 31, 59, 0.094) 0px 18px 40px; }
 :root[data-visual-theme="luminous"] .guide .guide-layout { grid-template-columns:minmax(260px, 0.85fr) minmax(0px, 1.3fr); gap:30px; align-items:center; }
 :root[data-visual-theme="luminous"] .guide .guide-visual { order:2; border:0px; background:radial-gradient(at 55% 35%, rgba(91, 123, 158, 0.333), transparent 72%); position:relative; overflow:hidden; }
@@ -198,6 +202,13 @@
 :root[data-visual-theme="luminous"] .guide .guide-connection-status { border-color:var(--sl-stage-control-line); }
 :root[data-visual-theme="luminous"] .guide .guide-program[data-state="error"] { border-color:var(--sl-stage-attention); }
 :root[data-visual-theme="luminous"] .guide .guide-program[data-state="success"] { border-color:var(--sl-stage-success); }
+:root[data-visual-theme="luminous"] .guide .guide-program[data-tone="attention"] { border-color:var(--sl-stage-attention); }
+:root[data-visual-theme="luminous"] .guide .guide-device-visual[data-mode="reset"] :is(h4,.eyebrow) { color:var(--sl-stage-attention); }
+.guide[data-inline-reset="true"] .guide-visual { display:none; }
+:root[data-visual-theme="luminous"] .guide .guide-program .guide-device-visual { padding:0; margin:0 0 16px; }
+:root[data-visual-theme="luminous"] .guide .guide-program .guide-device-visual .guide-usb-image { height:180px; }
+:root[data-visual-theme="luminous"] .guide .guide-program .guide-device-visual h4 { display:none; }
+:root[data-visual-theme="luminous"] .guide .guide-program .guide-device-visual p:not(.eyebrow) { margin:0; font-size:0.75rem; }
 :root[data-visual-theme="luminous"] .guide .guide-power { padding:14px 20px; }
 :root[data-visual-theme="luminous"] .guide .guide-power summary { min-height:var(--sl-target-compact); align-content:center; }
 :root[data-visual-theme="luminous"] .guide .guide-device-image img { max-height:190px; }
@@ -232,3 +243,49 @@
 }
 
 .guide-progress { --sl-tab-edge:var(--sl-tab-idle-line); --sl-tab-edge-selected:var(--sl-tab-line); --sl-tab-weight:400; }
+
+.guide-install-mode { margin-top:14px; font-size:0.8125rem; line-height:1.7; color:var(--sl-stage-muted); }
+.guide-install-mode p { margin:0 0 4px; }
+.guide .guide-install-mode .install-mode-link {
+  --sl-button-bg:transparent; --sl-button-text:var(--sl-stage-control-text);
+  --sl-button-hover:var(--sl-stage-overlay); --sl-button-pressed:var(--sl-stage-selected-bg);
+  --sl-button-line:transparent; --sl-button-hover-line:transparent;
+  border:0; background:var(--sl-button-bg); box-shadow:none;
+  position:relative; isolation:isolate; overflow:hidden;
+  padding:8px; margin-inline-start:-8px; min-height:var(--sl-target);
+  text-decoration:underline; text-underline-offset:3px; color:var(--sl-button-text); font-size:inherit;
+  transition:background var(--sl-motion-control),transform var(--sl-motion-panel),color var(--sl-motion-control);
+}
+.guide .guide-install-mode .install-mode-link::before,
+.guide .guide-install-mode .install-mode-link::after { content:""; position:absolute; pointer-events:none; z-index:-1; }
+.guide .guide-install-mode .install-mode-link::before {
+  inset:0; border-radius:inherit; opacity:0;
+  background:linear-gradient(135deg, rgb(226 241 255 / 20%), rgb(148 187 232 / 7%) 55%, rgb(183 210 255 / 13%));
+  border:1px solid rgb(209 230 255 / 32%);
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / 22%),inset 0 -1px 0 rgb(11 31 59 / 20%);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  transition:opacity var(--sl-motion-panel);
+}
+.guide .guide-install-mode .install-mode-link::after {
+  inset-block:-50%; left:0; width:40%; opacity:0;
+  background:linear-gradient(90deg,transparent,rgb(232 245 255 / 22%),transparent);
+  transform:translateX(-160%) skewX(-20deg);
+}
+.guide .guide-install-mode .install-mode-link:focus-visible:not(:disabled)::before { opacity:1; }
+@media (hover:hover) and (pointer:fine) {
+  .guide .guide-install-mode .install-mode-link:hover:not(:disabled) { color:var(--sl-stage-text); transform:translateY(-1px); }
+  .guide .guide-install-mode .install-mode-link:hover:not(:disabled)::before { opacity:1; }
+  .guide .guide-install-mode .install-mode-link:hover:not(:disabled)::after { animation:install-mode-sheen 600ms ease-out; }
+}
+.guide .guide-install-mode .install-mode-link:active:not(:disabled) { transform:scale(0.98); }
+.guide .guide-install-mode .install-mode-link:active:not(:disabled)::before { opacity:1; }
+@keyframes install-mode-sheen {
+  0% { opacity:0; transform:translateX(-160%) skewX(-20deg); }
+  25% { opacity:1; }
+  100% { opacity:0; transform:translateX(400%) skewX(-20deg); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .guide .guide-install-mode .install-mode-link { transition:none; }
+  .guide .guide-install-mode .install-mode-link:is(:hover,:active):not(:disabled) { transform:none; }
+  .guide .guide-install-mode .install-mode-link:hover:not(:disabled)::after { animation:none; }
+}

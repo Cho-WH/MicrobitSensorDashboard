@@ -8,7 +8,7 @@ export function canResumeImportedRun(run) {
     const { definition } = getSensorRuntime(run.context), context = run.context;
     if (context.firmware.sha256 !== definition.firmware.sha256
       || context.channels.some((channel, i) => ['unit', 'quantity', 'min', 'max'].some(key => channel[key] !== definition.channels[i][key]))) return false;
-    // The legacy adapter gives analysis a current context; also check the preserved original program.
+    // The legacy adapter resolves its registered historical firmware; also check the original program.
     if (run.provenance?.format === 'gay-lussac-experiment') {
       const profile = run.profile;
       if (run.program?.sha256 !== definition.firmware.sha256 || profile?.id !== definition.codecId

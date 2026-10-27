@@ -13,7 +13,7 @@ export function inside(root, path) {
   return target;
 }
 
-export function parseArgs(args, targetNames) {
+export function parseArgs(args, targetNames, releaseNames = targetNames) {
   let target, all = false, list = false, check = false;
   for (const arg of args) {
     if (arg === '--all') all = true;
@@ -23,8 +23,10 @@ export function parseArgs(args, targetNames) {
     else throw new Error(`Unknown argument: ${arg}`);
   }
   if ((all && target) || (list && (all || target || check)) || (all && check)) throw new Error('Use a target [--check], --all, or --list separately.');
+  if (check && !target) throw new Error('Select a released target with --check.');
+  if (!releaseNames.length || new Set(releaseNames).size !== releaseNames.length || releaseNames.some(name => !targetNames.includes(name))) throw new Error('Invalid release targets.');
   if (list) return { targets: [], list, check };
-  const targets = all ? targetNames : [target ?? 'magnetometer'];
+  const targets = target ? [target] : releaseNames;
   for (const name of targets) if (!targetNames.includes(name)) throw new Error(`Unknown firmware target: ${name}. Use --list.`);
   return { targets, list, check };
 }
@@ -62,7 +64,7 @@ export function createPlans(config, template, repository) {
 }
 
 /** Validate the complete cache before invoking the compiler. */
-export async function prepareToolchain(root, toolchain, cacheDirectory = 'runtime-cache') {
+export async function prepareToolchain(root, toolchain, cacheDirectory = 'runtime-cache-pairing') {
   for (const [name, version] of [['pxt', toolchain.cli], ['pxt-microbit', toolchain.target], ['pxt-core', toolchain.compiler]]) {
     const installed = await readJson(inside(root, `node_modules/${name}/package.json`));
     if (installed.version !== version) throw new Error(`Expected ${name}@${version}; run npm ci --ignore-scripts in dev/firmware.`);
