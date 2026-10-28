@@ -51,6 +51,9 @@
 .step-actions, .guide-device-actions, .guide-program-actions { display:flex; flex-wrap:wrap; gap:8px; }
 .step-actions { margin-top:20px; }
 .step-actions .primary { flex:1 1 0%; }
+.step-actions:has(> .installation-help-trigger:not([hidden])) { flex-wrap:nowrap; }
+.step-actions > .installation-help-trigger { flex:1 1 0%; }
+.step-actions:has(> .installation-help-trigger:not([hidden])) > :is(.primary, .installation-help-trigger) { min-width:0; word-break:keep-all; }
 .guide-device-actions:not([hidden]) { margin:12px 0px; }
 .guide-note, .guide-connection-status, .guide-device-status { font-size:0.8125rem; line-height:1.7; color:var(--sl-stage-muted); white-space:pre-line; }
 .guide-connection-status { border-left:3px solid rgb(156, 190, 185); padding-left:12px; }
@@ -127,8 +130,8 @@
 .usb-diagram span:first-child, .usb-diagram strong { padding:24px 14px; border:2px solid rgb(113, 158, 154); border-radius:12px; background:white; font-size:1rem; }
 .guide-device-visual p, .guide-device-visual small { color:var(--sl-stage-muted); font-size:0.8125rem; line-height:1.8; }
 .guide-quick { font-size:0.8125rem; line-height:1.7; }
-.guide-quick label { display:flex; align-items:flex-start; gap:10px; margin:12px 0px; }
-.guide-quick input { width:18px; height:18px; margin-top:2px; accent-color:var(--sl-stage-selection); flex-shrink:0; }
+.guide-quick label { display:flex; align-items:center; gap:10px; min-height:var(--sl-target); margin:12px 0px; cursor:pointer; }
+.guide-quick input { width:18px; height:18px; min-height:0; margin:0; accent-color:var(--sl-stage-selection); flex-shrink:0; }
 .guide-summary { padding:24px; }
 .guide-summary h3 { margin:8px 0px 16px; font-size:1.25rem; }
 .guide-summary ul { list-style:none; padding:0px; margin:0px; }
@@ -252,7 +255,7 @@
   --sl-button-line:transparent; --sl-button-hover-line:transparent;
   border:0; background:var(--sl-button-bg); box-shadow:none;
   position:relative; isolation:isolate; overflow:hidden;
-  padding:8px; margin-inline-start:-8px; min-height:var(--sl-target);
+  padding:8px; min-height:var(--sl-target);
   text-decoration:underline; text-underline-offset:3px; color:var(--sl-button-text); font-size:inherit;
   transition:background var(--sl-motion-control),transform var(--sl-motion-panel),color var(--sl-motion-control);
 }

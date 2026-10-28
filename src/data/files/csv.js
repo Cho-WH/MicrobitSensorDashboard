@@ -6,6 +6,9 @@ import { LIMITS } from '../../domain/limits.js';
 import { validateExperimentSnapshot, checkFileSize, object } from './validation.js';
 import { parseLegacyCsv } from './legacy-csv.js';
 import { papa } from './papa.js';
+import { pointSourceRows } from '../../analysis/data-source.js';
+import { capturePointInput } from '../../domain/point-records.js';
+import { readCell } from '../../domain/columns.js';
 
 const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 const unescapeFormula = text => /^'[=+\-@\t\r]/.test(text) ? text.slice(1) : text;
@@ -31,31 +34,40 @@ function timestamp(text, row) {
   return ms;
 }
 
-export function analysisExportInfo(snapshot) {
-  const { candidates, excluded } = scopeMembership(snapshot.workspace, snapshot.samples.map(s => s.sampleId));
-  const rows = snapshot.samples.filter(s => candidates.has(s.sampleId));
+export function analysisExportInfo(snapshot, sourceId = 'recorded') {
+  const work = snapshot.workspace?.bySource[sourceId];
+  const sourceRows = sourceId === 'points' ? pointSourceRows(snapshot.samples, work?.inputSnapshot ?? capturePointInput(snapshot.run, snapshot.pointRecords, snapshot.samples.at(-1)?.sampleId ?? 0)) : snapshot.samples;
+  const { candidates, excluded } = scopeMembership(work, sourceRows.filter(s => !s.withdrawn).map(s => s.sampleId));
+  const rows = sourceRows.filter(s => candidates.has(s.sampleId));
   return { candidateCount: rows.length, excludedCount: rows.filter(s => excluded.has(s.sampleId)).length,
-    rows: rows.filter(s => !excluded.has(s.sampleId)), columns: snapshot.workspace?.calculatedColumns ?? [] };
+    rows: rows.filter(s => !excluded.has(s.sampleId)), columns: work?.calculatedColumns ?? [] };
 }
 
-function exportCsv(snapshot, rows, calculated = []) {
+function exportCsv(snapshot, rows, calculated = [], {sourceId = 'recorded', input = null} = {}) {
   const channels = snapshot.run.context.channels, imported = snapshot.run.importedColumns ?? [];
+  const manuals = sourceId === 'points' ? input?.manualColumns ?? snapshot.run.manualColumns : [];
+  const context = {...snapshot.run.context, manualColumns:manuals};
+  const work = snapshot.workspace?.bySource[sourceId];
+  const pointRecords = new Map(snapshot.pointRecords?.map(p => [p.pointRecordId, p]) ?? []);
   const origin = timeOrigin(snapshot.samples, snapshot.run);
-  const fields = ['sample_id', 'timestamp', 'elapsed_seconds', ...channels.flatMap(c => [c.id, c.id + ':validity', c.id + ':meta'])];
-  const extras = [...imported, ...calculated];
+  const fields = [sourceId === 'points' ? 'point_record_id' : 'sample_id', 'timestamp', 'elapsed_seconds', ...channels.flatMap(c => [c.id, c.id + ':validity', c.id + ':meta'])];
+  const extras = [...manuals, ...imported, ...calculated];
   if (channels.length + extras.length > LIMITS.maxChannels)
     fail('다시 가져올 수 있도록 숫자 열을 16개 이하로 선택하세요. 모든 계산식은 전체 실험 JSON으로 보관할 수 있어요.');
   for (const c of extras) fields.push(`${columnLabel(c)} [${c.id}]`, `${c.id}:validity`, `${c.id}:reason`, `${c.id}:meta`);
-  const sourceIds = rows.some(s => s.sourceSampleId != null);
+  const sourceIds = sourceId === 'points' || rows.some(s => s.sourceSampleId != null);
   if (sourceIds) fields.push('source_sample_id');
-  const calculate = createCalculator(snapshot.workspace?.calculatedColumns ?? [], imported, snapshot.run.context);
+  if (sourceId === 'points') fields.push('captured_at', 'withdrawn');
+  const calculate = createCalculator(work?.calculatedColumns ?? [], imported, context);
   const data = rows.map(s => {
     const values = { ...s.importedValues, ...calculate(s) };
-    return [s.sampleId, s.receivedAt === null ? '' : new Date(s.receivedAt).toISOString(),
+    for (const c of manuals) values[c.id] = readCell(s, c.id);
+    return [sourceId === 'points' ? s.pointRecordId : s.sampleId, s.receivedAt === null ? '' : new Date(s.receivedAt).toISOString(),
       s.receivedAt === null ? '' : (s.receivedAt - origin) / 1000,
       ...channels.flatMap(c => [s.values[c.id], s.validity[c.id], JSON.stringify({ name: c.name, unit: c.unit ?? null })]),
       ...extras.flatMap(c => { const r = values[c.id]; return [r.value, r.reason ? 'invalid' : 'valid', r.reason ?? '', JSON.stringify({ name: c.name, unit: c.unit ?? null })]; }),
-      ...(sourceIds ? [s.sourceSampleId ?? s.sampleId] : [])];
+      ...(sourceIds ? [sourceId === 'points' ? s.sampleId : s.sourceSampleId ?? s.sampleId] : []),
+      ...(sourceId === 'points' ? [new Date(pointRecords.get(s.pointRecordId).capturedAt).toISOString(), String(s.withdrawn)] : [])];
   });
   const text = '\uFEFF' + papa().unparse({ fields, data }, { newline: '\r\n', escapeFormulae: true });
   checkFileSize(text); return text;
@@ -64,10 +76,16 @@ export function buildCsv(snapshot) {
   const data = validateExperimentSnapshot(snapshot);
   return exportCsv(data, data.samples);
 }
-export function buildAnalysisCsv(snapshot, columnIds = snapshot.workspace?.calculatedColumns.map(c => c.id) ?? []) {
-  const data = validateExperimentSnapshot(snapshot), { rows, columns } = analysisExportInfo(data), selected = new Set(columnIds);
+export function buildPointCsv(snapshot) {
+  const data = validateExperimentSnapshot(snapshot), input = capturePointInput(data.run, data.pointRecords, data.samples.at(-1)?.sampleId ?? 0);
+  return exportCsv(data, pointSourceRows(data.samples, input), [], {sourceId:'points', input});
+}
+export function buildAnalysisCsv(snapshot, columnIds = undefined, sourceId = 'recorded') {
+  const data = validateExperimentSnapshot(snapshot), { rows, columns } = analysisExportInfo(data, sourceId);
+  columnIds ??= columns.map(c => c.id);
+  const selected = new Set(columnIds);
   if (selected.size !== columnIds.length || columnIds.some(id => !columns.some(c => c.id === id))) throw new Error('내보낼 계산 열을 다시 선택하세요.');
-  return exportCsv(data, rows, columns.filter(c => selected.has(c.id)));
+  return exportCsv(data, rows, columns.filter(c => selected.has(c.id)), {sourceId, input:data.workspace?.bySource[sourceId]?.inputSnapshot});
 }
 
 function parseRows(text) {
@@ -104,9 +122,12 @@ export function parseExperimentCsv(text, { filename = '가져온 자료.csv', id
     }
   }
   const dashboard = headers.length === 5 && ['timestamp', 'x', 'y', 'z', 'strength'].every(h => headers.includes(h));
+  const pointCsv = !mapping && headers.includes('point_record_id');
+  if (pointCsv && !['captured_at', 'withdrawn', 'source_sample_id', 'elapsed_seconds'].every(h => headers.includes(h))) fail('한 점 기록의 출처·취소 상태 열이 없습니다.');
   const hasElapsed = headers.includes('elapsed_seconds');
-  let descriptors = [], timeHeader = 'timestamp', idHeader = headers.includes('sample_id') ? 'sample_id' : null;
+  let descriptors = [], timeHeader = 'timestamp', idHeader = pointCsv ? 'point_record_id' : headers.includes('sample_id') ? 'sample_id' : null;
   const known = new Set(['timestamp', 'sample_id', 'source_sample_id', 'elapsed_seconds']);
+  if (pointCsv) ['point_record_id', 'captured_at', 'withdrawn'].forEach(h => known.add(h));
   if (mapping) {
     if (mapping.confirmed !== true || !Array.isArray(mapping.columns) || (mapping.timestamp !== null && !headers.includes(mapping.timestamp)))
       fail('시간 열과 숫자 열의 대응을 확인하세요.', null, 'CSV_MAPPING_REQUIRED', { headers });
@@ -127,14 +148,14 @@ export function parseExperimentCsv(text, { filename = '가져온 자료.csv', id
   } else {
     for (const header of headers) {
       if (known.has(header) || /:(?:validity|reason|meta)$/.test(header)) continue;
-      const extra = /^(.*?) \[((?:calc|data)-[\w-]+)\]$/.exec(header);
+      const extra = /^(.*?) \[((?:calc|data|manual)-[\w-]+)\]$/.exec(header);
       const originalId = extra ? extra[2] : header, metaKey = originalId + ':meta', flagKey = originalId + ':validity';
       if (!headers.includes(metaKey) || !headers.includes(flagKey)) continue;
       const meta = readMeta(get, rows[0], metaKey, header), imported = Boolean(extra);
       if (extra && unescapeFormula(extra[1]) !== columnLabel(meta)) fail('열 제목과 이름·단위가 다릅니다.');
       const reason = imported ? originalId + ':reason' : null;
       if (reason && !headers.includes(reason)) fail('계산 결과의 사유 열이 없습니다.');
-      const d = { id: originalId.startsWith('calc-') ? 'data-' + originalId : originalId, header, ...meta, validity: flagKey, meta: metaKey, reason, imported };
+      const d = { id: /^(calc|manual)-/.test(originalId) ? 'data-' + originalId : originalId, header, ...meta, validity: flagKey, meta: metaKey, reason, imported };
       descriptors.push(d); [header, metaKey, flagKey, reason].filter(Boolean).forEach(h => known.add(h));
     }
   }
@@ -173,6 +194,11 @@ export function parseExperimentCsv(text, { filename = '가져온 자료.csv', id
       if (!Number.isSafeInteger(source) || source <= 0) fail('원본 자료 번호를 확인하세요.', ordinal);
       sample.sourceSampleId = source;
     }
+    if (pointCsv) {
+      const withdrawn = get(row, 'withdrawn'), capturedAt = timestamp(get(row, 'captured_at'), ordinal);
+      if (!['true', 'false'].includes(withdrawn) || capturedAt === null) fail('기록 시각·취소 상태를 확인하세요.', ordinal);
+      sample.rawExtra = {csvPoint:{pointRecordId:Number(get(row, 'point_record_id')), capturedAt, withdrawn:withdrawn === 'true'}};
+    }
     if (imported.length) sample.importedValues = {};
     for (const d of descriptors) {
       const value = number(get(row, d.header), d.name, ordinal);
@@ -196,13 +222,18 @@ export function parseExperimentCsv(text, { filename = '가져온 자료.csv', id
   const missingTimestamps = samples.some(s => s.receivedAt === null);
   const context = { sensor: { id: 'csv-import', version: 1, name: dashboard ? '기존 자기장 자료' : 'CSV 자료' }, activity: null,
     channels: channelDefinitions, firmware: null, classConfig: null, setup: {}, analysisTemplates: [],
-    defaultGraph: { xColumnId: missingTimestamps ? 'sampleId' : 'receivedAt', yColumnId: channelDefinitions[0]?.id, type: missingTimestamps ? 'scatter' : 'line', connectGaps: false, view: 'measured' } };
+    defaultGraph: { xColumnId: missingTimestamps ? 'sampleId' : 'receivedAt', yColumnId: channelDefinitions[0]?.id, type: missingTimestamps || pointCsv ? 'scatter' : 'line', connectGaps: false, view: 'measured' } };
+  const exclusions = pointCsv ? samples.filter(s => s.rawExtra.csvPoint.withdrawn).map(s => ({sampleId:s.sampleId, reason:'가져온 한 점 기록에서 취소된 기록'})) : [];
+  const workspace = pointCsv ? {runId:id,envelopeRevision:1,activeSourceId:'recorded',bySource:{recorded:{
+    runId:id,workspaceRevision:1,analysisInputRevision:0,tableLastSampleId:samples.length,appliedThroughSampleId:samples.length,
+    table:{sort:{columnId:'sampleId',direction:'asc'},filter:{validity:'all',columnId:'sampleId',min:null,max:null,usage:'all'}},
+    selectedIds:[],appliedIds:samples.map(s => s.sampleId),appliedScope:'all',exclusions,calculatedColumns:[],graph:context.defaultGraph,regression:{enabled:false},note:''}}} : null;
   const snapshot = validateExperimentSnapshot({ run: { id, schemaVersion: 1, runRevision: 1,
     name: filename.replace(/\.csv$/i, '').slice(0, 100) || '가져온 CSV 자료', createdAt: now, updatedAt: now,
     status: 'complete', source: 'import', context, importedColumns: imported, ...(hasElapsed ? {timeOrigin: origin} : {}),
-    csvImport: { filename, format: dashboard ? 'microbit-dashboard-csv' : mapping ? 'mapped-csv' : 'microbit-sensor-lab-csv', missingTimestamps,
+    csvImport: { filename, format: pointCsv ? 'microbit-point-records-csv' : dashboard ? 'microbit-dashboard-csv' : mapping ? 'mapped-csv' : 'microbit-sensor-lab-csv', missingTimestamps,
       ...(restoreFromTimestamp ? {timeRestoredFromTimestamp:true} : {}) },
-    lastSavedSampleId: samples.length, lastSavedEventId: 0 }, samples, events: [], workspace: null });
+    lastSavedSampleId: samples.length, lastSavedEventId: 0 }, samples, events: [], workspace: workspace?.bySource.recorded ?? null });
   if (conflictRow !== null) fail('수신 시각과 경과 시간의 기준이 다른 행과 일치하지 않습니다.', conflictRow, 'CSV_TIME_CONFLICT');
   return snapshot;
 }

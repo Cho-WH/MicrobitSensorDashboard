@@ -21,11 +21,13 @@ export function memoryRepository() {
       if (batch.insertOnly && previous) throw new Error('existing run');
       const samples = new Map((previous?.samples ?? []).map(s => [s.sampleId, s]));
       const events = new Map((previous?.events ?? []).map(e => [e.eventId, e]));
+      const pointRecords = new Map((previous?.pointRecords ?? []).map(point => [point.pointRecordId, point]));
       for (const s of batch.samples) samples.set(s.sampleId, structuredClone(s));
       for (const e of batch.events) events.set(e.eventId, structuredClone(e));
-      records.set(run.id, { run, samples: [...samples.values()], events: [...events.values()], workspace: workspace ?? previous?.workspace ?? null });
+      for (const point of batch.pointRecords ?? []) pointRecords.set(point.pointRecordId, structuredClone(point));
+      records.set(run.id, { run, samples: [...samples.values()], events: [...events.values()], pointRecords: [...pointRecords.values()], workspace: workspace ?? previous?.workspace ?? null });
       return { sampleId: run.lastSavedSampleId, eventId: run.lastSavedEventId, runRevision: run.runRevision,
-        workspaceRevision: workspace?.workspaceRevision ?? null };
+        envelopeRevision: workspace?.envelopeRevision ?? null };
     },
     async deleteRun(id) { records.delete(id); },
   };

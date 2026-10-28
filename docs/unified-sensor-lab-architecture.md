@@ -1,6 +1,6 @@
 # 통합 센서 실험 앱 기술 설계
 
-> 상태: 통합 목표 설계 · 2026-10-28 M8-2 확장 설계 연결 · v2 · [현재 단계 상태](UNIFIED-PLAN-INDEX.md)
+> 상태: 통합 목표 설계 · 2026-10-28 M8-2 P4 자료별 분석·점 CSV 반영 · v2 · [현재 단계 상태](UNIFIED-PLAN-INDEX.md)
 > 대상: `Cho-WH/MicrobitSensorDashboard` 안의 단일 센서 실험 앱
 > 기능·UX 기준: [통합 앱 기획](unified-sensor-lab-plan.md)
 > 최초 검증 경로: BMP280 자유 측정 / 게이뤼삭 활동 / 내장 자기장 자유 측정
@@ -299,6 +299,7 @@ USB를 기본으로 두고, 2026-10-27 BMP280 전송 실측을 근거로 공통 
 | 장치 연결 | 준비용 수신을 표시하고 확인한다. 과거 미리보기는 원자료로 소급 기록하지 않는다. |
 | 기록 시작 | 구성·준비·쓰기 가능 여부 검사 → RunStore 생성·잠금 획득 → 설정 사본 보관 → Session 기록 게이트 열기. 연속 클릭은 한 요청으로 처리한다. |
 | 같은 실험의 준비·측정·분석 이동 | View만 전환한다. 기존 Session·RunStore를 유지한다. |
+| 같은 구성에서 다른 기록 방식으로 새 실험 | 기존 Session 마감·RunStore 저장·닫기를 마친 뒤 유효한 장치 연결과 준비 상태를 유지한다. 새 Session의 캡처 후보는 비우며 새 Run은 명시적 기록 때 만든다. 연결·준비가 유효하지 않으면 준비 화면으로 이동한다. |
 | 실험 선택·새 실험 준비·다른 실험으로 이력 이동 | 분석 초안 확정 → Session 기록 마감 → RunStore 저장 완료 → 장치·USB 자원 해제 → RunStore 닫기와 작성 잠금 해제. 실패 시 실험·연결을 유지하고 이동하지 않는다. |
 | 일시정지 | 저장용 입력 게이트를 닫고 사건·Run 상태를 저장한다. 수신 미리보기는 유지할 수 있다. |
 | 재개 | 준비·동일 구성 확인 후 같은 Run에 순번을 이어 붙이고 불연속 사건을 남긴다. |
@@ -338,10 +339,11 @@ Controller가 버튼과 앱 내부 이력 이동을 같은 종료 확인·저장
 ```javascript
 // Run
 {
-  id, schemaVersion: 1, runRevision,
+  id, schemaVersion: 2, runRevision,
   name, createdAt, updatedAt, status, source,
   context: { sensor, activity, classConfig, channels, firmware, setup },
   lastSavedSampleId, lastSavedEventId,
+  recordingMode, manualColumns, pointDataRevision,
   provenance // 원본 앱·파일 버전·가져온 시점 등
 }
 // Sample: source 값은 보존하고 계산 결과를 덮어쓰지 않는다.
@@ -365,14 +367,15 @@ CSV에 시각이 없으면 원래 시각을 만들어내지 않는다. 가져오
 
 ### 8.1. RunStore와 Repository
 
-새 앱은 `microbit.sensor-lab` DB v1을 사용한다. 기존 `bme280.gay-lussac` DB를 직접 업그레이드하거나 삭제하지 않는다. 새 DB 버전, Run schemaVersion, 파일 버전, 센서·활동 정의 버전은 서로 다른 값이다.
+새 앱은 `microbit.sensor-lab` DB v2를 사용하며 같은 DB의 v1 자료를 보존하며 변환한다. 기존 `bme280.gay-lussac` DB를 직접 업그레이드하거나 삭제하지 않는다. DB 버전, Run schemaVersion, 파일 버전, 센서·활동 정의 버전은 서로 다른 값이다.
 
 | 저장소 | 키 | 내용 |
 |---|---|---|
 | runs | id | 실험 메타데이터·구성 사본·저장 경계 |
 | samples | [runId, sampleId] | 추가 전용 원자료; runId 조회 인덱스 |
 | events | [runId, eventId] | 사건; 사용자 메모만 검증 후 수정 |
-| workspaces | runId | 분석 정의·revision·근거·해석 |
+| workspaces | runId | 자료별 분석 정의·revision·근거·해석을 담는 봉투 |
+| pointRecords | [runId, pointRecordId] | 점 기록·원자료 참조·수동 조건값; Run 조회와 중복 참조 방지 인덱스 |
 
 기존의 약 1초 묶음 저장을 출발점으로 한다. 종료·실험 변경·명시적 저장은 flush 경계를 사용한다. Repository는 관련 레코드를 한 readwrite 트랜잭션에 넣고 `tx.done` 후에만 저장 완료를 응답한다. 트랜잭션 도중 네트워크·파일·사용자 입력을 기다리지 않는다. [idb 계약][W-idb]
 
@@ -386,7 +389,7 @@ Web Locks의 Run별 잠금을 유지한다. 잠금 미획득 시 읽기 전용, 
 
 ### 8.2. 파일 호환
 
-새 전체 실험 형식은 `{ format:'microbit-sensor-lab', fileVersion:1, run, samples, events, workspace }`로 시작한다. 초기에는 읽기 쉬운 레코드를 유지하며 일반 내보내기에 별도 압축 라이브러리를 도입하지 않는다. 기존 compact-samples는 구형 JSON v2 가져오기 경계에서만 필요하다.
+전체 실험 형식은 `{ format:'microbit-sensor-lab', fileVersion:2, run, samples, events, pointRecords, workspace }`이며 workspace는 자료별 상태 봉투다. 기존 앱 JSON v1도 읽어 변환한다. 읽기 쉬운 레코드를 유지하며 일반 내보내기에 별도 압축 라이브러리를 도입하지 않는다. 기존 compact-samples는 구형 게이뤼삭 JSON v2 가져오기 경계에서만 필요하다.
 
 앱 CSV는 `timestamp`(UTC 수신 시각)와 `elapsed_seconds`(경과 초)를 함께 저장한다. 경과 시간 기준은 `run.timeOrigin`이 있으면 그 UTC 밀리초, 없으면 전체 자료의 첫 유효 수신이다. 구간 CSV를 가져올 때 두 열의 차로 기준을 복원하여 `run.timeOrigin`에 보관하고 모든 유효 행의 기준 일치·밀리초 정밀도를 검증한다. 시각 없는 행은 두 칸 모두 비워 두며, 음수 경과 시간은 시계 역행을 보존한다. 복원 기준은 DB·JSON·CSV 재저장과 Workspace·원자료/관계/해석 그래프·구간 선택이 공유한다. 이번 앱 CSV 규격에는 경과 초가 필수이며, 경과 초 없는 이전 앱 CSV의 자동 복원 호환 처리는 추가하지 않는다.
 
@@ -570,7 +573,7 @@ M1에서 `package.json`의 module 모드, 지원 중인 Node LTS 버전과 lockf
 
 **후속 단계의 기술 계약:** 작업 목록·선행 조건·미정 사항은 [기획 §10.1](unified-sensor-lab-plan.md#101-후속-단계와-미구현-작업)에서 관리한다. M5는 §12.4의 배포·자료 이전 경계, M6은 §6.3과 [설치 개선 과제](sensor-program-installation-roadmap.md), M7은 §10.2–10.4의 API·자료·권한 계약, M8-1은 §13의 모듈 추가 절차를 따른다. M8-2는 [한 점 기록·연속 연계 설계](point-recording-design.md)의 UX·상태·자료 확장 계약을 적용한다. 앱 내부 Bluetooth 설치는 M6-2의 완료 조건이다. 외부 모바일 앱 전달 안내는 제외하며 네이티브 앱 제작은 확정하지 않는다. 이 분류는 새 서버·펌웨어·저장 형식 구현을 수행한 것이 아니다.
 
-**M8-2 확장 계획·미구현:** Session·RunStore·Repository·Workspace·UI의 상태 소유권을 유지하고, 불변 samples를 참조하는 점 기록과 수동 조건 열을 추가한다. 수동 전용도 같은 Sample 검증·계산·분석 엔진을 사용한다. 자료별 분석 상태·희소 ID·수동 입력 사본·보관 근거 재현을 지원하고, 기존 자료를 보존하는 DB·Run·파일 버전 확장이 필요하다. 이 문서 §7–9의 기존 단일 자료 계약을 대체할 구체 변경은 [상세 설계 §12–14](point-recording-design.md#12-모듈-경계와-의존-방향)에 모으며, 구현 전까지 현재 형식의 지원 범위를 바꾸어 안내하지 않는다.
+**M8-2 P1–P4 구현:** 상태 소유권을 유지하며 불변 samples를 참조하는 점 기록·수동 조건 열, 자료별 분석 봉투·입력 사본·근거 사본, DB/Run/JSON v2와 구형 자료 변환을 구현했다. Session의 관측 고정·중복 차단과 수동 측정·조건·메모 편집 화면을 연결했다. 첫 점은 비동기 저장 준비 후 재검증하고 Run과 원자료를 함께 저장한다. 저장한 점 자료는 분석 화면으로 다시 열며 측정 화면의 기록표에서도 편집할 수 있다. P3에서 같은 캡처·편집 경로를 연속 화면에도 연결하고, 기존 Sample의 수신 시각을 가리키는 점 표식을 사건과 구분해 표시한다. P4에서 같은 Workspace·분석 화면을 자료별로 연결했다. 변경 반영의 입력 사본과 보관 근거를 분리하며, 원자료 시점 탐색은 읽기 경계만 확장한다. 점 CSV는 독립 분석 자료로 가져오고 취소 상태를 일반 제외 사유로 보존한다. 전체 관계의 왕복은 JSON을 사용한다. 세부 자료 계약과 검증 범위는 [상세 설계 §12–15](point-recording-design.md#12-모듈-경계와-의존-방향)에서 관리한다.
 
 파일의 세부 분리, 내부 함수와 작업 묶음은 위 경계 안에서 구현자가 판단한다. 공개 계약이나 사용자 흐름이 달라질 때만 관련 설계를 갱신한다. 작업·테스트 운영 원칙은 [AGENTS.md](../AGENTS.md)를 따른다.
 

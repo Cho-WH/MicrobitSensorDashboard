@@ -3,13 +3,16 @@ import { canResumeImportedRun } from '../data/files/recording-source.js';
 import { createTransport } from '../device/transport.js';
 import { createMockBleClient } from '../device/mock-client.js';
 import { createProgrammer } from '../device/programmer.js';
+import { loadFirmwareHex } from '../device/firmware.js';
 import { createGuideView } from '../ui/guide-view.js';
 import { parseRoute, routeUrl, sameExperiment } from './routes.js';
 import { createRepository } from '../data/repository.js';
 import { openRunStore, openTemporaryRunStore } from '../data/run-store.js';
 import { createSession, restoreSession } from '../measurement/session.js';
+import { createPointCapture } from '../measurement/point-capture.js';
+import { createPointRecordingView } from '../ui/point-recording-view.js';
 import { parseExperimentJson, buildExperimentJson } from '../data/files/json.js';
-import { parseExperimentCsv, buildCsv, buildAnalysisCsv } from '../data/files/csv.js';
+import { parseExperimentCsv, buildCsv, buildPointCsv, buildAnalysisCsv } from '../data/files/csv.js';
 import { createAnalysisView } from '../ui/analysis-view.js';
 import { createMeasurementView } from '../ui/measurement-view.js';
 import { createExperimentGuide } from '../ui/experiment-guide.js';
@@ -36,6 +39,7 @@ export function createController(root = document, { repository = null, deviceTra
   const button = id => findElement(root, 'button', '#' + id);
   const dialogElement = id => findElement(root, 'dialog', '#' + id);
   let context = null, store = null, session = null, screen = 'home';
+  let recordingMode = 'continuous', capture = createPointCapture();
   let copy = getLabCopy(null), copyContext;
   let preview = null, previewPoints = [], previewSequence = 0, attempt = 0, connected = false, connecting = false, busy = false;
   let leaving = false, navigatingDocument = false;
@@ -53,7 +57,8 @@ export function createController(root = document, { repository = null, deviceTra
     onDisconnect: () => disconnect().catch(showError), onChange: () => { renderRequested = true; }, onMeasure:()=>navigate('measure'), onError: showError,
     onDeviceAction: action => act(async()=>{if(!context || !runtime || screen !== 'prepare' || session?.getState().recording) return; await transport.performAction(action);}) });
   const dialogs = createRecordDialogs(root.querySelector('.lab-shell'));
-  const measurement = createMeasurementView(root,()=>{renderRequested=true;}, event=>act(()=>editEventNote(event)));
+  const measurement = createMeasurementView(root,()=>{renderRequested=true;}, event=>act(()=>editEventNote(event)), number => pointView.reveal(number));
+  const pointView = createPointRecordingView(root, { onCapture: () => act(capturePoint), onChange: () => { renderRequested = true; }, onError: showError });
   const experimentGuide = createExperimentGuide(root.querySelector('.lab-shell'));
   const share = createShareView(findElement(root, 'section', '[data-screen="preview"]'));
   const analysis = createAnalysisView(root.querySelector('[data-screen="analysis"]'), { onError: showError, onExport: kind => act(() => exportFile(kind)) });
@@ -62,7 +67,7 @@ export function createController(root = document, { repository = null, deviceTra
   const onChange = () => { renderRequested = true; };
   const canUseDevice = () => !!runtime && (!store || (!store.getState().temporary && store.getState().writable
     && recordingSourceAllowed));
-  function showError(error) { $('lab-error').textContent = error?.message ?? String(error); $('lab-error').hidden = false; }
+  function showError(error) { $('lab-error').textContent = copy.point[error?.code] ?? error?.message ?? String(error); $('lab-error').hidden = false; }
   function clearError() { $('lab-error').hidden = true; $('lab-error').textContent = ''; }
   async function act(work) {
     if (busy || programmerState.busy) return;
@@ -90,7 +95,7 @@ export function createController(root = document, { repository = null, deviceTra
       preview = input; previewPoints.push({ ...input, sampleId: ++previewSequence });
       if (previewPoints.length > 600) previewPoints = previewPoints.slice(-600);
     }
-    try { session?.acceptInput(input); } catch(error) { showError(error); }
+    try { if (session) session.acceptInput(input); else capture.accept(input); } catch(error) { showError(error); }
     renderRequested = true;
   }
   async function disconnect() {
@@ -98,6 +103,7 @@ export function createController(root = document, { repository = null, deviceTra
     if (handingOff) programmer?.cancel();
     connected = false; connecting = false; preview = null; previewPoints = [];
     session?.disconnected();
+    capture.disconnected();
     await transport.disconnect(); deviceState=transport.getState(); attempt=deviceState.attemptId;
     renderRequested = true;
   }
@@ -106,11 +112,23 @@ export function createController(root = document, { repository = null, deviceTra
     return !!context && !!runtime && !runtime.definition.firmware.stale && canUseDevice() && screen === 'prepare' && !mock && !connected && !connecting
       && (!saved || (saved.writable && saved.status === 'clean' && (!current || current.state === 'ended')));
   }
+  async function downloadProgram() {
+    const status = $('installation-download-status');
+    if (!canInstall()) { status.textContent = '기록을 마치고 저장한 뒤 장치 연결을 해제해 주세요.'; return; }
+    status.textContent = '프로그램 파일을 준비하고 있어요.';
+    try {
+      const { hex, fileName } = await loadFirmwareHex(runtime.definition.firmware.id, runtime.definition.firmware.version, { signal });
+      if (signal.aborted) return;
+      downloadText(hex, fileName, 'application/octet-stream');
+      status.textContent = '파일 다운로드를 요청했어요. 받은 파일을 MICROBIT 드라이브에 복사해야 설치됩니다.';
+    } catch (error) { if (!signal.aborted) status.textContent = error.message; }
+  }
   function resetPreparation() {
     programmer?.dispose().catch(showError); programmer = null; programmerState = {}; installed = false;
     try { runtime = getSensorRuntime(context); } catch { runtime = null; }
     recordingSourceAllowed = !store || store.getState().source !== 'import' || canResumeImportedRun(store.getRun());
     deviceState = transport.getState();
+    if (!store) capture = createPointCapture({ config: context?.connectionPolicy });
     guide.open(context, {reset:true});
     if (runtime && !runtime.definition.firmware.stale) programmer = createProgrammer({ firmwareId: runtime.definition.firmware.id,
       version: runtime.definition.firmware.version, canInstall, beforeFlash: disconnect,
@@ -127,7 +145,7 @@ export function createController(root = document, { repository = null, deviceTra
   }
   async function connect({reuseDevice=false}={}) {
     if (!context || !canUseDevice() || !['prepare','measure'].includes(screen)) throw new Error('이 자료에는 장치를 연결할 수 없습니다. 새 실험을 준비하세요.');
-    if (session?.getState().recording) throw new Error('기록을 일시정지한 뒤 장비를 다시 연결하세요.');
+    if (session?.getState().recording && store?.getRun().recordingMode !== 'point') throw new Error('기록을 일시정지한 뒤 장비를 다시 연결하세요.');
     if (connected || connecting) return;
     const request = ++connectionRequest;
     connecting = true; renderRequested = true;
@@ -144,7 +162,7 @@ export function createController(root = document, { repository = null, deviceTra
         deviceState = state; attempt = state.attemptId;
         connected = state.status === 'connected'; connecting = state.status === 'connecting';
         if (screen==='measure' && state.devicePreparation && !state.devicePreparation.allowReadings) navigate('prepare');
-        if (wasConnected && !connected) { preview = null; previewPoints = []; session?.disconnected(); }
+        if (wasConnected && !connected) { preview = null; previewPoints = []; session?.disconnected(); capture.disconnected(); }
         renderRequested = true;
       },{reuseDevice, device: installedDevice, reuseConnection: !!installedDevice?.gatt?.connected});
     } catch(error) { if (request === connectionRequest) { await disconnect(); throw error; } }
@@ -157,24 +175,69 @@ export function createController(root = document, { repository = null, deviceTra
   }
   async function start() {
     if (screen !== 'measure') return;
+    if (recordingMode === 'point') return;
+    if (!pointView.flush()) return;
     requireReady();
     if (store) throw new Error('새 실험 준비를 눌러 다음 실험을 시작하세요.');
     const recordedContext = { ...context, setup: guide.getProgress().setup };
-    const nextStore = await openRunStore({ repository: repo, context: recordedContext, name: input('run-name').value.trim() || undefined, source: mock ? 'replay' : 'device', create: true, onChange });
+    const nextStore = await openRunStore({ repository: repo, context: recordedContext, name: input('run-name').value.trim() || undefined, source: mock ? 'replay' : 'device', create: true, onChange, manualColumns: pointView.manualColumns() });
     if (!readyToRecord()) {
       // Roll back only this never-started, empty Run while still owning its writer lock.
       try { await nextStore.remove(); } finally { nextStore.dispose(); }
       throw new Error('준비 상태가 바뀌어 기록을 시작하지 않았습니다. 장비를 확인하고 다시 시작하세요.');
     }
-    store = nextStore; session = createSession({ store, activityPolicy: policy() }); session.start();
+    store = nextStore; session = createSession({ store, activityPolicy: policy(), capture }); session.start();
     renderedEvents = -1;
   }
+  const captureConnection = () => ({ connected, confirmed: transport.getState().confirmed, attemptId: attempt });
+  async function capturePoint() {
+    if (screen !== 'measure') return;
+    const values = pointView.captureValues();
+    if (store) {
+      if (!session) throw new Error(copy.point['capture-read-only']);
+      pointView.recorded(session.capturePoint(captureConnection(), values)); return;
+    }
+    if (recordingMode !== 'point') throw new Error(copy.point['capture-preview']);
+    requireReady();
+    const request = capture.prepare(captureConnection(), values);
+    try {
+      const nextStore = await openRunStore({ repository: repo, context: { ...context, setup: guide.getProgress().setup },
+        name: input('run-name').value.trim() || undefined, source: mock ? 'replay' : 'device', create: true, onChange,
+        recordingMode: 'point', manualColumns: pointView.manualColumns(), initialPoint: { sample: request.sample, ...request.point },
+        beforeCreate: () => request.validate(captureConnection()) });
+      // The point has been admitted atomically. Preserve that result even if
+      // reception changes while the database acknowledgement is in flight.
+      store = nextStore; request.accept();
+      session = createSession({ store, activityPolicy: policy(), capture, newlyCreated: true }); session.start();
+      renderedEvents = -1; pointView.recorded(1);
+    } catch (error) { request.cancel(); throw new Error(copy.point[error.code] ?? error.message); }
+  }
+  async function changeRecordingMode() {
+    if (!await confirmTransition()) return;
+    const nextMode = (store?.getRun().recordingMode ?? recordingMode) === 'point' ? 'continuous' : 'point';
+    // Only the recording mode changes: retain this device's preparation and
+    // connection after the old Run is safely closed. A new capture owns no old
+    // observations, so the next Run must receive a new reading.
+    const keepConnection = canUseDevice() && connected && deviceState.devicePreparation?.allowReadings !== false;
+    await releaseCurrent();
+    recordingMode = nextMode; preview = null; previewPoints = []; input('run-name').value = '';
+    measurement.reset();
+    if (keepConnection && connected && deviceState.devicePreparation?.allowReadings !== false) {
+      capture = createPointCapture({ config: context.connectionPolicy });
+      recordingSourceAllowed = true;
+      navigate('measure');
+    } else {
+      await disconnect(); resetPreparation(); navigate('prepare');
+    }
+  }
   async function persistCurrent() {
+    if (!pointView.flush()) throw new Error(copy.point.numberInvalid);
     if (!analysis.flush()) throw new Error('분석 글을 먼저 확인해 주세요.');
     if (session && !['ended','preview'].includes(session.getState().state)) await session.finish();
     if (store?.getState().writable) await store.flush();
   }
   async function confirmTransition({ask = true, exit = false} = {}) {
+    if (!pointView.flush()) return false;
     if (!store && !exit) return true;
     if (!exit && !analysis.flush()) return false;
     const temporary = store?.getState().temporary;
@@ -194,6 +257,7 @@ export function createController(root = document, { repository = null, deviceTra
   async function releaseCurrent() {
     await store?.close();
     analysis.reset(); session = null; store = null; exportedRevision = -1; renderedEvents = -1;
+    pointView.reset(); recordingMode = 'continuous';
   }
   // Save before replacing the document. The browser releases the old page's
   // connections; do not start another device teardown before this navigation.
@@ -283,7 +347,8 @@ export function createController(root = document, { repository = null, deviceTra
     // A saved run is opened for analysis; recording only resumes through an explicit action.
     session = store.getState().writable && (store.getState().source !== 'import' || canResumeImportedRun(store.getRun())) ? createSession({ store, activityPolicy: policy() }) : null;
     renderedEvents = -1;
-    renderedContext = null; resetPreparation(); analysis.open(store); navigate('analysis');
+    renderedContext = null; resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous';
+    analysis.open(store); navigate('analysis');
   }
   async function importSnapshot(snapshot) {
     if (!await confirmTransition()) return;
@@ -300,7 +365,8 @@ export function createController(root = document, { repository = null, deviceTra
     store = next; context = store.getRun().context;
     session = !store.getState().temporary && canResumeImportedRun(store.getRun()) ? createSession({ store, activityPolicy: policy() }) : null;
     renderedEvents = -1;
-    renderedContext = null; resetPreparation(); analysis.open(store); navigate('analysis');
+    renderedContext = null; resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous';
+    analysis.open(store); navigate('analysis');
   }
   async function readFile(file) {
     if (!file) return;
@@ -350,17 +416,18 @@ export function createController(root = document, { repository = null, deviceTra
     if (snapshot) await importSnapshot(snapshot);
   }
   async function exportFile(kind) {
-    if (!store || !analysis.flush()) return;
+    if (!store || !analysis.flush() || !pointView.flush()) return;
     const snapshot = store.getSnapshot(), name = snapshot.run.name.replace(/[<>:"/\\|?*]/g,'-');
     if (kind === 'png') {
       await settlePendingFonts(root.ownerDocument ?? document);
       return downloadUrl(analysis.exportPng(name), name + '.png');
     }
+    const sourceId = analysis.getWorkspace()?.getState().sourceId ?? (snapshot.run.recordingMode === 'point' ? 'points' : 'recorded');
     if (kind === 'analysis-csv') return dialogs.exportCsv(snapshot, columns => {
-      downloadText(buildAnalysisCsv(snapshot,columns),name+'-analysis.csv','text/csv;charset=utf-8');
-    });
-    const text = kind === 'json' ? buildExperimentJson(snapshot) : buildCsv(snapshot);
-    downloadText(text, name + (kind === 'json' ? '.json' : '.csv'), kind === 'json' ? 'application/json' : 'text/csv;charset=utf-8');
+      downloadText(buildAnalysisCsv(snapshot,columns,sourceId),name+'-'+sourceId+'-analysis.csv','text/csv;charset=utf-8');
+    }, sourceId);
+    const text = kind === 'json' ? buildExperimentJson(snapshot) : kind === 'points-csv' ? buildPointCsv(snapshot) : buildCsv(snapshot);
+    downloadText(text, name + (kind === 'json' ? '.json' : kind === 'points-csv' ? '-points.csv' : '.csv'), kind === 'json' ? 'application/json' : 'text/csv;charset=utf-8');
     if (kind === 'json') exportedRevision = store.getState().runRevision;
   }
   async function listRuns() {
@@ -404,7 +471,7 @@ export function createController(root = document, { repository = null, deviceTra
     await dialogs.note(event,context,async note=>{store.updateEventNote(event.eventId,note);await store.flush();renderRequested=true;});
   }
   function navigate(next, push = true) {
-    if (programmerState.busy || !analysis.flush()) return;
+    if (programmerState.busy || !analysis.flush() || !pointView.flush()) return;
     if (['prepare','measure','analysis'].includes(next) && !context) return;
     if (next === 'preview' && !targetContext) return;
     screen = next;
@@ -423,9 +490,13 @@ export function createController(root = document, { repository = null, deviceTra
     renderRequested = true;
   }
   function render() {
+    button('download-program').disabled = busy || !!programmerState.busy || !canInstall();
+    $('installation-download-blocked').hidden = canInstall();
+    $('installation-program-name').textContent = context ? `선택한 센서: ${context.sensor.name}` : '';
     for (const section of /** @type {NodeListOf<HTMLElement>} */ (root.querySelectorAll('[data-screen]'))) section.inert = leaving;
     const displayContext = screen === 'preview' ? targetContext : context;
     if (copyContext !== displayContext) {
+      $('installation-download-status').textContent = '';
       copyContext = displayContext; copy = getLabCopy(displayContext);
       for (const host of root.querySelectorAll('.lab-identity, .lab-toolbar, .luminous-sidebar, #current-experiment, [data-screen="measure"], [data-screen="saved"], #leave-dialog, #csv-mapping, #additional-dialog, .preparation-heading')) applyLabCopy(host, copy);
       applyLabCopy(root.querySelector('[data-screen="home"]'), labDefaults);
@@ -444,10 +515,16 @@ export function createController(root = document, { repository = null, deviceTra
     measurementScreen.dataset.recordingState = current?.state ?? (saved ? 'ended' : 'preview');
     measurementScreen.dataset.storageState = saved?.status ?? 'none';
     measurementScreen.dataset.connectionState = deviceState.status;
+    const pointMode = (saved?.recordingMode ?? recordingMode) === 'point';
+    measurementScreen.dataset.recordingMode = pointMode ? 'point' : 'continuous';
+    for (const control of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('button[data-recording-mode]'))) {
+      control.disabled = !!saved || busy; control.setAttribute('aria-pressed', String(control.dataset.recordingMode === (pointMode ? 'point' : 'continuous')));
+    }
+    $('change-recording-mode').hidden = !saved; button('change-recording-mode').disabled = busy;
     if (context) guide.render({attemptId:attempt,connected,connecting,deviceMessage:deviceState.message,deviceName:deviceState.deviceName,receptionReady:hasFreshReading(),receivedAt:deviceState.lastReceivedAt,latest:preview,
       firmwareInstalled:installed ? context.firmware : false,calibration:deviceState.calibration ?? 'unknown',devicePreparation:deviceState.devicePreparation,
       busy:busy || programmerState.busy,recording:recording || current?.state === 'finishing',programmerState,mock,
-      canInstall:canInstall(),canReconnect,unsupported:!transport.isSupported(),canConnect:canUseDevice() && !recording && !connected && !connecting && transport.isSupported()});
+      canInstall:canInstall(),canReconnect,unsupported:!transport.isSupported(),canConnect:canUseDevice() && (!recording || pointMode) && !connected && !connecting && transport.isSupported()});
     $('current-experiment').hidden = !store || screen !== 'saved';
     $('current-experiment-label').textContent = saved ? saved.name + ' · ' + (recording ? copy.common.recordingActive : copy.measurement.stored) : '';
     $('prepare-title').textContent = context ? formatCopy(copy.prepare.title, {name: context.activity?.name ?? context.sensor.name}) : '';
@@ -465,7 +542,7 @@ export function createController(root = document, { repository = null, deviceTra
       item.disabled = busy || !!programmerState.busy || (!context && ['prepare','measure','analysis'].includes(item.dataset.view));
     }
     input('run-name').disabled = !!store || busy;
-    const connectionDisabled = recording || connected || connecting || busy || !canUseDevice() || (!mock && !transport.isSupported()) || !!programmerState.busy;
+    const connectionDisabled = (recording && !pointMode) || connected || connecting || busy || !canUseDevice() || (!mock && !transport.isSupported()) || !!programmerState.busy;
     const reconnectHidden = !canReconnect || connected || connecting;
     button('connect').disabled = connectionDisabled;
     for (const id of ['reconnect', 'measurement-reconnect']) {
@@ -481,8 +558,12 @@ export function createController(root = document, { repository = null, deviceTra
     $('additional-recording').hidden = !session || current?.state !== 'ended'; button('additional-recording').disabled = busy || !readyToRecord();
     button('add-note').disabled = !session || !['recording','paused'].includes(current?.state) || busy;
     button('export-json').disabled = !saved; button('export-csv').disabled = !saved?.sampleCount;
+    $('export-csv').textContent = `연속 기록 CSV 저장 (${saved?.sampleCount ?? 0}행)`;
+    $('export-points-csv').hidden = !saved || !(saved.pointCount + saved.withdrawnPointCount);
+    $('export-points-csv').textContent = `한 점 기록 CSV 저장 (${(saved?.pointCount ?? 0) + (saved?.withdrawnPointCount ?? 0)}행)`;
+    button('analyze-points').disabled = !saved || !(saved.pointCount + saved.withdrawnPointCount);
     $('retry-save').hidden = saved?.status !== 'error';
-    $('export-json').hidden=!saved; $('export-csv').hidden=!saved;
+    $('export-json').hidden=!saved; $('export-csv').hidden=!saved || pointMode;
     const exportMenu = root.querySelector('.luminous-export');
     if (exportMenu instanceof HTMLDetailsElement) { exportMenu.hidden=!saved; if (!saved) exportMenu.open=false; }
     if (root.querySelector('.luminous-overview') && focusedRecordControl && previousRecordingState !== measurementScreen.dataset.recordingState) {
@@ -494,7 +575,7 @@ export function createController(root = document, { repository = null, deviceTra
     $('show-experiment-guide').hidden=!measurementGuide;
     $('show-experiment-guide').textContent=measurementGuide?.buttonLabel??getLabCopy(context).measurement.guide;
     experimentGuide.setRecording(Boolean(recording));
-    $('sample-count').textContent = saved ? formatCopy(copy.measurement.count, {count:saved.sampleCount.toLocaleString('ko-KR')}) : copy.measurement.previewNote;
+    $('sample-count').textContent = pointMode ? saved ? formatCopy(copy.point.count, {count:saved.pointCount,withdrawn:saved.withdrawnPointCount}) : copy.point.preview : saved ? formatCopy(copy.measurement.count, {count:saved.sampleCount.toLocaleString('ko-KR')}) : copy.measurement.previewNote;
     $('sample-count').dataset.preview=String(!saved);
     $('lab-notice').textContent = saved?.temporary ? '이 환경에서는 브라우저에 저장할 수 없습니다. 분석 결과는 전체 실험 JSON으로 보관하세요.' : saved?.error ? saved.error + ' 메모리의 자료는 유지됩니다. 다시 저장하거나 전체 실험 JSON을 보관하세요.'
       : saved?.nearLimit ? '보관 한도에 가까워졌습니다. 전체 실험 JSON으로 보관하고 새 실험을 준비하세요.'
@@ -516,7 +597,9 @@ export function createController(root = document, { repository = null, deviceTra
       button.disabled=busy || (!recording && !(current?.state==='paused' && action?.allowPaused));
     }
     if (screen === 'measure' && context) {
-      measurement.render({context,store,latest:preview,previewPoints,device:deviceState,recording});
+      if (!pointMode) measurement.render({context,store,latest:preview,previewPoints,device:deviceState,recording});
+      pointView.render({context,store,latest:preview,device:deviceState,busy,recordingMode:pointMode?'point':'continuous',
+        captureState: !navigator.locks || (saved && !session) ? {ready:false,reason:'capture-read-only'} : session ? session.captureStatus(captureConnection()) : pointMode ? capture.status(captureConnection()) : {ready:false,reason:'capture-preview'} });
     }
     if (saved?.eventsVersion !== renderedEvents) {
       renderedEvents = saved?.eventsVersion;
@@ -531,13 +614,18 @@ export function createController(root = document, { repository = null, deviceTra
   },{signal});
   listen('connect',()=>connect()); listen('reconnect',()=>connect({reuseDevice:true})); listen('measurement-reconnect',()=>connect({reuseDevice:true})); $('disconnect').addEventListener('click',()=>disconnect().catch(showError),{signal}); listen('start-recording',start);
   listen('pause-recording',()=>session.pause()); listen('resume-recording',()=>{requireReady();session.resume();});
-  listen('finish-recording',async()=>{await session.finish();await store.flush();});
+  listen('finish-recording',async()=>{if (!pointView.flush()) return; await session.finish();await store.flush();});
+  listen('change-recording-mode',changeRecordingMode);
+  for (const control of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('button[data-recording-mode]'))) control.addEventListener('click', () => {
+    if (store || busy || !pointView.flush()) return;
+    recordingMode = control.dataset.recordingMode; renderRequested = true;
+  }, { signal });
   listen('additional-recording',async()=>{requireReady();await dialogs.additional(policy(),confirmation=>{requireReady();session.startAdditional(confirmation);});});
   listen('add-note',()=>{const note=input('event-note').value.trim();if(!note)throw new Error('메모를 입력하세요.');session.markEvent('note',{note});input('event-note').value='';});
   listen('new-experiment',()=>exitToHome());
   listen('activate-experiment',()=>activateExperiment()); listen('activate-prepared',()=>activateExperiment(true)); listen('prepare-device',()=>navigate('prepare'));
   listen('show-experiment-guide',()=>experimentGuide.show(context,{anchor:$('show-experiment-guide')}));
-  listen('to-measure',()=>navigate('measure')); listen('return-current',()=>navigate(session ? 'measure' : 'analysis'));
+  listen('to-measure',()=>navigate('measure')); listen('return-current',()=>navigate(session || store?.getRun().recordingMode === 'point' ? 'measure' : 'analysis'));
   if (historyEnabled) window.addEventListener('popstate',()=>{
     if (busy || programmerState.busy) { restoreLocation(); return; }
     void act(()=>applyLocation());
@@ -550,12 +638,15 @@ export function createController(root = document, { repository = null, deviceTra
     onSelect: next => { void act(() => browse(next)); }, signal,
   });
   listen('retry-save',()=>store.flush());
+  listen('download-program', downloadProgram);
+  listen('analyze-points',()=>{if (!pointView.flush()) return; navigate('analysis'); analysis.open(store, context, 'points');});
+  listen('export-points-csv',()=>exportFile('points-csv'));
   listen('export-json',()=>exportFile('json'));listen('export-csv',()=>exportFile('csv'));
   $('open-file').addEventListener('click',()=>input('file-input').click(),{signal});
   input('file-input').addEventListener('change',()=>{const file=input('file-input').files[0];input('file-input').value='';act(()=>readFile(file));},{signal});
   $('mock-link').addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) location.assign(routeUrl(context,'prepare',{mock:true}).href);});},{signal});
-  window.addEventListener('beforeunload',event=>{const draftsSaved=analysis.flush(),saved=store?.getState();if(!draftsSaved || session?.getState().recording || (saved?.writable && saved.status!=='clean') || (saved?.temporary && exportedRevision!==saved.runRevision)) {event.preventDefault();event.returnValue='';}},{signal});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden && store?.getState().writable){analysis.flush();store.flush().catch(showError);}},{signal});
+  window.addEventListener('beforeunload',event=>{const draftsSaved=analysis.flush() && pointView.flush(),saved=store?.getState();if(!draftsSaved || session?.getState().recording || (saved?.writable && saved.status!=='clean') || (saved?.temporary && exportedRevision!==saved.runRevision)) {event.preventDefault();event.returnValue='';}},{signal});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden && store?.getState().writable){analysis.flush();pointView.flush();store.flush().catch(showError);}},{signal});
   const interval = setInterval(()=>{
     try{session?.tick();}catch(error){showError(error);}
     if (connected || session?.getState().recording) renderRequested = true;
@@ -564,6 +655,6 @@ export function createController(root = document, { repository = null, deviceTra
   const ready = act(()=>applyLocation(initialUrl)); render();
   return { ready, async dispose(){
     await persistCurrent(); await disconnect(); await store?.close();
-    clearInterval(interval);abort.abort();dialogs.dispose();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();measurement.dispose();experimentGuide.dispose();share.dispose();repo.close();
+    clearInterval(interval);abort.abort();dialogs.dispose();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();measurement.dispose();pointView.dispose();experimentGuide.dispose();share.dispose();repo.close();
   }, getState:()=>({screen,context,targetContext,busy:busy || !!programmerState.busy,storage:store?.getState(),session:session?.getState()}) };
 }

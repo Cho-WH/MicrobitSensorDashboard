@@ -1,0 +1,61 @@
+{
+  "receivedOn": "2026-10-28",
+  "source": "사용자가 이 대화에 첨부한 UI 시안",
+  "transformation": "none",
+  "assets": [
+    {
+      "file": "01-manual-measurement.png",
+      "attachment": 1,
+      "originalFile": "codex-clipboard-e0ddd2bb-299e-4980-9b0e-caaadbadadce.png",
+      "sha256": "f2cd76ef7fc83c1eb91df5b5427944adfd6b08b3435afbacab55d9f90da0921a",
+      "bytes": 1304179,
+      "width": 1586,
+      "height": 992
+    },
+    {
+      "file": "02-continuous-measurement.png",
+      "attachment": 6,
+      "originalFile": "codex-clipboard-057be397-dca5-47e9-bb17-3994c80771fa.png",
+      "sha256": "0915c2947d5beef2867720d949f3d556c403ac19321531f7b05ac75bb0b272b9",
+      "bytes": 1507919,
+      "width": 1586,
+      "height": 992
+    },
+    {
+      "file": "03-point-analysis.png",
+      "attachment": 4,
+      "originalFile": "codex-clipboard-73fede0a-a8d9-4a19-a3cb-4751a02b3f18.png",
+      "sha256": "4766bf7af2a2828762b32d843773b88d968aee460f6012f769e924c1dd29e5e5",
+      "bytes": 1501202,
+      "width": 1586,
+      "height": 992
+    },
+    {
+      "file": "04-continuous-origin.png",
+      "attachment": 3,
+      "originalFile": "codex-clipboard-842e594c-f3c4-44a5-a30d-6893c8fa775c.png",
+      "sha256": "bb1a3d09adc8c2886dddb82bc6731f1fe5655ef47a695476d75274161ed60a36",
+      "bytes": 1244269,
+      "width": 1586,
+      "height": 992
+    },
+    {
+      "file": "05-editing-errors.png",
+      "attachment": 2,
+      "originalFile": "codex-clipboard-e2b39ee6-c878-4690-87ca-97e28d9f5760.png",
+      "sha256": "85bec57cd4582a9d2b09f52af490951fc8263ea8e6d8a1746968cbf6ac55e600",
+      "bytes": 1268687,
+      "width": 1586,
+      "height": 992
+    },
+    {
+      "file": "06-mobile.png",
+      "attachment": 5,
+      "originalFile": "codex-clipboard-bed58759-7085-49fd-9f9b-4d33bcbfd8af.png",
+      "sha256": "b32d301b212994dfdcddc1e3ecb094f3a1007a39af4875f8987a59bb29ea9842",
+      "bytes": 1552741,
+      "width": 1536,
+      "height": 1024
+    }
+  ]
+}

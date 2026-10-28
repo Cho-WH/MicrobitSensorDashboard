@@ -65,7 +65,7 @@ export function createAnalysisChart(canvas, { onSelect = (_sampleId) => {}, resp
       plugins: {
         legend: { display: false },
         tooltip: { ...(theme ? {titleFont:{family:theme.font}, bodyFont:{family:theme.font}} : {}), filter: item => Boolean(item.raw.sampleId) || item.dataset.isIntercept === true, callbacks: {
-          title: items => items[0].dataset.isIntercept ? 'x절편' : '자료 ' + items[0].raw.sampleId,
+          title: items => items[0].dataset.isIntercept ? 'x절편' : items[0].raw.pointRecordId ? items[0].raw.pointRecordId + '번 기록' : '자료 ' + items[0].raw.sampleId,
           label: item => {
             const series=item.dataset.seriesModel??model;
             const time = series.xColumnId === 'receivedAt';
@@ -223,7 +223,7 @@ export function exportAnalysisPng(model, { name = '', selectedIds = [], theme = 
 /** @param {HTMLCanvasElement} canvas @param {any} options */
 export function createChartView(canvas, { context, channels, displayValue = (value, _channel) => value, inspect = false, legendToggle = true, theme = null, eventMarkers = true, onCursor = () => {}, onLayout = () => {} } = {}) {
   if (!globalThis.Chart) throw new Error('그래프 도구를 불러오지 못했어요. 화면을 새로 열어 주세요.');
-  const sourceChannels = getSourceColumns(channels ?? context).filter(c => !['sampleId', 'receivedAt'].includes(c.id) && c.supported !== false);
+  const sourceChannels = getSourceColumns(channels ?? context).filter(c => !['sampleId', 'pointRecordId', 'receivedAt'].includes(c.id) && !c.manual && c.supported !== false);
   const colors = ['#d67b40', '#197f88', '#8d65b1', '#43854d'];
   const channelColor = (c, i) => theme ? resolveChannelColor(theme,c,i) : c.color ?? colors[i % colors.length];
   const axisGroups = groupChartAxes(sourceChannels);
@@ -237,7 +237,7 @@ export function createChartView(canvas, { context, channels, displayValue = (val
     border: theme ? {color:theme.grid} : {},
     grid: { drawOnChartArea: i === 0, color: theme?.grid ?? '#edf1f2' },
   }]));
-  let currentPoints = [], timeOrigin = 0, cursor = null, hasTime = false;
+  let currentPoints = [], timeOrigin = 0, cursor = null, pinnedCursor = null, hasTime = false;
   let elapsedTick = createElapsedAxis();
   const chart = new globalThis.Chart(canvas, {
     type: 'line',
@@ -252,8 +252,8 @@ export function createChartView(canvas, { context, channels, displayValue = (val
         cursor = hasTime ? (point.receivedAt - timeOrigin) / 1000 : point.sampleId; onCursor(point, hasTime ? cursor : null); c.draw();
       },
       afterDraw(c) {
-        if (cursor !== null && c.chartArea) {
-          const x = c.scales.x.getPixelForValue(cursor), { top, bottom } = c.chartArea, ctx = c.ctx;
+        if ((cursor !== null || pinnedCursor !== null) && c.chartArea) {
+          const x = c.scales.x.getPixelForValue(cursor ?? pinnedCursor), { top, bottom } = c.chartArea, ctx = c.ctx;
           ctx.save(); ctx.strokeStyle = '#718b94'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); ctx.restore();
         }
         onLayout();
@@ -282,7 +282,7 @@ export function createChartView(canvas, { context, channels, displayValue = (val
   });
   if (!legendToggle) chart.options.plugins.legend.onClick = () => {};
   return {
-    render(points, now, { range = 'recent', events = [], origin = undefined, connectGaps = false, nowUtc = Date.now(), bottomPadding = 0 } = {}) {
+    render(points, now, { range = 'recent', events = [], origin = undefined, connectGaps = false, nowUtc = Date.now(), bottomPadding = 0, pointsOnly = false, focusSampleId = null } = {}) {
       chart.options.layout.padding.bottom = bottomPadding;
       const relative = point => Number.isFinite(point.monotonicAt) ? (point.monotonicAt - now) / 1000 : (point.receivedAt - nowUtc) / 1000;
       const timedPoints = points.filter(p => Number.isFinite(p.receivedAt));
@@ -297,6 +297,14 @@ export function createChartView(canvas, { context, channels, displayValue = (val
         || (event.type==='reception-change'&&event.payload?.state==='stale')).map(event=>event.receivedAt).filter(Number.isFinite).sort((a,b)=>a-b);
       chart.options.scales.x.min = whole ? undefined : -60;
       chart.options.scales.x.max = whole ? undefined : 0;
+      const focused = points.find(p => p.sampleId === focusSampleId);
+      pinnedCursor = focused ? hasTime ? (focused.receivedAt - origin) / 1000 : focused.sampleId : null;
+      if (focused) {
+        const coordinates = currentPoints.map(p => hasTime ? (p.receivedAt - origin) / 1000 : p.sampleId);
+        const min = coordinates.reduce((a,b)=>Math.min(a,b),Infinity), max = coordinates.reduce((a,b)=>Math.max(a,b),-Infinity), half = Math.max(hasTime ? 1 : 5, (max - min) / 10);
+        chart.options.scales.x.min = Math.max(min, pinnedCursor - half);
+        chart.options.scales.x.max = Math.max(chart.options.scales.x.min + (hasTime ? .1 : 1), Math.min(max, pinnedCursor + half));
+      }
       chart.options.scales.x.title.text = !hasTime ? '자료 번호 · 시각 정보 없음' : whole ? '경과 시간' : '지금으로부터';
       for (const [index, channel] of sourceChannels.entries()) {
         const data = [];
@@ -318,6 +326,8 @@ export function createChartView(canvas, { context, channels, displayValue = (val
           previous = point;
         }
         chart.data.datasets[index].data = data;
+        chart.data.datasets[index].showLine = !pointsOnly;
+        chart.data.datasets[index].pointRadius = item => item.raw?.sampleId === focusSampleId ? 6 : pointsOnly ? 3 : 0;
       }
       // User actions share the time axis. Null points keep discontinuities visible.
       if (eventMarkers) chart.data.datasets[sourceChannels.length] = { type: 'scatter', label: '조작 기록', yAxisID: axisIds.get(sourceChannels[0]?.id),

@@ -1,10 +1,11 @@
 import { createUuid } from '../../domain/uuid.js';
 import { validateExperimentSnapshot, checkFileSize, checkJson, requireValue } from './validation.js';
 import { parseLegacyGayLussac } from './legacy-gay-lussac.js';
+import { EXPERIMENT_FILE_VERSION } from '../../domain/contracts.js';
 
 export function buildExperimentJson(snapshot) {
   const data = validateExperimentSnapshot(snapshot);
-  const text = JSON.stringify({ format: 'microbit-sensor-lab', fileVersion: 1, ...data });
+  const text = JSON.stringify({ format: 'microbit-sensor-lab', fileVersion: EXPERIMENT_FILE_VERSION, ...data });
   checkFileSize(text);
   return text;
 }
@@ -16,8 +17,10 @@ export function parseExperimentJson(text) {
   catch { throw Object.assign(new Error('JSON 파일을 읽지 못했어요. 전체 실험 JSON 파일을 선택하세요.'), { code: 'INVALID_JSON' }); }
   checkJson(file);
   if (file?.format === 'gay-lussac-experiment') return parseLegacyGayLussac(file);
-  requireValue(file?.format === 'microbit-sensor-lab' && file.fileVersion === 1, '지원하는 전체 실험 JSON 형식·버전이 아닙니다.');
-  return validateExperimentSnapshot({ run: file.run, samples: file.samples, events: file.events, workspace: file.workspace });
+  requireValue(file?.format === 'microbit-sensor-lab' && [1, 2].includes(file.fileVersion)
+    && file.run?.schemaVersion === file.fileVersion, '지원하는 전체 실험 JSON 형식·버전이 아닙니다.');
+  return validateExperimentSnapshot({ run: file.run, samples: file.samples, events: file.events, workspace: file.workspace,
+    ...(Object.hasOwn(file, 'pointRecords') ? { pointRecords: file.pointRecords } : {}) });
 }
 
 // Pure preparation: callers acquire the new Run lock and write this result atomically.

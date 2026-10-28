@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
 
+async function savedSnapshot(page) {
+  return page.evaluate(async () => {
+    const { createRepository } = await import('/src/data/repository.js');
+    const repo = createRepository();
+    try { const runs = await repo.listRuns(); return runs.length ? await repo.readSnapshot(runs[0].id) : null; }
+    finally { repo.close(); }
+  });
+}
+
 test('exit confirmation preserves recording on cancel and saves before loading home', async ({ page }) => {
   await page.goto('/sensors/temperature/?mock=1');
   await page.evaluate(() => { window.documentMarker = 'original'; });
@@ -10,6 +19,7 @@ test('exit confirmation preserves recording on cancel and saves before loading h
   await page.locator('.experiment-guide [data-guide-next]').click();
   await page.locator('#start-recording').click();
   await expect(page.locator('[data-screen="measure"]')).toHaveAttribute('data-recording-state', 'recording');
+  await expect.poll(async () => (await savedSnapshot(page))?.samples.length ?? 0).toBeGreaterThan(0);
   await page.locator('[data-view="analysis"]').click();
   await expect(page.locator('#leave-dialog')).not.toBeVisible();
   await page.locator('#tab-interpretation').click();
@@ -27,15 +37,10 @@ test('exit confirmation preserves recording on cancel and saves before loading h
   await page.waitForURL('**/lab.html?mock=1');
   await expect(page.locator('[data-screen="home"]')).toBeVisible();
   expect(await page.evaluate(() => window.documentMarker)).toBeUndefined();
-  const saved = await page.evaluate(async () => {
-    const { createRepository } = await import('/src/data/repository.js');
-    const repo = createRepository();
-    try { const runs = await repo.listRuns(); return await repo.readSnapshot(runs[0].id); }
-    finally { repo.close(); }
-  });
+  const saved = await savedSnapshot(page);
   expect(saved.run.status).toBe('complete');
   expect(saved.samples.length).toBeGreaterThan(0);
-  expect(saved.workspace.reflection.answers.observation).toBe('도구를 나가도 남아야 하는 관찰');
+  expect(saved.workspace.bySource.recorded.reflection.answers.observation).toBe('도구를 나가도 남아야 하는 관찰');
   expect(saved.events.filter(event => event.type === 'measurement-end')).toHaveLength(1);
   await page.locator('#sensor-cards a[href*="/sensors/light-level/"]').click();
   await expect(page.locator('[data-screen="preview"]')).toBeVisible();

@@ -1,17 +1,21 @@
-/** @typedef {{id:string,name:string,unit?:string|null,quantity?:string,quantityLabel?:string,calculable?:boolean,supported?:boolean,min?:number,max?:number,digits?:number,color?:string}} Channel */
+/** @typedef {{id:string,name:string,unit?:string|null,quantity?:string,quantityLabel?:string,calculable?:boolean,manual?:boolean,supported?:boolean,min?:number,max?:number,digits?:number,color?:string}} Channel */
 /** @param {any} context @returns {Channel[]} */
 export function getSourceColumns(context) {
   const channels = Array.isArray(context) ? context : context?.channels ?? context?.sensor?.channels ?? [];
-  return [{ id: 'sampleId', name: '번호', unit: null },
+  return [...(context?.analysisSource === 'points' ? [{id: 'pointRecordId', name: '점 번호', unit: null}] : []),
+    { id: 'sampleId', name: context?.analysisSource === 'points' ? '원자료 번호' : '번호', unit: null },
     ...channels.map(c => ({ ...c, calculable: c.calculable !== false && c.supported !== false })),
+    ...(context?.manualColumns ?? []).map(c => ({ ...c, calculable: true, manual: true })),
     { id: 'receivedAt', name: '수신 시각', unit: null }];
 }
 export const sourceColumns = getSourceColumns;
 /** @param {any} sample @param {string} columnId @returns {{value:number|null,reason:string|null}} */
 export function readCell(sample, columnId) {
-  if (columnId === 'sampleId' || columnId === 'receivedAt') return { value: Number.isFinite(sample[columnId]) ? sample[columnId] : null, reason: Number.isFinite(sample[columnId]) ? null : '값 없음' };
+  if (['sampleId', 'pointRecordId', 'receivedAt'].includes(columnId)) return { value: Number.isFinite(sample[columnId]) ? sample[columnId] : null, reason: Number.isFinite(sample[columnId]) ? null : '값 없음' };
   const calculated = sample.calculations?.[columnId];
   if (calculated) return { value: calculated.value, reason: calculated.reason ?? null };
+  if (Object.hasOwn(sample.manualValues ?? {}, columnId)) return { value: sample.manualValues[columnId],
+    reason: sample.manualValues[columnId] === null ? '조건 미입력' : null };
   const imported = sample.importedValues?.[columnId];
   if (imported) return { value: imported.value, reason: imported.reason ?? null };
   const validity = sample.validity?.[columnId];

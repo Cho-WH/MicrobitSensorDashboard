@@ -21,11 +21,11 @@ test('creation verifies durable storage before handing out a writer and releases
 test('in-flight save acknowledges captured revisions only; immutable incremental reads do not expose data', async () => {
   const { repository, store } = await fixture(), commit = repository.commitBatch;
   store.appendSample(sample(1)); createWorkspace({ store });
-  store.saveWorkspace({ ...store.getSnapshot().workspace, workspaceRevision: 2, note: 'first' });
+  store.saveWorkspace('recorded', { ...store.getSnapshot().workspace.bySource.recorded, workspaceRevision: 2, note: 'first' });
   let release;
   repository.commitBatch = batch => new Promise(resolve => { release = () => commit(batch).then(resolve); });
   const flushing = store.flush();
-  store.appendSample(sample(2)); store.saveWorkspace({ ...store.getSnapshot().workspace, workspaceRevision: 3, note: 'second' });
+  store.appendSample(sample(2)); store.saveWorkspace('recorded', { ...store.getSnapshot().workspace.bySource.recorded, workspaceRevision: 3, note: 'second' });
   const snapshot = store.getSnapshot();
   await release(); await flushing;
   assert.equal(store.getState().savedSampleId, 1);
@@ -36,9 +36,9 @@ test('in-flight save acknowledges captured revisions only; immutable incremental
   assert.equal(store.getLatestSample().values.temperatureC, 25);
   store.appendSample(sample(3));
   assert.equal(snapshot.samples.length, 2);
-  assert.equal(snapshot.workspace.note, 'second');
+  assert.equal(snapshot.workspace.bySource.recorded.note, 'second');
   repository.commitBatch = commit; await store.close();
-  assert.equal((await repository.readSnapshot('test')).workspace.workspaceRevision, 3);
+  assert.equal((await repository.readSnapshot('test')).workspace.bySource.recorded.workspaceRevision, 3);
 });
 
 for (const committed of [false, true]) test(`failed writes retry identical batches before newer samples and notes (committed=${committed})`, async () => {
@@ -105,7 +105,7 @@ test('admission failure leaves samples, workspace and revision intact and export
   const before = store.getSnapshot();
   assert.throws(() => store.appendSample(sample(3)), /순서/);
   assert.throws(() => store.appendSample(sample(2, { values: { temperatureC: NaN, pressureHpa: 1000 } })), { code: 'invalid-record' });
-  assert.throws(() => store.saveWorkspace({ ...before.workspace, workspaceRevision: 2, note: 'x'.repeat(LIMITS.fileBytes) }), /용량/);
+  assert.throws(() => store.saveWorkspace('recorded', { ...before.workspace.bySource.recorded, workspaceRevision: 2, note: 'x'.repeat(LIMITS.fileBytes) }), /용량/);
   assert.deepEqual(store.getSnapshot(), before);
   const json = buildExperimentJson(before);
   assert.equal(new TextEncoder().encode(json).length, store.getState().serializedBytes);
@@ -160,7 +160,7 @@ test('an exported completed run near the file limit can be imported without fres
 
 test('invalid workspace references and formulas cannot enter storage or change its revision', async () => {
   const { store } = await fixture(); store.appendSample(sample(1)); createWorkspace({ store });
-  const before = store.getSnapshot(), next = { ...before.workspace, workspaceRevision: 2 };
+  const before = store.getSnapshot(), next = { ...before.workspace.bySource.recorded, workspaceRevision: 2 };
   for (const invalid of [
     { ...next, selectedIds: [99] },
     { ...next, tableLastSampleId: 2 },
@@ -168,7 +168,7 @@ test('invalid workspace references and formulas cannot enter storage or change i
     { ...next, calculatedColumns: [{ id: 'calc-loop', name: 'cycle', unit: null,
       lhs: { kind: 'column', columnId: 'calc-loop' }, op: '+', rhs: { kind: 'constant', value: 1 } }] },
   ]) {
-    assert.throws(() => store.saveWorkspace(invalid));
+    assert.throws(() => store.saveWorkspace('recorded', invalid));
     assert.deepEqual(store.getSnapshot(), before);
   }
   await store.close();
@@ -185,7 +185,7 @@ test('temporary file analysis edits and exports without touching locks or durabl
   await temporary.flush();
   const json = JSON.parse(buildExperimentJson(temporary.getSnapshot()));
   assert.equal(json.samples[0].receivedAt, null);
-  assert.equal(json.workspace.exclusions[0].reason, '확인');
+  assert.equal(json.workspace.bySource.recorded.exclusions[0].reason, '확인');
   assert.deepEqual(snapshot, original);
   await temporary.close(); await store.close();
 });

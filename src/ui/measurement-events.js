@@ -1,6 +1,7 @@
 import { element } from './dom.js';
 import { clockTime, formatClockTime } from '../analysis/clock-time.js';
 import { eventTitle, eventDetail } from './event-content.js';
+import { groupTimeMarkers } from './time-markers.js';
 
 const lifecycle = new Set(['recording-start','recording-paused','recording-resumed','measurement-end','additional-measurement']);
 const stamp = (event, precise = false) => Number.isFinite(event.receivedAt) ? formatClockTime(clockTime(event.receivedAt)).slice(0, precise ? 12 : 8) : '시각 정보 없음';
@@ -74,27 +75,17 @@ export function createMeasurementEvents(list, plot, onEditNote = null) {
     layout(geometry) {
       if (!geometry || geometry.width < 1) { layer.hidden = true; return; }
       layer.hidden = false;
-      const width = Math.min(116, geometry.width), gap = 8, groups = [];
-      const visible = records.filter(event => Number.isFinite(event.receivedAt))
-        .map(event => ({event, x:geometry.pixel(event.receivedAt)}))
-        .filter(item => item.x >= geometry.left && item.x <= geometry.left + geometry.width)
-        .sort((a,b) => a.x - b.x);
-      for (const item of visible) {
-        const left = Math.max(geometry.left, Math.min(item.x - width / 2, geometry.left + geometry.width - width));
-        const previous = groups.at(-1);
-        if (previous && left < previous.left + width + gap) previous.items.push(item);
-        else groups.push({left, items:[item]});
-      }
-      const key = JSON.stringify(groups.map(group => group.items.map(item => [item.event.eventId, item.event.receivedAt, item.event.type, item.event.payload?.note])));
+      const groups = groupTimeMarkers(records, geometry);
+      const key = JSON.stringify(groups.map(group => group.items.map(item => [item.record.eventId, item.record.receivedAt, item.record.type, item.record.payload?.note])));
       if (key !== markerKey) {
         markerKey = key;
         markers = groups.map(group => {
           const marker = element('div', 'measurement-event-marker'), button = element('button');
           button.type = 'button'; button.setAttribute('aria-haspopup', 'dialog');
-          const first = group.items[0].event;
+          const first = group.items[0].record;
           button.append(element('strong', '', title(first) + (group.items.length > 1 ? ` 외 ${group.items.length - 1}건` : '')),
             element('time', '', stamp(first) + (group.items.length > 1 ? ' …' : '')));
-          button.addEventListener('click', () => showDetails(group.items.map(item => item.event), button));
+          button.addEventListener('click', () => showDetails(group.items.map(item => item.record), button));
           // A grouped label points to its first event; the detail dialog lists
           // every exact timestamp, including events during a measurement gap.
           const line = element('i'); line.setAttribute('aria-hidden', 'true');
@@ -104,7 +95,7 @@ export function createMeasurementEvents(list, plot, onEditNote = null) {
       }
       groups.forEach((group, index) => {
         const {button, line} = markers[index];
-        button.style.cssText = `left:${group.left}px;top:${geometry.labelTop}px;width:${width}px`;
+        button.style.cssText = `left:${group.left}px;top:${geometry.labelTop}px;width:${group.width}px`;
         line.style.cssText = `left:${group.items[0].x}px;top:${geometry.top}px;height:${geometry.height}px`;
       });
     },

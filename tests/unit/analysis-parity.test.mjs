@@ -41,7 +41,7 @@ test('arbitrary channels use identical workspace commands and expose independent
     defaultGraph: { xColumnId: 'receivedAt', yColumnId: 'light', type: 'line' }, analysisTemplates: [] };
   const snapshot = { run: { id: 'generic', context }, samples: [2, 4, 6].map((light, i) => ({ runId: 'generic', sampleId: i + 1,
     receivedAt: 1700000000000 + i * 1000, values: { light }, validity: { light: 'valid' } })), workspace: null };
-  const store = { getSnapshot: () => structuredClone(snapshot), getState: () => ({ writable: true }), saveWorkspace: workspace => { snapshot.workspace = structuredClone(workspace); } };
+  const store = { getSnapshot: () => structuredClone(snapshot), getState: () => ({ writable: true }), saveWorkspace: (sourceId, workspace) => { snapshot.workspace = {runId:snapshot.run.id, envelopeRevision:(snapshot.workspace?.envelopeRevision ?? 0)+1, activeSourceId:sourceId, bySource:{...snapshot.workspace?.bySource,[sourceId]:structuredClone(workspace)}}; } };
   const workspace = createWorkspace({ store });
   assert.equal(workspace.getSummary().invalidCount, 0);
   assert.deepEqual(workspace.getState().calculationTemplates, []);
@@ -79,7 +79,7 @@ test('missing timestamps never become epoch zero or enter a time range', () => {
     defaultGraph: { xColumnId: 'sampleId', yColumnId: 'light', type: 'scatter' } };
   const snapshot = { run: { id: 'untimed', context }, samples: [1, 2].map(sampleId => ({ sampleId, receivedAt: null,
     values: { light: sampleId * 3 }, validity: { light: 'valid' } })), workspace: null };
-  const store = { getSnapshot: () => structuredClone(snapshot), getState: () => ({ writable: true }), saveWorkspace: value => { snapshot.workspace = structuredClone(value); } };
+  const store = { getSnapshot: () => structuredClone(snapshot), getState: () => ({ writable: true }), saveWorkspace: (sourceId, value) => { snapshot.workspace = {runId:snapshot.run.id, envelopeRevision:(snapshot.workspace?.envelopeRevision ?? 0)+1, activeSourceId:sourceId, bySource:{...snapshot.workspace?.bySource,[sourceId]:structuredClone(value)}}; } };
   const workspace = createWorkspace({ store });
   assert.equal(timeBounds(snapshot.samples), null);
   assert.deepEqual(rangeSampleIds(snapshot.samples, { startAt: 0, endAt: 1000 }), []);

@@ -4,6 +4,7 @@ import { validateAnalysisRange, timeBounds } from './scope.js';
 import { createCalculator } from './calculations.js';
 import { graphData } from './graph-data.js';
 import { fitGraph, graphWithTrends } from './regression.js';
+import { pointSourceRows } from './data-source.js';
 
 export const ANSWER_LIMIT = 1200;
 export const REFLECTION_QUESTIONS = Object.freeze([
@@ -29,7 +30,8 @@ export function axisCalculations(graph, columns) {
 
 export function captureEvidence(state, defaultGraph = state.defaultGraph) {
   const graph = state.graph ?? defaultGraph, ids = new Set(state.appliedIds);
-  return copy({ tableLastSampleId: state.tableLastSampleId, appliedIds: [...ids].sort((a, b) => a - b),
+  return copy({ tableLastSampleId: state.appliedThroughSampleId ?? state.tableLastSampleId, appliedIds: [...ids].sort((a, b) => a - b),
+    ...(state.inputSnapshot ? {sourceId: 'points', inputSnapshot: state.inputSnapshot} : {}),
     appliedScope: state.appliedScope, analysisRange: state.analysisRange ?? null,
     exclusions: state.exclusions.filter(e => ids.has(e.sampleId)).sort((a, b) => a.sampleId - b.sampleId),
     calculatedColumns: axisCalculations(graph, state.calculatedColumns), graph,
@@ -52,13 +54,14 @@ export function validateAnswers(value, questions = REFLECTION_QUESTIONS) {
   }));
 }
 
-export function validateReflection(value, samples, imported = [], context) {
+export function validateReflection(value, samples, imported = [], context,
+  { throughSampleId = samples.at(-1)?.sampleId ?? 0, withdrawnIds = new Set() } = {}) {
   const questions = context?.questions ?? context?.activity?.questions ?? REFLECTION_QUESTIONS;
   if (value == null) return { evidence: null, answers: Object.fromEntries(questions.map(q => [q.id, ''])) };
   requireValue(object(value), '저장 형식을 확인하세요.');
   const answers = validateAnswers(value.answers, questions);
   if (value.evidence == null) return { evidence: null, answers };
-  const e = value.evidence, max = samples.at(-1)?.sampleId ?? 0;
+  const e = value.evidence, max = throughSampleId;
   requireValue(object(e) && Number.isSafeInteger(e.tableLastSampleId) && e.tableLastSampleId > 0 && e.tableLastSampleId <= max,
     '근거 그래프의 자료 경계를 확인하세요.');
   const ids = values => Array.isArray(values) && values.every(id => Number.isSafeInteger(id) && id > 0 && id <= e.tableLastSampleId)
@@ -66,7 +69,8 @@ export function validateReflection(value, samples, imported = [], context) {
   requireValue(ids(e.appliedIds) && e.appliedIds.length > 0 && ['all', 'selection'].includes(e.appliedScope), '근거 자료 ID를 확인하세요.');
   const applied = new Set(e.appliedIds), available = new Set(samples.map(s => s.sampleId));
   requireValue(e.appliedIds.every(id => available.has(id)), '없는 자료를 근거로 참조하고 있습니다.');
-  requireValue(e.appliedScope !== 'all' || samples.filter(s => s.sampleId <= e.tableLastSampleId).every(s => applied.has(s.sampleId)), '전체 근거 자료의 범위를 확인하세요.');
+  const all = samples.filter(s => s.sampleId <= e.tableLastSampleId && !withdrawnIds.has(s.sampleId));
+  requireValue(e.appliedScope !== 'all' || (all.length === applied.size && all.every(s => applied.has(s.sampleId))), '전체 근거 자료의 범위를 확인하세요.');
   requireValue(Array.isArray(e.exclusions) && ids(e.exclusions.map(x => x?.sampleId))
     && e.exclusions.every(x => applied.has(x.sampleId) && typeof x.reason === 'string' && x.reason.length <= 200), '제외 자료·사유를 확인하세요.');
   const columns = validateCalculatedColumns(e.calculatedColumns, imported, context), graph = validateGraph(e.graph, columns, imported, context);
@@ -81,6 +85,10 @@ export function validateReflection(value, samples, imported = [], context) {
 // Reuse the same graph and regression engines. No derived values are trusted from files.
 export function evidenceGraph(samples, evidence, imported = [], context, origin = timeBounds(samples)?.origin ?? null) {
   if (!evidence) return null;
+  if (evidence.inputSnapshot) {
+    samples = pointSourceRows(samples, evidence.inputSnapshot);
+    context = {...context, analysisSource: 'points', manualColumns: evidence.inputSnapshot.manualColumns};
+  }
   const calculate = createCalculator(evidence.calculatedColumns, imported, context), ids = new Set(evidence.appliedIds);
   const rows = samples.filter(s => ids.has(s.sampleId)).map(s => ({ ...s, calculations: calculate(s) }));
   const model = graphData(rows, evidence, imported, context, origin);

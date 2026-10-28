@@ -3,12 +3,17 @@
 import { getSourceColumns, graphColumns } from './columns.js';
 import { LIMITS } from './limits.js';
 export { graphColumns, LIMITS };
-export const DATABASE = Object.freeze({ name: 'microbit.sensor-lab', version: 1 });
+export const DATABASE = Object.freeze({ name: 'microbit.sensor-lab', version: 2 });
+export const RUN_SCHEMA_VERSION = 2;
+export const EXPERIMENT_FILE_VERSION = 2;
 /** @typedef {import('./columns.js').Channel} Channel */
 /** @typedef {{sensor:any,activity:any,classConfig:any,channels:Channel[],firmware:any,setup:any,defaultGraph:any,analysisTemplates:any[],questions:any[]}} ExperimentContext */
 /** @typedef {{runId:string,sampleId:number,receivedAt:number|null,values:Record<string,number|null>,validity:Record<string,string>,sourceSampleId?:number,rawExtra?:any}} Sample */
 /** @typedef {{type:'reading',values:Record<string,number|null>,validity:Record<string,string>,receivedAt:number,monotonicAt:number,attemptId:number,rawExtra?:any}} Reading */
-/** @typedef {{id:string,schemaVersion:number,runRevision:number,name:string,createdAt:number,updatedAt:number,status:string,context:ExperimentContext,source:string,lastSavedSampleId:number,lastSavedEventId:number}} Run */
+/** @typedef {{id:string,schemaVersion:number,runRevision:number,name:string,createdAt:number,updatedAt:number,status:string,context:ExperimentContext,source:string,lastSavedSampleId:number,lastSavedEventId:number,recordingMode:'continuous'|'point'|null,manualColumns:ManualColumn[],pointDataRevision:number}} Run */
+/** @typedef {{id:string,name:string,unit:string|null,type:'number'}} ManualColumn */
+/** @typedef {{runId:string,pointRecordId:number,capturedSampleId:number,capturedAt:number,manualValues:Record<string,number|null>,note:string,withdrawn:boolean,revision:number}} PointRecord */
+/** @typedef {{runId:string,envelopeRevision:number,activeSourceId:'recorded'|'points',bySource:Record<string,any>}} WorkspaceEnvelope */
 export const CALCULATION_OPERATORS = Object.freeze({ '+': '+', '-': '−', '*': '×', '/': '÷', '^': '거듭제곱' });
 export const isValidReading = input => input?.type === 'reading' && Object.values(input.validity ?? {}).some(v => v === 'valid');
 export function withEventNote(event, note) {

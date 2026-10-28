@@ -1,11 +1,11 @@
 /* Shared controls: roles, interaction states and dialog chrome. Screen files own placement and size.
    Local --sl-button-* bindings select a role; hover/pressed/disabled paint stays here. */
-:root[data-visual-theme] :is(.guide, .luminous-device, .lab-controls) button.connection-help-trigger[data-connection-help] {
+:root[data-visual-theme] :is(.guide, .luminous-device, .lab-controls) :is(button.connection-help-trigger[data-connection-help], button.installation-help-trigger[data-installation-help]) {
   --sl-button-bg:transparent; --sl-button-line:transparent; --sl-button-text:var(--sl-muted);
   --sl-button-hover:var(--sl-control-hover); --sl-button-hover-line:transparent;
   min-height:44px; padding:8px 10px; font-size:0.8125rem; font-weight:500;
 }
-:root[data-visual-theme] .guide button.connection-help-trigger[data-connection-help] {
+:root[data-visual-theme] .guide :is(button.connection-help-trigger[data-connection-help], button.installation-help-trigger[data-installation-help]) {
   --sl-button-text:var(--sl-stage-control-text); --sl-button-hover:var(--sl-stage-overlay);
 }
 :root[data-visual-theme] button.connection-help-inline {

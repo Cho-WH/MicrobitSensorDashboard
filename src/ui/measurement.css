@@ -1,4 +1,80 @@
 /* Measurement layout, readings, recording state and event annotations. */
+.recording-mode { margin-block:var(--sl-space-4); display:flex; flex-wrap:wrap; align-items:center; gap:var(--sl-space-3); }
+.recording-mode [role="group"] { display:flex; flex-wrap:wrap; gap:var(--sl-space-3); }
+.recording-mode .lab-note { margin:0; }
+.continuous-point-controls { grid-column:1 / -1; order:3; display:flex; flex-wrap:wrap; align-items:center; gap:var(--sl-space-2) var(--sl-space-3); padding:var(--sl-space-3); background:var(--sl-surface); border-radius:var(--sl-radius-note); }
+.continuous-point-controls p { margin:0; }
+.continuous-point-controls .point-feedback:empty { display:none; }
+#continuous-point-reason { flex:1 1 16rem; }
+.point-panel { margin-top:var(--sl-space-4); }
+.point-panel > summary { cursor:pointer; display:list-item; padding:var(--sl-space-3); background:var(--sl-surface); border-radius:var(--sl-radius-note); font-weight:600; }
+.point-panel > summary .lab-note { margin-left:var(--sl-space-3); font-weight:400; }
+.point-panel[open] > summary { margin-bottom:var(--sl-space-3); }
+[data-recording-mode="continuous"] #point-recording { grid-template-areas:"condition table"; }
+:root[data-visual-theme="luminous"] .recording-mode button[aria-pressed="true"] { border-bottom:2px solid var(--sl-tab-line); font-weight:700; }
+[data-recording-mode="point"] :is(#live-cards, .luminous-graph, #start-recording, #pause-recording) { display:none; }
+[data-recording-mode="point"] .luminous-overview { grid-template-columns:minmax(0,1fr) minmax(0,2fr); margin-bottom:var(--sl-space-4); }
+[data-recording-mode="point"] .luminous-device { flex-direction:row; flex-wrap:wrap; }
+[data-recording-mode="point"] .luminous-device img { display:none; }
+#point-recording { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); grid-template-areas:"live table" "condition table"; gap:var(--sl-space-4); align-items:start; }
+.point-live { grid-area:live; }
+.point-condition { grid-area:condition; }
+.point-table-section { grid-area:table; min-width:0; }
+#point-recording > section { padding:var(--sl-space-4); background:var(--sl-surface); border-radius:var(--sl-radius-panel); }
+#point-recording h3 { font-size:var(--sl-type-control); margin:0 0 var(--sl-space-3); }
+#point-recording summary { cursor:pointer; min-height:var(--sl-target); align-content:center; }
+.point-readout { margin-bottom:var(--sl-space-3); color:var(--channel-text-color); }
+.point-readout > strong { display:block; font-size:clamp(1.5rem,3vw,2.75rem); line-height:1.5; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.point-gauge { position:relative; }
+.point-gauge meter { display:block; width:100%; height:var(--sl-space-4); accent-color:var(--channel-color); }
+.point-gauge meter::-webkit-meter-optimum-value { background:var(--channel-color); }
+.point-gauge:has(.point-gauge-zero:not([hidden])) { margin-bottom:var(--sl-space-4); }
+.point-gauge-zero { position:absolute; top:0; padding-top:var(--sl-space-4); border-left:1px solid var(--sl-muted); font-size:var(--sl-type-caption); color:var(--sl-muted); }
+.point-fields { display:flex; flex-wrap:wrap; gap:var(--sl-space-2); }
+#point-recording label { display:grid; gap:var(--sl-space-1); margin-block:var(--sl-space-2); min-width:0; font-size:var(--sl-type-label); }
+.point-fields label { flex:1 1 7rem; }
+#point-recording :is(input,textarea) { min-width:0; width:100%; font:inherit; }
+#point-recording textarea { min-height:5rem; resize:vertical; }
+#capture-point { width:100%; margin-top:var(--sl-space-3); }
+.point-table-scroll { max-height:32rem; overflow:auto; overflow-anchor:none; }
+.point-table { min-width:0; width:100%; border-collapse:collapse; font-size:var(--sl-type-label); }
+.point-table :is(th,td) { text-align:left; vertical-align:top; padding:var(--sl-space-2); border-bottom:1px solid var(--sl-line); overflow-wrap:anywhere; white-space:normal; }
+.point-table thead { background:var(--sl-surface-soft); }
+.point-table th:first-child { width:4rem; }
+.point-table td:nth-child(2) { min-width:7rem; }
+.point-table td:last-child { min-width:6rem; }
+.point-table dd { margin:0 0 var(--sl-space-2); font-variant-numeric:tabular-nums; }
+.point-table dt { color:var(--sl-muted); }
+.point-table [data-withdrawn="true"] { background:var(--sl-surface-soft); }
+.point-value { font-variant-numeric:tabular-nums; }
+.point-edit-actions, .point-pages { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sl-space-2); }
+.point-pages { margin-block:var(--sl-space-3); }
+.point-error { color:var(--sl-recording-text); font-size:var(--sl-type-label); overflow-wrap:anywhere; }
+.point-error:empty { display:none; }
+.point-feedback { color:var(--sl-success); min-height:1.5em; }
+@media(min-width:761px) {
+  [data-recording-mode="point"] .luminous-record { flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
+  [data-recording-mode="point"] .luminous-device { grid-column:auto; padding:var(--sl-space-2); }
+}
+@media(max-width:1000px) {
+  #point-recording { grid-template-columns:minmax(0,1fr); grid-template-areas:"live" "table" "condition"; }
+  [data-recording-mode="continuous"] #point-recording { grid-template-areas:"condition" "table"; }
+}
+@media(max-width:540px) {
+  #point-recording > section { padding:var(--sl-space-3); }
+  .point-table :is(th,td) { padding:var(--sl-space-1); }
+  .point-table th:first-child { width:auto; }
+  .point-table td:nth-child(2) { min-width:5rem; }
+  .point-table td:last-child { min-width:4rem; }
+  .point-table, .point-table tbody, .point-table thead { display:block; }
+  .point-table tr { display:grid; grid-template-columns:2rem minmax(0,1fr) minmax(0,1fr); }
+  .point-table tr > :is(th,td):nth-child(n) { min-width:0; width:auto; display:block; }
+  .point-table tr > :last-child { grid-column:1 / -1; }
+  .point-table thead th:last-child { display:none; }
+  .point-table tr:has(td[hidden]) { grid-template-columns:2rem minmax(0,1fr); }
+  .point-table :is(input,textarea,button) { max-width:100%; }
+  [data-recording-mode="point"] .luminous-overview { grid-template-columns:minmax(0,1fr); }
+}
 .measurement-reception { min-width:0px; border-left:1px solid var(--sl-line); padding-left:24px; }
 .measurement-reception p { font-size:0.75rem; color:var(--sl-muted); font-variant-numeric:tabular-nums; line-height:1.6; }
 @media (max-width: 760px) {
@@ -119,7 +195,12 @@
 [data-visual-theme="luminous"] .measurement-system-events summary { color:var(--sl-muted); font-size:var(--sl-type-small); font-weight:400; }
 .measurement-system-events ol { list-style:none; padding:0px; margin:8px 0px 0px; max-height:140px; overflow:auto; }
 [data-visual-theme="luminous"] .measurement-system-events .measurement-event-row { border:0px; background:none; padding:5px 0px; }
-.measurement-event-markers { position:absolute; inset:0px; pointer-events:none; }
+.measurement-event-markers, .measurement-point-markers { position:absolute; inset:0px; pointer-events:none; }
+[data-visual-theme="luminous"] .lab-chart[data-point-markers="true"] { min-height:22rem; }
+.measurement-point-marker button { position:absolute; pointer-events:auto; min-height:44px; padding:4px 7px; display:flex; flex-direction:column; gap:1px; font-size:var(--sl-type-caption); line-height:1.5; }
+.measurement-point-marker strong { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.measurement-point-marker time { font-size:var(--sl-type-caption); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.measurement-point-marker i { position:absolute; border-left:1px dotted var(--sl-selection); }
 [data-visual-theme="luminous"] .measurement-event-marker button { --sl-button-bg:var(--sl-event-bg); --sl-button-text:var(--sl-event-text); --sl-button-line:var(--sl-event-line); --sl-button-hover:var(--sl-event-hover); --sl-button-hover-line:var(--sl-selection); position:absolute; pointer-events:auto; min-height:44px; padding:4px 7px; display:flex; flex-direction:column; align-items:center; gap:1px; border-top:0px; border-right:0px; border-left:0px; border-image:none; border-bottom:2px solid var(--sl-event-line); background:var(--sl-button-bg); color:var(--sl-button-text); font-size:var(--sl-type-caption); line-height:1.5; }
 .measurement-event-marker strong { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
 .measurement-event-marker time { font-size:0.625rem; white-space:nowrap; font-variant-numeric:tabular-nums; }

@@ -8,6 +8,7 @@ import {buildExperimentJson,parseExperimentJson} from '../../src/data/files/json
 import {buildCsv,parseExperimentCsv} from '../../src/data/files/csv.js';
 import {canResumeImportedRun} from '../../src/data/files/recording-source.js';
 import {createWorkspace} from '../../src/analysis/workspace.js';
+import {clockTime,formatClockTime} from '../../src/analysis/clock-time.js';
 
 const check=(value,message)=>{if(!value)throw new Error(message);};
 export async function runMeasurementTests(report=()=>{}) {
@@ -45,12 +46,25 @@ export async function runMeasurementTests(report=()=>{}) {
   try{
     for(let id=1;id<=1000;id++)add(id);
     store.appendEvent({type:'recording-paused',receivedAt:origin+100050,payload:{},source:'user'});
+    store.appendEvent({type:'note',receivedAt:origin+100000,payload:{note:'한 점과 같은 시점'},source:'user'});
+    store.appendPointRecord({capturedSampleId:500,capturedAt:origin+100150,manualValues:{}});
+    store.appendPointRecord({capturedSampleId:501,capturedAt:origin+100350,manualValues:{}});
     const original=store.getSamples();
     view=createMeasurementView(host,()=>view.render(options));view.render(options);
     const range=host.querySelector('#live-range'), chart=()=>Chart.getChart(host.querySelector('canvas'));
     check(chart().data.datasets[0].data.filter(p=>p.sampleId).length===301,'최근 60초가 저장 시각 기준과 다릅니다.');
     check(chart().data.datasets[0].data.every(p=>Number.isFinite(p.x)),'보관된 원자료에 없는 monotonicAt을 사용했습니다.');
+    check(!host.querySelector('[data-point-marker]'),'최근 구간 밖의 점을 표시했습니다.');
     clickVisible(range.querySelector('summary'));clickVisible(range.querySelector('[data-live-range="all"]'));
+    check(host.querySelector('[data-point-marker="1"]')&&host.querySelector('.measurement-event-marker button'),'같은 수신 시점의 사건 또는 한 점 기록이 사라졌습니다.');
+    clickVisible(host.querySelector('[data-point-marker="1"]'));
+    check(host.querySelectorAll('dialog[open] [data-point-marker-id]').length===2,'묶인 점 표식에서 원래 기록이 누락됐습니다.');
+    check(host.querySelector('[data-point-marker-id="1"] time').textContent===formatClockTime(clockTime(origin+100000)),'캡처 시각을 원자료 수신 시각 대신 표시했습니다.');
+    clickVisible(host.querySelector('[data-point-marker-action="close"]'));
+    store.setPointWithdrawn(1,true);store.setPointWithdrawn(2,true);view.render(options);
+    check(!host.querySelector('[data-point-marker]')&&host.querySelector('.measurement-event-marker button'),'정지된 자료의 취소 표식 또는 사건 표시가 갱신되지 않았습니다.');
+    store.setPointWithdrawn(1,false);view.render(options);
+    check(host.querySelector('[data-point-marker="1"]'),'정지된 자료에서 원래 번호로 표식을 복원하지 못했습니다.');
     check(chart().data.datasets[0].data.filter(p=>p.sampleId).length===1000,'전체 기록이 600개 미리보기 버퍼에 잘렸습니다.');
     check(chart().data.datasets[0].data.some(p=>p.y===null),'5초보다 짧은 일시정지를 선으로 연결했습니다.');
     for(let id=1001;id<=1010;id++)add(id);view.render(options);

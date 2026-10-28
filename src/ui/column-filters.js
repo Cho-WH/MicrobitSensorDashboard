@@ -49,8 +49,9 @@ export function createColumnFilters(root, { getWorkspace, act, signal }) {
         const legacy = document.createElement('p'); legacy.textContent = '이전 필터: ' + ({ included: '제외되지 않은 자료', excluded: '제외 기록이 있는 자료', none: '표시 없음' }[f.usage]); form.append(legacy);
       }
       const choices = [['included', '분석 포함'], ['excluded', '제외'], ['outside', '범위 밖']];
+      if (getWorkspace().getState().sourceId === 'points') choices.push(['withdrawn', '기록 취소']);
       const inputs = choices.map(([id, label]) => check(form, label, !f.analysisStatus || f.analysisStatus.includes(id), id));
-      for (const input of inputs) input.addEventListener('change', () => apply({ usage: 'all', analysisStatus: inputs.filter(el => el.checked).map(el => el.value) }));
+      for (const input of inputs) input.addEventListener('change', () => apply({ usage: 'all', analysisStatus: inputs.every(el => el.checked) ? null : inputs.filter(el => el.checked).map(el => el.value) }));
     } else if (column === 'note') {
       statusChoices(form, 'validity', f.validity, [['valid', '정상 범위'], ['invalid', '값 확인 필요']]);
       const reason = labelInput(form, '제외 사유에 포함된 글자', 'text', f.reason ?? ''); reason.maxLength = 200;

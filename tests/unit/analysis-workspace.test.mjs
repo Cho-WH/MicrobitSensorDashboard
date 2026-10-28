@@ -21,7 +21,7 @@ function fixture({ snapshot, writable = true } = {}) {
   let data = structuredClone(snapshot ?? { run: { id: 'workspace-test' }, samples: samples(100), workspace: null });
   const saves = [];
   const store = { getSnapshot: () => structuredClone(data), getState: () => ({ writable }),
-    saveWorkspace(next) { data.workspace = structuredClone(next); saves.push(structuredClone(next)); } };
+    saveWorkspace(sourceId, next) { data.workspace = {runId:data.run.id, envelopeRevision:(data.workspace?.envelopeRevision ?? 0)+1, activeSourceId:sourceId, bySource:{...data.workspace?.bySource,[sourceId]:structuredClone(next)}}; saves.push(structuredClone(next)); } };
   return { store, saves, workspace: createWorkspace({ store, context }), append(count) { data.samples.push(...samples(count, data.samples.length + 1)); } };
 }
 
@@ -59,7 +59,7 @@ test('time range preserves source order across midnight, duplicate and backwards
   const saved = f.store.getSnapshot(); saved.samples.push({ ...raw[1], sampleId: 6 });
   const reopened = fixture({ snapshot: saved }).workspace; reopened.showNewData();
   assert.deepEqual(reopened.getState().appliedIds, [2, 3, 4]);
-  const resaved = { ...saved, workspace: reopened.getState() };
+  const resaved = { ...saved, workspace: { ...saved.workspace, bySource: { recorded: reopened.getState() } } };
   assert.deepEqual(fixture({ snapshot: resaved }).workspace.getState().appliedIds, [2, 3, 4]);
   assert.deepEqual(f.store.getSnapshot().samples, raw);
 });
@@ -112,7 +112,7 @@ test('reflection writes are atomic, bounded, read-only safe, and old interpretat
   assert.throws(() => w.setReflectionAnswers({ observation: '내용', reasoning: '', limitations: '' }), /저장 실패/);
   assert.deepEqual(w.getState(), before);
   assert.throws(() => w.setReflectionAnswers({ observation: 'x'.repeat(1201), reasoning: '', limitations: '' }), /1200/);
-  const snapshot = f.store.getSnapshot(); snapshot.workspace.interpretation = { enabled: true, view: 'extended' }; delete snapshot.workspace.reflection;
+  const snapshot = f.store.getSnapshot(); snapshot.workspace.bySource.recorded.interpretation = { enabled: true, view: 'extended' }; delete snapshot.workspace.bySource.recorded.reflection;
   const reader = fixture({ snapshot, writable: false }).workspace;
   assert.equal(reader.getReflectionModel(), null); assert.equal(reader.getState().reflection.answers.observation, '');
   assert.throws(() => reader.captureReflection(), /읽기 전용/);
@@ -161,7 +161,7 @@ test('trend survives history and reopening; extension resets only when switched 
   w.setSelection([1]); w.applyScope('selection'); assert.equal(w.getState().graph.view, 'measured');
   assert.equal(w.getState().regression.enabled, true); assert.equal(w.getGraphData().trend.measured.length, 0);
   w.undo(); assert.equal(w.getState().graph.view, 'extended'); assert.equal(w.getState().regression.result.count, 100);
-  const stale = f.store.getSnapshot(); stale.workspace.regression.result.slope = 999;
+  const stale = f.store.getSnapshot(); stale.workspace.bySource.recorded.regression.result.slope = 999;
   assert.notEqual(fixture({ snapshot: stale }).workspace.getState().regression.result.slope, 999);
 });
 test('trend follows dependent expressions, ignores unrelated columns and refreshes labels without numeric invalidation', () => {
@@ -283,7 +283,8 @@ test('calculated filters, dependency deletion guards and history reconcile remov
   w.undo(); assert.equal(w.getState().calculatedColumns.length, 2);
   w.setFilter({ columnId: ratio.id, ranges: { [ratio.id]: { min: null, max: null } } });
   w.deleteColumn(ratio.id);
-  assert.doesNotThrow(() => fixture({ snapshot: { run: { id: 'workspace-test' }, samples: samples(100), workspace: w.getState() } }));
+  assert.doesNotThrow(() => fixture({ snapshot: { run: { id: 'workspace-test' }, samples: samples(100),
+    workspace: { runId: 'workspace-test', envelopeRevision: 1, activeSourceId: 'recorded', bySource: { recorded: w.getState() } } } }));
   w.undo();
   w.saveColumn({ ...k, name: '換算', unit: '' }); applyPreset(w, 'ratio');
   assert.equal(w.getState().calculatedColumns.length, 3);
@@ -405,7 +406,7 @@ test('view changes retain input revision and saved snapshots; empty and invalid 
   const restored = fixture({ snapshot: f.store.getSnapshot() }).workspace;
   assert.deepEqual(restored.getRows().map(s => s.sampleId), [10, 11, 12, 13, 14, 15]);
   const legacy = f.store.getSnapshot();
-  legacy.workspace.table.scrollTop = 1000;
+  legacy.workspace.bySource.recorded.table.scrollTop = 1000;
   const reopened = fixture({ snapshot: legacy });
   assert.equal(reopened.saves.length, 0);
   assert.equal(Object.hasOwn(reopened.workspace.getState().table, 'scrollTop'), false);
@@ -514,8 +515,8 @@ test('default analysis expands on explicit loading and stays complete through un
   w.setSelection([99]); assert.equal(w.getSummary().includedCount, 9);
   w.applyScope('all'); assert.equal(w.getSummary().includedCount, 119);
   w.undo(); assert.deepEqual(w.getState().appliedIds, samples(9, 2).map(s => s.sampleId));
-  const snapshot = f.store.getSnapshot(); snapshot.workspace.appliedScope = 'all';
-  const input = snapshot.workspace.analysisInputRevision;
+  const snapshot = f.store.getSnapshot(); snapshot.workspace.bySource.recorded.appliedScope = 'all';
+  const input = snapshot.workspace.bySource.recorded.analysisInputRevision;
   const legacy = fixture({ snapshot }).workspace;
   assert.equal(legacy.getState().appliedScope, 'selection');
   assert.equal(legacy.getSummary().includedCount, 9);
@@ -575,7 +576,7 @@ test('validity, reason and timestamp header filters compose', () => {
 
 test('legacy segment filters and sorting are ignored without losing other filters or analysis IDs', () => {
   const f = fixture(), snapshot = f.store.getSnapshot();
-  snapshot.workspace.table = { sort: { columnId: 'segmentId', direction: 'desc' },
+  snapshot.workspace.bySource.recorded.table = { sort: { columnId: 'segmentId', direction: 'desc' },
     filter: { segmentId: 9, segments: [], columnId: 'segmentId', min: 9, max: 9,
       ranges: { segmentId: { min: 9 }, temperatureC: { min: 29 } }, usage: 'all', validity: 'all' } };
   const restored = fixture({ snapshot }), w = restored.workspace;
@@ -584,7 +585,7 @@ test('legacy segment filters and sorting are ignored without losing other filter
   w.selectAll();
   const saved = restored.saves.at(-1);
   assert.equal(JSON.stringify(saved.table).includes('segment'), false);
-  assert.deepEqual(saved.appliedIds, snapshot.workspace.appliedIds);
+  assert.deepEqual(saved.appliedIds, snapshot.workspace.bySource.recorded.appliedIds);
   assert.deepEqual(restored.store.getSnapshot().samples, snapshot.samples);
 });
 

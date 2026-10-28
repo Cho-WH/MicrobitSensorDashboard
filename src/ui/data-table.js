@@ -12,14 +12,14 @@ const time = value => formatClockTime(clockTime(value)) || '—';
 const number = value => Number.isFinite(value) ? value.toFixed(2) : '—';
 
 // Reuses the M2 virtual table: full scroll range, only nearby rows in the DOM.
-export function createDataTable({ body, scroller, status, onToggle, onSort, onInspect = (_sampleId) => {} }) {
+export function createDataTable({ body, scroller, status, onToggle, onSort, onInspect = (_sampleId) => {}, onEditCondition = (_pointId) => {} }) {
   let rowHeight = 32;
   const overscan = 8, table = body.closest('table');
   table.style.setProperty('--raw-row-height', `${rowHeight}px`);
   const events = new AbortController(), { signal } = events;
   let rows = [], selected = new Set(), exclusions = new Map(), writable = false, columns = [], compact = false;
   let frame = null, renderedStart = -1, renderedEnd = -1, viewKey = null;
-  let applied = null, focusedId = null, context = null;
+  let applied = null, focusedId = null, context = null, pendingConditions = new Map();
   const header = createTableHeader({ table, onSort, signal });
   function spacer(fragment, count) {
     if (!count) return;
@@ -31,12 +31,15 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
     frame = null;
     // Match virtual spacers to enlarged text, preserving the current row when
     // the user changes font size. Samples and table selection are untouched.
-    const nextHeight = Math.max(32, Math.ceil(parseFloat(getComputedStyle(table).fontSize) * 2.4));
+    const nextHeight = Math.max(32, Math.ceil(parseFloat(getComputedStyle(table).fontSize) * (pendingConditions.size ? 4.4 : context?.analysisSource === 'points' ? 3.2 : 2.4)));
     if (nextHeight !== rowHeight) {
       const first = scroller.scrollTop / rowHeight;
       rowHeight = nextHeight; table.style.setProperty('--raw-row-height', `${rowHeight}px`);
       scroller.scrollTop = first * rowHeight; renderedStart = renderedEnd = -1;
     }
+    // Recompute after the row metric changes (pending values or text zoom), so
+    // short tables do not clip their last row using the previous height.
+    scroller.style.setProperty('--table-content-height', `${Math.max(112, (rows.length + 1) * rowHeight + 16)}px`);
     const first = Math.min(Math.floor(scroller.scrollTop / rowHeight), Math.max(0, rows.length - 1));
     const visibleCount = Math.max(1, Math.ceil(((scroller.clientHeight || 520) - rowHeight) / rowHeight));
     const start = Math.max(0, first - overscan), end = Math.min(rows.length, first + visibleCount + overscan + 1);
@@ -46,19 +49,21 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
     const active = document.activeElement instanceof HTMLElement && body.contains(document.activeElement) ? document.activeElement : null;
     const focused = active?.dataset.select;
     const focusedRow = active?.dataset.sampleId;
+    const focusedCondition = active?.dataset.editCondition;
     const fragment = document.createDocumentFragment();
     spacer(fragment, start);
     for (let index = start; index < end; index++) {
       const sample = rows[index], id = sample.sampleId, excluded = exclusions.has(id);
       const row = document.createElement('tr'); row.className = 'sample-row'; row.dataset.sampleId = id;
       row.dataset.selected = String(selected.has(id));
-      const usageState = applied && !applied.has(id) ? 'outside' : excluded ? 'excluded' : 'included';
+      const usageState = sample.withdrawn ? 'withdrawn' : applied && !applied.has(id) ? 'outside' : excluded ? 'excluded' : 'included';
       row.dataset.usage = usageState; row.dataset.focused = String(id === focusedId);
       row.setAttribute('aria-rowindex', String(index + 2));
-      row.tabIndex = 0; row.setAttribute('aria-label', `자료 ${id}, ${statusLabels[usageState]}. Enter로 정보 보기`);
+      const recordName = sample.pointRecordId ? `${sample.pointRecordId}번 기록` : `자료 ${id}`;
+      row.tabIndex = 0; row.setAttribute('aria-label', `${recordName}, ${statusLabels[usageState]}. Enter로 정보 보기`);
       const cell = row.insertCell(), checkbox = document.createElement('input');
       checkbox.type = 'checkbox'; checkbox.checked = selected.has(id); checkbox.disabled = !writable;
-      checkbox.dataset.select = id; checkbox.setAttribute('aria-label', `자료 ${id} 선택`); cell.append(checkbox);
+      checkbox.dataset.select = id; checkbox.setAttribute('aria-label', `${recordName} 선택`); cell.append(checkbox);
       const reason = exclusions.get(id);
       const usage = statusLabels[usageState];
       const note = `${hasInvalidValue(sample, context) ? '값 확인 필요' : '정상 범위'}${excluded ? ' · 제외 기록' : ''}${reason ? ` · ${reason}` : ''}`;
@@ -76,13 +81,31 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
         } else if (c.id === 'usage') cellText(usage).className = 'sample-usage';
         else if (c.id === 'note') cellText(note);
         else if (c.id === 'receivedAt') cellText(time(sample.receivedAt));
-        else cellText(c.id === 'sampleId' ? id : number(readCell(sample, c.id).value));
+        else if (c.manual && sample.pointRecordId) {
+          const td = row.insertCell(), button = document.createElement('button');
+          const pending = pendingConditions.get(sample.pointRecordId), appliedValue = readCell(sample, c.id).value;
+          const value = pending ? pending.value : appliedValue;
+          button.type = 'button'; button.dataset.editCondition = sample.pointRecordId;
+          button.textContent = value === null ? '입력하기' : formatCalculated(value);
+          button.setAttribute('aria-label', `${sample.pointRecordId}번 ${c.name} 편집`); button.disabled = !writable; td.append(button);
+          if (pending) {
+            if (pending.unit !== c.unit) button.textContent += pending.unit ? ` ${pending.unit}` : '';
+            button.title = `${pending.name}: ${value ?? '미입력'} ${pending.unit ?? ''} · 입력 완료, 분석 반영 대기`;
+            const note = document.createElement('small'); note.className = 'condition-pending';
+            note.id = `condition-pending-${sample.pointRecordId}`;
+            note.textContent = `분석: ${appliedValue === null ? '미입력' : formatCalculated(appliedValue)}${pending.unit !== c.unit && c.unit ? ' ' + c.unit : ''}`;
+            note.title = note.textContent + ' · 변경 반영 대기';
+            button.setAttribute('aria-describedby', note.id + ' point-input-notice'); td.append(note);
+          }
+        } else cellText(['sampleId', 'pointRecordId'].includes(c.id) ? readCell(sample, c.id).value : number(readCell(sample, c.id).value));
       }
       if (!compact) row.insertCell(); // Header-only action column.
       const filler = row.insertCell(); filler.className = 'table-fill'; filler.setAttribute('aria-hidden', 'true');
       const compactStatus = document.createElement('span'); compactStatus.className = 'sample-id-status';
       compactStatus.textContent = usage;
-      compactStatus.setAttribute('aria-hidden', 'true'); row.cells[1].append(compactStatus);
+      compactStatus.setAttribute('aria-hidden', 'true');
+      if (compact && sample.pointRecordId && usageState !== 'included') compactStatus.classList.add('is-visible');
+      row.cells[1].append(compactStatus);
       fragment.append(row);
     }
     spacer(fragment, rows.length - end);
@@ -93,6 +116,7 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
     body.replaceChildren(fragment);
     if (focusedRow) body.querySelector(`[data-sample-id="${focusedRow}"]`)?.focus({ preventScroll: true });
     if (focused) body.querySelector(`[data-select="${focused}"]`)?.focus({ preventScroll: true });
+    if (focusedCondition) body.querySelector(`[data-edit-condition="${focusedCondition}"]`)?.focus({ preventScroll: true });
   }
   function schedule() { frame ??= requestAnimationFrame(paint); }
   scroller.addEventListener('scroll', schedule, { passive: true, signal });
@@ -104,6 +128,8 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
     schedule();
   }, { signal });
   body.addEventListener('click', event => {
+    const edit = event.target.closest('[data-edit-condition]');
+    if (edit) { onEditCondition(Number(edit.dataset.editCondition)); return; }
     const checkbox = event.target.closest('[data-select]');
     if (checkbox) onToggle(Number(checkbox.dataset.select), { checked: checkbox.checked, extend: event.shiftKey });
     else if (!event.target.closest('button, input')) { const row = event.target.closest('[data-sample-id]'); if (row) onInspect(Number(row.dataset.sampleId)); }
@@ -113,8 +139,9 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
   }, { signal });
   const observer = new ResizeObserver(schedule); observer.observe(scroller); observer.observe(table.tHead);
   return {
-    render({ samples, selectedIds, excluded, appliedIds = null, focusedSampleId = null, sort, filter = {}, calculatedColumns = [], importedColumns = [], axisIds = null, canEdit, resetScroll = false, context: nextContext }) {
+    render({ samples, selectedIds, excluded, appliedIds = null, focusedSampleId = null, sort, filter = {}, calculatedColumns = [], importedColumns = [], axisIds = null, canEdit, resetScroll = false, context: nextContext, pendingConditions: nextPending = new Map() }) {
       context = nextContext;
+      pendingConditions = nextPending;
       applied = appliedIds ? new Set(appliedIds) : null; focusedId = focusedSampleId;
       compact = axisIds !== null; columns = tableColumns(calculatedColumns, axisIds, importedColumns, context);
       header.render({ columns, compact, sort, filter, canEdit });
@@ -122,8 +149,6 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
       if (resetScroll || viewKey !== nextViewKey) scroller.scrollTop = 0;
       viewKey = nextViewKey;
       rows = samples; selected = new Set(selectedIds);
-      // Keep controls next to short/filtered tables while retaining the full virtual scroll range.
-      scroller.style.setProperty('--table-content-height', `${Math.max(112, (rows.length + 1) * rowHeight + 16)}px`);
       exclusions = new Map(excluded.map(e => [e.sampleId, e.reason])); writable = canEdit;
       renderedStart = renderedEnd = -1; cancelAnimationFrame(frame);
       table.setAttribute('aria-rowcount', String(rows.length + 1));

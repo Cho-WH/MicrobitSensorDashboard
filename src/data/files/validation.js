@@ -1,6 +1,9 @@
 // Adapted from Cho-WH/bme280 gay-lussac/data/import-validation.js, 59c5c149450f970bace2deaa183857c275595853.
 // Validate complete files before opening a Run or starting any database transaction.
-import { validateCalculatedColumns, validateGraph, validateImportedColumns, validateChannels, validateSample } from '../../domain/contracts.js';
+import { validateCalculatedColumns, validateGraph, validateImportedColumns, validateChannels, validateSample, EXPERIMENT_FILE_VERSION } from '../../domain/contracts.js';
+import { validateManualColumns, validatePointRecord, validatePointInput } from '../../domain/point-records.js';
+import { upgradeRun, upgradeWorkspace } from '../schema.js';
+import { pointSourceRows } from '../../analysis/data-source.js';
 import { getSourceColumns } from '../../domain/columns.js';
 import { LIMITS } from '../../domain/limits.js';
 import { normalizeFilter } from '../../analysis/table-data.js';
@@ -77,14 +80,16 @@ function validateContextContent(context, imported) {
 
 export function validateExperimentSnapshot(input) {
   requireValue(object(input), '실험 내용이 없습니다.'); checkJson(input);
-  requireValue(byteLength({ format: 'microbit-sensor-lab', fileVersion: 1, ...input }) <= LIMITS.maxFileBytes,
+  requireValue(byteLength({ format: 'microbit-sensor-lab', fileVersion: EXPERIMENT_FILE_VERSION, ...input }) <= LIMITS.maxFileBytes,
     '복원할 자료가 너무 큽니다. 32 MiB 이하로 나누어 주세요.', 'FILE_TOO_LARGE');
-  const snapshot = structuredClone(input), { run, samples, events, workspace: work } = snapshot;
-  requireValue(object(run) && run.schemaVersion === 1 && string(run.id) && string(run.name) && run.name.trim().length > 0 && run.name.length <= 120
+  const snapshot = structuredClone(input), { samples, events } = snapshot;
+  let { run } = snapshot;
+  requireValue(object(run) && [1, 2].includes(run.schemaVersion) && string(run.id) && string(run.name) && run.name.trim().length > 0 && run.name.length <= 120
     && integer(run.runRevision) && date(run.createdAt) && date(run.updatedAt)
     && ['open', 'paused', 'complete', 'interrupted'].includes(run.status)
     && ['device', 'replay', 'import'].includes(run.source) && object(run.context), '실험 정보·버전을 확인하세요.');
   const context = run.context, channels = validateChannels(context.channels);
+  requireValue(!Object.hasOwn(context, 'manualColumns'), '수동 조건 열은 센서 구성과 분리해 저장해야 합니다.');
   if (run.timeOrigin != null) requireValue(Number.isSafeInteger(run.timeOrigin) && date(run.timeOrigin), '경과 시간의 기준 시각을 확인하세요.');
   requireValue(object(context.sensor) && string(context.sensor.id) && integer(context.sensor.version)
     && context.sensor.version > 0 && (context.activity == null || (object(context.activity)
@@ -119,30 +124,78 @@ export function validateExperimentSnapshot(input) {
     && date(e.receivedAt) && string(e.type) && object(e.payload) && ['user', 'system'].includes(e.source), '사건 ID·시각·내용을 확인하세요.');
   for (const [key, max] of [['lastSavedSampleId', samples.length], ['lastSavedEventId', events.length]])
     requireValue(integer(run[key]) && run[key] <= max, '저장 위치가 원자료·사건 범위를 벗어납니다.');
-  snapshot.workspace = validateWorkspace(work, { run, samples });
+  if (run.schemaVersion === 1) {
+    requireValue(snapshot.pointRecords === undefined, '구형 실험에 점 기록이 섞여 있습니다.');
+    // Validate old work before wrapping it. Migration never resets scope or interpretation.
+    snapshot.workspace = upgradeWorkspace(validateWorkspace(snapshot.workspace, { run, samples }));
+    run = snapshot.run = upgradeRun(run);
+    snapshot.pointRecords = [];
+  }
+  requireValue(['continuous', 'point', null].includes(run.recordingMode) && integer(run.pointDataRevision), '기록 방식·점 자료 버전을 확인하세요.');
+  run.manualColumns = validateManualColumns(run.manualColumns, context, imported);
+  requireValue(Array.isArray(snapshot.pointRecords) && snapshot.pointRecords.length <= samples.length
+    && (run.recordingMode !== null || (!snapshot.pointRecords.length && !run.manualColumns.length)), '점 기록 목록·기록 방식을 확인하세요.');
+  const references = new Set();
+  snapshot.pointRecords = snapshot.pointRecords.map((point, i) => {
+    requireValue(point?.pointRecordId === i + 1 && !references.has(point.capturedSampleId), '점 번호 또는 원자료 참조가 중복되었습니다.');
+    const checked = validatePointRecord(point, run, samples[point.capturedSampleId - 1]);
+    references.add(checked.capturedSampleId); return checked;
+  });
+  requireValue(run.recordingMode !== 'point' || snapshot.pointRecords.length === samples.length, '한 점씩 측정한 원자료에는 점 기록이 함께 있어야 합니다.');
+  snapshot.workspace = validateWorkspaceEnvelope(snapshot.workspace, snapshot);
+  requireValue(byteLength({ format: 'microbit-sensor-lab', fileVersion: EXPERIMENT_FILE_VERSION, ...snapshot }) <= LIMITS.maxFileBytes,
+    '변환한 실험 파일이 32 MiB를 넘습니다.', 'FILE_TOO_LARGE');
   return snapshot;
 }
 
 // Shared with RunStore: only the editable work is copied, never the full raw recording.
-export function validateWorkspace(input, { run, samples }) {
+export function validateWorkspace(input, { run, samples, pointRecords = [] }, sourceId = 'recorded') {
   if (input == null) return null;
   checkJson(input);
-  const work = structuredClone(input), context = run.context;
+  const work = structuredClone(input);
+  const sourceSamples = samples;
+  let context = run.context;
+  if (sourceId === 'points') {
+    work.inputSnapshot = validatePointInput(work.inputSnapshot, run, samples, pointRecords);
+    samples = pointSourceRows(samples, work.inputSnapshot);
+    context = { ...context, analysisSource: 'points', manualColumns: work.inputSnapshot.manualColumns };
+  } else requireValue(work.inputSnapshot == null, '연속 분석에는 점 입력 사본을 사용할 수 없습니다.');
   const imported = validateImportedColumns(run.importedColumns ?? [], context);
   requireValue(object(work) && work.runId === run.id && integer(work.workspaceRevision)
     && integer(work.analysisInputRevision) && work.analysisInputRevision <= work.workspaceRevision
-    && integer(work.tableLastSampleId) && work.tableLastSampleId <= samples.length
+    && integer(work.tableLastSampleId) && work.tableLastSampleId <= sourceSamples.length
     && ['all', 'selection'].includes(work.appliedScope) && typeof work.note === 'string', '분석 작업 정보가 올바르지 않습니다.');
-  const ids = values => Array.isArray(values) && values.every(id => Number.isSafeInteger(id) && id > 0 && id <= work.tableLastSampleId)
+  const available = new Set(samples.filter(s => s.sampleId <= work.tableLastSampleId).map(s => s.sampleId));
+  const ids = values => Array.isArray(values) && values.every(id => available.has(id))
     && new Set(values).size === values.length;
   requireValue(ids(work.selectedIds) && ids(work.appliedIds), '선택·분석 대상에 없는 자료 ID가 있습니다.');
-  requireValue(work.appliedScope !== 'all' || work.appliedIds.length === work.tableLastSampleId, '전체 분석 자료의 범위를 확인하세요.');
+  const appliedBoundary = work.appliedThroughSampleId ?? work.tableLastSampleId;
+  requireValue(integer(appliedBoundary) && appliedBoundary <= work.tableLastSampleId
+    && work.appliedIds.every(id => id <= appliedBoundary), '분석에 적용한 자료 경계를 확인하세요.');
+  const allIds = samples.filter(s => s.sampleId <= appliedBoundary && (sourceId !== 'points' || !s.withdrawn)).map(s => s.sampleId);
+  const appliedIds = new Set(work.appliedIds);
+  requireValue(work.appliedScope !== 'all' || (appliedIds.size === allIds.length && allIds.every(id => appliedIds.has(id))), '전체 분석 자료의 범위를 확인하세요.');
+  if (sourceId === 'points') requireValue(work.tableLastSampleId <= work.inputSnapshot.throughSampleId, '점 분석의 읽기 경계를 확인하세요.');
   work.analysisRange = validateAnalysisRange(work.analysisRange, samples, work);
   if (work.reflection?.answers != null) {
     const questionIds = new Set((context.questions ?? context.activity?.questions ?? REFLECTION_QUESTIONS).map(q => q.id));
     requireValue(object(work.reflection.answers) && Object.keys(work.reflection.answers).every(id => questionIds.has(id)), '해석 답변의 질문 ID를 확인하세요.');
   }
-  work.reflection = validateReflection(work.reflection, samples, imported, context);
+  if (sourceId === 'points' && work.reflection?.evidence) {
+    const evidence = work.reflection.evidence;
+    requireValue(evidence.sourceId === 'points', '보관 근거의 자료 종류를 확인하세요.');
+    const savedInput = validatePointInput(evidence.inputSnapshot, run, sourceSamples, pointRecords);
+    const evidenceRows = pointSourceRows(sourceSamples, savedInput);
+    requireValue(evidence.tableLastSampleId <= savedInput.throughSampleId, '보관 근거의 입력 경계를 확인하세요.');
+    work.reflection = validateReflection(work.reflection, evidenceRows, imported,
+      { ...run.context, analysisSource: 'points', manualColumns: savedInput.manualColumns }, { throughSampleId: savedInput.throughSampleId,
+        withdrawnIds: new Set(savedInput.points.filter(point => point.withdrawn).map(point => point.capturedSampleId)) });
+    Object.assign(work.reflection.evidence, { sourceId: 'points', inputSnapshot: savedInput });
+  } else {
+    requireValue(!work.reflection?.evidence?.inputSnapshot && !work.reflection?.evidence?.sourceId,
+      '연속 자료의 보관 근거 형식을 확인하세요.');
+    work.reflection = validateReflection(work.reflection, samples, imported, context);
+  }
   requireValue(Array.isArray(work.exclusions) && ids(work.exclusions.map(e => e?.sampleId))
     && work.exclusions.every(e => typeof e.reason === 'string' && e.reason.length <= 200), '제외 자료·사유가 올바르지 않습니다.');
   requireValue(Array.isArray(work.calculatedColumns) && work.calculatedColumns.length <= LIMITS.maxCalculatedColumns, '계산 열은 32개 이하여야 합니다.');
@@ -156,4 +209,21 @@ export function validateWorkspace(input, { run, samples }) {
     && ['asc', 'desc'].includes(work.table.sort.direction), '표 정렬 설정이 올바르지 않습니다.');
   work.table = { sort: work.table.sort, filter: normalizeFilter(work.table.filter, [...imported, ...work.calculatedColumns], context) };
   return work;
+}
+
+export function validateWorkspaceEnvelope(input, snapshot) {
+  if (input == null) return null;
+  checkJson(input);
+  const { run, pointRecords = [] } = snapshot;
+  requireValue(object(input) && input.runId === run.id && integer(input.envelopeRevision) && input.envelopeRevision > 0
+    && object(input.bySource) && ['recorded', 'points'].includes(input.activeSourceId)
+    && Object.hasOwn(input.bySource, input.activeSourceId), '자료별 분석 저장 정보를 확인하세요.');
+  const bySource = {};
+  for (const [sourceId, state] of Object.entries(input.bySource)) {
+    requireValue(['recorded', 'points'].includes(sourceId) && object(state)
+      && (sourceId !== 'recorded' || run.recordingMode !== 'point')
+      && (sourceId !== 'points' || pointRecords.length > 0 || run.recordingMode === 'point'), '없는 분석 자료를 참조하고 있습니다.');
+    bySource[sourceId] = validateWorkspace(state, snapshot, sourceId);
+  }
+  return { runId: run.id, envelopeRevision: input.envelopeRevision, activeSourceId: input.activeSourceId, bySource };
 }

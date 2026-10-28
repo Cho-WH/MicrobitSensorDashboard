@@ -3,6 +3,8 @@
 .connection-troubleshooting h3 { margin:0 0 var(--sl-space-2); color:var(--sl-navy); font-size:var(--sl-type-control); font-weight:650; line-height:1.5; }
 .connection-troubleshooting section p { margin:0; color:var(--sl-muted); font-size:var(--sl-type-label); line-height:1.75; }
 .connection-troubleshooting strong { color:var(--sl-navy); font-weight:650; }
+.connection-troubleshooting ol { padding-left:1.5em; color:var(--sl-text); font-size:var(--sl-type-label); line-height:1.75; }
+.connection-troubleshooting li + li { margin-top:var(--sl-space-2); }
 .connection-troubleshooting figure { margin:var(--sl-space-4) 0 0; overflow:hidden; }
 /* The poster's transparent right margin offsets the visible board; center its silhouette. */
 .connection-troubleshooting img { display:block; width:100%; height:auto; max-height:220px; object-fit:contain; transform:translateX(10%); }

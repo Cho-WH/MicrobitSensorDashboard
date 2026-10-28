@@ -2,6 +2,7 @@ import { element } from './dom.js';
 import { analysisExportInfo } from '../data/files/csv.js';
 import { LIMITS } from '../domain/limits.js';
 import { eventTitle, eventDetail } from './event-content.js';
+import { parseCondition } from './condition-input.js';
 
 // Native dialogs share focus, draft and failed-save handling. They never own stored records.
 export function createRecordDialogs(host) {
@@ -17,11 +18,13 @@ export function createRecordDialogs(host) {
     actions.append(cancel, confirm); header.append(heading); footer.append(actions);
     if (description) content.append(element('p', 'ui-dialog-description', description));
     content.append(body, error); form.append(header, content, footer); dialog.append(form); host.append(dialog); dialogs.add(dialog);
-    const read = build(body, confirm); let pending = false;
+    const read = build(body, confirm); let pending = false, composing = false;
+    form.addEventListener('compositionstart', () => { composing = true; });
+    form.addEventListener('compositionend', () => { composing = false; });
     cancel.addEventListener('click', () => dialog.close());
     dialog.addEventListener('cancel', event => { if (pending) event.preventDefault(); });
     form.addEventListener('submit', async event => {
-      event.preventDefault(); if (pending) return;
+      event.preventDefault(); if (pending || composing) return;
       try {
         const value = read(); pending = true; error.textContent = '';
         confirm.disabled = cancel.disabled = true;
@@ -51,6 +54,13 @@ export function createRecordDialogs(host) {
     input.value = value; row.append(element('span', '', label), input); body.append(row); return input;
   }
   return {
+    condition(point, column, save) { return formDialog({id:'point-condition-dialog', title:`${point.pointRecordId}번 조건 편집`,
+      description:'저장한 뒤 변경 반영을 누르면 그래프와 계산에 적용됩니다. 빈칸은 조건 미입력으로 남습니다.', save,
+      build(body) {
+        const input = field(body, 'condition', column.name + (column.unit ? ` (${column.unit})` : ''), {value: String(point.manualValues[column.id] ?? '')});
+        input.inputMode = 'decimal';
+        return () => { try { return parseCondition(input.value); } catch { throw new Error('숫자 또는 빈칸을 입력하세요.'); } };
+      } }); },
     restoreCsvTime(save) { return formDialog({id:'csv-time-dialog',title:'시간 정보가 서로 맞지 않아요',
       submit:'원본 시각 기준으로 복원',
       description:'원본 수신 시각을 기준으로 경과 시간을 다시 계산합니다. 파일의 첫 수신이 0초가 됩니다.',
@@ -87,9 +97,10 @@ export function createRecordDialogs(host) {
         return () => { const value={sameContext:checkbox.checked,conditions:Object.fromEntries(conditions.map(([id,input])=>[id,input.value])),note:note.value.trim()};
           return policy?.validateAdditional?.(value) ?? value; };
       } }); },
-    exportCsv(snapshot, save) { return formDialog({id:'analysis-export-dialog',title:'분석 자료 CSV 저장',submit:'CSV 저장',save,
+    exportCsv(snapshot, save, sourceId = 'recorded') { return formDialog({id:'analysis-export-dialog',title:'분석 자료 CSV 저장',submit:'CSV 저장',save,
       build(body, confirm) {
-        const info = analysisExportInfo(snapshot), capacity = LIMITS.maxChannels - snapshot.run.context.channels.length - (snapshot.run.importedColumns?.length ?? 0);
+        const info = analysisExportInfo(snapshot, sourceId), capacity = LIMITS.maxChannels - snapshot.run.context.channels.length - (snapshot.run.importedColumns?.length ?? 0) - (sourceId === 'points' ? snapshot.workspace.bySource.points.inputSnapshot.manualColumns.length : 0);
+        body.append(element('p','',sourceId === 'points' ? '한 점 기록 · 반영한 조건값' : '연속 기록'));
         body.append(element('p','',`분석 범위 ${info.candidateCount}개 − 제외 ${info.excludedCount}개 = 출력 ${info.rows.length}행`));
         const count = element('p','record-export-count'), fields = element('div','record-export-columns'); body.append(count,fields);
         const inputs = info.columns.map((column,index) => {

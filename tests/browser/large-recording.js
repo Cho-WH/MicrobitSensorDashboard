@@ -3,13 +3,13 @@ import { createRepository } from '../../src/data/repository.js';
 import { openRunStore, importRunSnapshot } from '../../src/data/run-store.js';
 import { createSession } from '../../src/measurement/session.js';
 import { buildExperimentJson, parseExperimentJson } from '../../src/data/files/json.js';
-import { buildCsv, parseExperimentCsv } from '../../src/data/files/csv.js';
+import { buildCsv, buildPointCsv, parseExperimentCsv } from '../../src/data/files/csv.js';
 import { createAnalysisView } from '../../src/ui/analysis-view.js';
 import { createMeasurementView } from '../../src/ui/measurement-view.js';
 import { mountLabFixture, clickLabControl } from './lab-fixture.js';
+import { assertJsonEqual as equal } from '../helpers/json-equality.js';
 
 const check = (value, message) => { if (!value) throw new Error(message); };
-const equal = (a, b, message) => check(JSON.stringify(a) === JSON.stringify(b), message);
 const settle = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 const timers = { setTimeout: () => 1, clearTimeout() {} };
 const epoch = 1700000000000;
@@ -49,6 +49,11 @@ export async function runLargeRecordingTests(report = () => {}) {
       await session.finish();
     });
     check(store.getState().status === 'clean' && store.getState().sampleCount === 36000, '36,000행 저장 누락');
+    // Point annotations at volume are display fixtures, not evidence of 600
+    // physical button presses. They must retain every original sample link.
+    for (let sampleId = 60; sampleId <= 36000; sampleId += 60)
+      store.appendPointRecord({ capturedSampleId: sampleId, capturedAt: epoch + sampleId * 100 + 50, manualValues: {} });
+    await store.flush();
     const original = store.getSnapshot();
     check(original.samples.every((sample, i) => sample.sampleId === i + 1
       && sample.receivedAt === 1700000000100 + i * 100
@@ -69,6 +74,14 @@ export async function runLargeRecordingTests(report = () => {}) {
       clickLabControl(fixture.host, '[data-live-range="all"]'); await settle();
     });
     check(liveChart().data.datasets.slice(0, 4).every(d => d.data.filter(p => p.sampleId).length === 36000), '전체 측정 그래프의 네 채널 누락');
+    const markerIds = [];
+    for (const marker of fixture.host.querySelectorAll('[data-point-marker]')) {
+      clickLabControl(fixture.host, marker);
+      markerIds.push(...[...fixture.host.querySelectorAll('dialog[open] [data-point-marker-id]')].map(item => Number(item.dataset.pointMarkerId)));
+      clickLabControl(fixture.host, '[data-point-marker-action="close"]');
+    }
+    equal(markerIds.sort((a,b)=>a-b), Array.from({length:600},(_,index)=>index+1), '대용량 표식 묶음에서 점 기록 누락·중복');
+    report('36,000행 위의 600개 한 점 기록 · 표식 묶음 상세에서 모든 번호 접근');
     measurement.dispose(); measurement = null;
     fixture.showScreen('analysis');
     const root = fixture.host.querySelector('[data-screen="analysis"]'), errors = [];
@@ -85,6 +98,12 @@ export async function runLargeRecordingTests(report = () => {}) {
     await timed('relationship', () => click('#tab-relationship'));
     check(view.getWorkspace().getGraphData().points.length === 36000, '관계 그래프의 원자료 손실');
     check(!errors.length, errors.join('\n'));
+    view.open(store, null, 'points'); await settle();
+    check(view.getWorkspace().getGraphData().points.length === 600, '희소 점 분석 손실');
+    const lastPoint = store.getPointRecords().at(-1);
+    view.getWorkspace().setSelection([lastPoint.capturedSampleId]); view.getWorkspace().applyScope('selection');
+    view.open(store, null, 'recorded'); view.open(store, null, 'points');
+    equal(view.getWorkspace().getState().appliedIds, [lastPoint.capturedSampleId], '자료 전환이 점 범위 변경');
     check(view.flush(), '대용량 분석 상태 저장 실패');
     await store.flush();
     const saved = store.getSnapshot();
@@ -99,10 +118,13 @@ export async function runLargeRecordingTests(report = () => {}) {
     const parsed = await timed('jsonParse', () => parseExperimentJson(json));
     equal(parsed.samples, saved.samples, '대용량 JSON 원자료 손실');
     equal(parsed.events, saved.events, '대용량 JSON 조작 기록 손실');
+    equal(parsed.pointRecords, saved.pointRecords, '대용량 JSON 점 기록 손실');
     equal(parsed.workspace, saved.workspace, '대용량 JSON 분석 상태 손실');
     const csv = await timed('csvExport', () => buildCsv(saved));
     const csvParsed = await timed('csvParse', () => parseExperimentCsv(csv));
     equal(csvParsed.samples.map(s => [s.receivedAt, s.values, s.validity]), saved.samples.map(s => [s.receivedAt, s.values, s.validity]), '대용량 CSV 시각·값·유효성 손실');
+    const pointsCsv = parseExperimentCsv(buildPointCsv(saved));
+    check(pointsCsv.samples.length === 600 && pointsCsv.pointRecords.length === 0, '점 CSV 독립 자료 가져오기 실패');
     equal(await repository.readSnapshot(id), saved, '파일 왕복이 원본 DB 변경');
     report(`JSON ${(new Blob([json]).size / 1048576).toFixed(1)}MiB·CSV ${(new Blob([csv]).size / 1048576).toFixed(1)}MiB 왕복 · 전체 원자료·조작·분석 상태 보존`);
     report(`소요 시간(ms): ${JSON.stringify(costs)}`);
@@ -150,6 +172,33 @@ export async function runLargeImportTests(report = () => {}) {
   let imported, reopened;
   try {
     const snapshot = await createLargeSnapshot(repository, 36000);
+    // Exercise a real pre-upgrade database at volume before importing the expanded format.
+    repository.close(); await globalThis.idb.deleteDB(databaseName);
+    const { recordingMode, manualColumns, pointDataRevision, ...run } = snapshot.run;
+    const oldDb = await globalThis.idb.openDB(databaseName, 1, { upgrade(db) {
+      db.createObjectStore('runs', { keyPath: 'id' }).createIndex('updatedAt', 'updatedAt');
+      db.createObjectStore('samples', { keyPath: ['runId', 'sampleId'] }).createIndex('runId', 'runId');
+      db.createObjectStore('events', { keyPath: ['runId', 'eventId'] }).createIndex('runId', 'runId');
+      db.createObjectStore('workspaces', { keyPath: 'runId' });
+    } });
+    try {
+      const tx = oldDb.transaction(['runs', 'samples', 'events'], 'readwrite');
+      await Promise.all([tx.objectStore('runs').put({ ...run, schemaVersion: 1 }),
+        ...snapshot.samples.map(sample => tx.objectStore('samples').put(sample)),
+        ...snapshot.events.map(event => tx.objectStore('events').put(event)), tx.done]);
+    } finally { oldDb.close(); }
+    const migrated = await repository.readSnapshot(snapshot.run.id);
+    equal(migrated.samples, snapshot.samples, '대용량 DB 변환 원자료 손실');
+    equal(migrated.events, snapshot.events, '대용량 DB 변환 사건 손실');
+    check(migrated.run.schemaVersion === 2 && migrated.pointRecords.length === 0, '대용량 DB 버전 변환 실패');
+    report('36,000행 IndexedDB v1→v2 변환·원자료 보존');
+    snapshot.run.manualColumns = [{ id: 'manual-condition', name: '조건', unit: null, type: 'number' }];
+    snapshot.pointRecords = snapshot.samples.filter(sample => sample.sampleId % 60 === 0).map((sample, i) => ({
+      runId: snapshot.run.id, pointRecordId: i + 1, capturedSampleId: sample.sampleId,
+      capturedAt: sample.receivedAt + 50, manualValues: { 'manual-condition': i === 0 ? 0 : i },
+      note: '', withdrawn: i % 7 === 0, revision: i + 1,
+    }));
+    snapshot.run.pointDataRevision = snapshot.pointRecords.length;
     const parsed = parseExperimentJson(buildExperimentJson(snapshot));
     const start = performance.now();
     imported = await importRunSnapshot({ repository, snapshot: parsed, timers });
@@ -158,10 +207,11 @@ export async function runLargeImportTests(report = () => {}) {
     const saved = imported.getSnapshot();
     equal(saved.samples.map(withoutRunId), snapshot.samples.map(withoutRunId), '대용량 가져오기 원자료 손실');
     equal(saved.events.map(withoutRunId), snapshot.events.map(withoutRunId), '대용량 가져오기 조작 기록 손실');
+    equal(saved.pointRecords.map(withoutRunId), snapshot.pointRecords.map(withoutRunId), '대용량 가져오기 점 기록 손실');
     await imported.close(); repository.close();
     reopened = await openRunStore({ repository, id, timers });
     equal(reopened.getSnapshot(), saved, '가져온 대용량 DB 재열기 손실');
-    report(`36,000행 실제 JSON→IndexedDB 가져오기·DB 재열기 ${Math.round(performance.now() - start)}ms`);
+    report(`36,000행·600점 실제 JSON→IndexedDB 가져오기·DB 재열기 ${Math.round(performance.now() - start)}ms`);
   } finally {
     imported?.dispose(); reopened?.dispose(); repository.close();
     await globalThis.idb.deleteDB(databaseName);

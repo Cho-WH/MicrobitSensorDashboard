@@ -28,8 +28,10 @@ export function normalizeFilter(filter, calculatedColumns = [], context) {
       || [r.min, r.max].some(v => v != null && !Number.isFinite(v))
       || (r.min != null && r.max != null && r.min > r.max)))) throw new Error('필터의 숫자와 범위를 확인하세요.');
   if (f.reason != null && typeof f.reason !== 'string') throw new Error('제외 사유 필터를 확인하세요.');
-  if (f.analysisStatus != null && (!Array.isArray(f.analysisStatus) || f.analysisStatus.some(s => !['included', 'excluded', 'outside'].includes(s))))
+  if (f.analysisStatus != null && (!Array.isArray(f.analysisStatus) || f.analysisStatus.some(s => !['included', 'excluded', 'outside', 'withdrawn'].includes(s))))
     throw new Error('분석 상태 필터를 확인하세요.');
+  const statuses = context?.analysisSource === 'points' ? ['included', 'excluded', 'outside', 'withdrawn'] : ['included', 'excluded', 'outside'];
+  if (f.analysisStatus && statuses.every(status => f.analysisStatus.includes(status))) f.analysisStatus = null;
   if (f.clockTime != null && (typeof f.clockTime !== 'object' || Array.isArray(f.clockTime)
     || [f.clockTime.min, f.clockTime.max].some(v => v != null && (!Number.isInteger(v) || v < 0 || v >= 86400000))))
     throw new Error('시각 필터의 시·분·초를 확인하세요.');
@@ -41,7 +43,7 @@ export function columnRanges(filter) {
     ? { [filter.columnId]: { min: filter.min ?? null, max: filter.max ?? null } } : {}), ...filter.ranges };
 }
 export function columnFilterActive(filter, columnId) {
-  if (columnId === 'usage') return (filter.usage ?? 'all') !== 'all' || (filter.analysisStatus != null && filter.analysisStatus.length !== 3);
+  if (columnId === 'usage') return (filter.usage ?? 'all') !== 'all' || filter.analysisStatus != null;
   if (columnId === 'note') return (filter.validity ?? 'all') !== 'all' || !!filter.reason;
   if (columnId === 'receivedAt' && (filter.clockTime?.min != null || filter.clockTime?.max != null)) return true;
   const range = columnRanges(filter)[columnId];

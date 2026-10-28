@@ -149,7 +149,8 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
       $('reflection-equation').textContent = summaries.map(s => s.label + s.equation).join('\n');
       $('reflection-stat-detail').textContent = summaries.map(s => s.label + s.detail).join('\n');
       $('reflection-no-trend').hidden = Boolean(fitted.length);
-      const columns = graphColumns(evidence?.calculatedColumns ?? [], workspace?.getImportedColumns() ?? [], state?.context);
+      const columns = graphColumns(evidence?.calculatedColumns ?? [], workspace?.getImportedColumns() ?? [],
+        evidence?.inputSnapshot ? {...state?.context, manualColumns:evidence.inputSnapshot.manualColumns} : state?.context);
       const operand = o => o.kind === 'constant' ? formatCalculated(o.value) : columnLabel(columns.find(c => c.id === o.columnId));
       $('reflection-calculations').hidden = !evidence?.calculatedColumns.length;
       $('reflection-formulas').replaceChildren(...(evidence?.calculatedColumns ?? []).map(c => node('li', `${columnLabel(c)} = ${operand(c.lhs)} ${CALCULATION_OPERATORS[c.op]} ${operand(c.rhs)}`)));

@@ -1,7 +1,7 @@
 import { createBluetoothProgrammer } from './bluetooth-programmer.js';
 // Adapted from Cho-WH/bme280 gay-lussac/guide/programmer-adapter.js at
 // 59c5c149450f970bace2deaa183857c275595853. Full V2 flashing remains official.
-import { getFirmwareArtifact } from './firmware.js';
+import { getFirmwareArtifact, loadFirmwareHex } from './firmware.js';
 
 const messages = {
   'no-device-selected': '장치 선택을 취소했어요. 준비되면 다시 설치할 수 있어요.',
@@ -55,15 +55,7 @@ export function createUsbProgrammer({ firmwareId, version = null, onState = (_st
           createConnection ??= library.createUSBConnection;
           makeSource ??= library.createUniversalHexFlashDataSource;
         }
-        const response = await fetchFile(program.url, { signal: abortPreparation.signal });
-        if (!response.ok) throw new Error('프로그램 파일을 불러오지 못했어요. 연결을 확인하고 다시 준비하세요.');
-        const bytes = await response.arrayBuffer();
-        // Preserve BOMs and stray CR/whitespace. Only CRLF -> LF is normalized.
-        const hex = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes).replace(/\r\n/g, '\n');
-        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(hex)));
-        const hash = Array.from(digest, b => b.toString(16).padStart(2, '0')).join('');
-        if (program.digestMode !== 'utf8-crlf-to-lf' || hash !== program.sha256)
-          throw new Error('프로그램 파일 확인에 실패했어요. 화면을 새로고침한 뒤 다시 시도하세요.');
+        const { hex } = await loadFirmwareHex(program.id, program.version, { fetchFile, crypto, signal: abortPreparation.signal });
         const candidate = makeSource(hex);
         await candidate('V2'); // Validate before opening or halting any device.
         if (disposed) return;

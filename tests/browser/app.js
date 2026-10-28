@@ -84,7 +84,7 @@ export async function runAppTests(report=()=>{}, flow='activity') {
       check(!(await navigator.locks.query()).held.some(lock=>lock.name.endsWith(':run:'+firstId)),'실험 종료 후 작성 잠금이 남았습니다.');
       const savedBmp=await repo.readSnapshot(firstId);
       check(savedBmp.run.status==='complete'&&savedBmp.events.filter(event=>event.type==='measurement-end').length===1,'저장 재시도에서 기록 마감이 누락되거나 중복됐습니다.');
-      check(savedBmp.workspace.reflection.answers.observation==='첫 실험의 관찰 기록','실험실 종료 시 분석 초안을 저장하지 않았습니다.');
+      check(savedBmp.workspace.bySource.recorded.reflection.answers.observation==='첫 실험의 관찰 기록','실험실 종료 시 분석 초안을 저장하지 않았습니다.');
       report('실험실 종료 · 저장 실패 시 머무르기, 재시도·마감·초안 보존 후 연결과 작성 잠금 해제');
 
       await select('activities/gay-lussac');

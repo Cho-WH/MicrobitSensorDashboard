@@ -31,7 +31,7 @@ test('closed recording page restores saved samples and analysis without reconnec
   await page.locator('#use-graph-for-reflection').click();
   const answer = '기록 중에 작성한 분석을 다시 열어 확인한다.';
   await page.locator('#reflection-observation').fill(answer);
-  await expect.poll(async () => (await snapshot(page))?.workspace?.reflection?.answers?.observation).toBe(answer);
+  await expect.poll(async () => (await snapshot(page))?.workspace?.bySource?.recorded?.reflection?.answers?.observation).toBe(answer);
   const before = await snapshot(page);
   expect(before.run.status).toBe('open');
   // No finish/dispose call: emulate a closed tab, not the in-app exit flow.
@@ -47,7 +47,7 @@ test('closed recording page restores saved samples and analysis without reconnec
   await expect.poll(async () => (await snapshot(reopened, before.run.id)).run.status).toBe('interrupted');
   const restored = await snapshot(reopened, before.run.id);
   expect(restored.samples.slice(0, before.samples.length)).toEqual(before.samples);
-  expect(restored.workspace.reflection).toEqual(before.workspace.reflection);
+  expect(restored.workspace.bySource.recorded.reflection).toEqual(before.workspace.bySource.recorded.reflection);
   expect(restored.events.filter(e => e.type === 'interrupted')).toHaveLength(1);
   await reopened.locator('[data-view="measure"]').click();
   await reopened.locator('.experiment-guide [data-guide-next]').click();
@@ -61,7 +61,7 @@ test('closed recording page restores saved samples and analysis without reconnec
   const download = await downloadPromise;
   const text = await readFile(await download.path(), 'utf8'), exported = JSON.parse(text);
   expect(exported.samples).toEqual(restored.samples);
-  expect(exported.workspace.reflection).toEqual(restored.workspace.reflection);
+  expect(exported.workspace.bySource.recorded.reflection).toEqual(restored.workspace.bySource.recorded.reflection);
   await reopened.locator('#file-input').setInputFiles({ name: '복원.json', mimeType: 'application/json', buffer: Buffer.from(text) });
   await expect(reopened.locator('[data-screen="analysis"]')).toBeVisible();
   // Closing the old workspace can update its timestamp after import. Identify
@@ -69,6 +69,6 @@ test('closed recording page restores saved samples and analysis without reconnec
   await expect.poll(async () => (await snapshot(reopened, undefined, before.run.id))?.run.id).toBeTruthy();
   const imported = await snapshot(reopened, undefined, before.run.id);
   expect(imported.samples.map(({ runId, ...row }) => row)).toEqual(restored.samples.map(({ runId, ...row }) => row));
-  expect(imported.workspace.reflection).toEqual(restored.workspace.reflection);
+  expect(imported.workspace.bySource.recorded.reflection).toEqual(restored.workspace.bySource.recorded.reflection);
   expect((await snapshot(reopened, before.run.id)).samples).toEqual(restored.samples);
 });

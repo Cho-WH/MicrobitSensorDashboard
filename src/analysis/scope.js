@@ -3,12 +3,14 @@
 export function scopeMembership(state, fallbackIds = []) {
   const candidates = new Set(state?.appliedIds ?? fallbackIds);
   const excluded = new Set(state?.exclusions?.map(e => e.sampleId) ?? []);
+  const withdrawn = new Set(state?.inputSnapshot?.points.filter(p => p.withdrawn).map(p => p.capturedSampleId) ?? []);
+  for (const id of withdrawn) excluded.add(id);
   return { candidates, excluded,
-    status: id => !candidates.has(id) ? 'outside' : excluded.has(id) ? 'excluded' : 'included',
+    status: id => withdrawn.has(id) ? 'withdrawn' : !candidates.has(id) ? 'outside' : excluded.has(id) ? 'excluded' : 'included',
     includes: id => candidates.has(id) && !excluded.has(id) };
 }
 
-export const statusLabels = Object.freeze({ included: '분석 포함', excluded: '제외', outside: '범위 밖' });
+export const statusLabels = Object.freeze({ included: '분석 포함', excluded: '제외', outside: '범위 밖', withdrawn: '기록 취소' });
 
 export function timeOrigin(samples, run = {}) {
   return run.timeOrigin ?? samples.find(sample => Number.isFinite(sample.receivedAt))?.receivedAt ?? null;

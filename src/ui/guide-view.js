@@ -117,6 +117,10 @@ export function createGuideView(host, callbacks = {}) {
   const modePanel=findElement(shell,'div','.guide-install-mode');
   button('install-mode',labels.guide.wirelessMode,()=>callbacks.onInstallMode?.(facts.programmerState?.mode==='wireless'?'usb':'wireless'),modePanel,'quiet-button install-mode-link');
   const programActions=findElement(shell,'div','.guide-program-actions');
+  const installHelp=element('button','installation-help-trigger','설치에 문제가 있나요?');
+  installHelp.type='button'; installHelp.dataset.installationHelp='';
+  installHelp.setAttribute('aria-haspopup','dialog'); installHelp.setAttribute('aria-controls','installation-troubleshooting');
+  actions.append(installHelp);
   button('install',labels.guide.install,()=>callbacks.onInstall?.(),programActions,'primary');
   button('cancel-install',labels.common.cancel,()=>callbacks.onCancelInstall?.(),programActions,'quiet-button');
   button('program-confirm',labels.guide.programConfirm,()=>{
@@ -396,6 +400,7 @@ export function createGuideView(host, callbacks = {}) {
     }
     quickPanel.hidden=!quick; for (const check of quickChecks.values()) check.disabled=locked();
     program.hidden=quick||step?.kind!=='program';
+    installHelp.hidden=program.hidden||wireless; installHelp.disabled=Boolean(facts.busy||programmer.busy);
     const installing=Boolean(programmer.busy||['connecting','flashing'].includes(programmer.status));
     program.dataset.state=programmer.status??'idle'; program.setAttribute('aria-busy',String(installing));
     program.dataset.mode=installMode;

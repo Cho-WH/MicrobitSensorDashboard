@@ -10,7 +10,8 @@ export function bindAppShell(root, { signal }) {
   bindFileButtonPlacement(root, signal);
   bindCompatibilityFit(findElement(root, 'header', '.lab-identity'), signal);
   bindDisclosureMenu(findElement(root, 'details', '.luminous-export'), { signal });
-  bindConnectionHelp(root, signal);
+  bindHelpDialog(root, signal, 'connection');
+  bindHelpDialog(root, signal, 'installation');
   const settings = findElement(root, 'button', '.luminous-settings');
   const dialog = findElement(root, 'dialog', '#measurement-settings');
   const measure = findElement(root, 'section', '[data-screen="measure"]');
@@ -22,12 +23,12 @@ export function bindAppShell(root, { signal }) {
 }
 
 // All connection entry points open one informational dialog without device actions.
-function bindConnectionHelp(root, signal) {
-  const dialog = findElement(root, 'dialog', '#connection-troubleshooting');
-  const title = findElement(dialog, 'h2', '#connection-troubleshooting-title');
+function bindHelpDialog(root, signal, kind) {
+  const dialog = findElement(root, 'dialog', `#${kind}-troubleshooting`);
+  const title = findElement(dialog, 'h2', `#${kind}-troubleshooting-title`);
   let opener = null;
   root.addEventListener('click', event => {
-    const trigger = event.target instanceof Element ? event.target.closest('[data-connection-help]') : null;
+    const trigger = event.target instanceof Element ? event.target.closest(`[data-${kind}-help]`) : null;
     if (!(trigger instanceof HTMLButtonElement) || trigger.disabled || dialog.open) return;
     opener = trigger;
     dialog.showModal(); title.focus({ preventScroll: true });

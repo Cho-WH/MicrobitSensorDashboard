@@ -25,7 +25,7 @@ test('original-generated JSON v1/v2 preserve every raw field, time, event and wo
   const one = parseExperimentJson(legacy1), two = parseExperimentJson(legacy2);
   assert.deepEqual(one.samples, two.samples);
   assert.deepEqual(one.events, expected.snapshot.events);
-  assert.deepEqual(one.workspace, expected.snapshot.workspace);
+  assert.deepEqual(one.workspace.bySource.recorded, expected.snapshot.workspace);
   for (const [i, sample] of one.samples.entries()) {
     const { temperatureC, pressureHpa, validity, ...rest } = expected.snapshot.samples[i];
     assert.deepEqual(sample, { ...rest, values: { temperatureC, pressureHpa },
@@ -45,7 +45,7 @@ test('new full file roundtrip retains pending records, irregular times, missing 
   snapshot.samples[5].values.temperatureC = -140.123456789; snapshot.samples[5].validity.temperatureC = 'out-of-range';
   snapshot.samples[5].sourceSampleId = 91;
   const before = structuredClone(snapshot), text = buildExperimentJson(snapshot), restored = parseExperimentJson(text);
-  assert.equal(JSON.parse(text).format, 'microbit-sensor-lab'); assert.equal(JSON.parse(text).fileVersion, 1);
+  assert.equal(JSON.parse(text).format, 'microbit-sensor-lab'); assert.equal(JSON.parse(text).fileVersion, 2);
   assert.deepEqual(restored, snapshot); assert.deepEqual(snapshot, before);
   assert.equal(restored.samples.length, 6); assert.equal(restored.run.lastSavedSampleId, 4);
   restored.samples[0].validity.temperatureC = 'missing';
@@ -60,7 +60,7 @@ test('every import gets a fresh Run ID and consistently remaps nested references
   assert.equal(data.run.importedFrom.runId, 'legacy-original'); assert.equal(data.run.provenance.runId, 'legacy-original');
   assert.ok([...data.samples, ...data.events, data.workspace].every(r => r.runId === 'new-run'));
   assert.equal(data.events[0].payload.link.runId, 'new-run');
-  assert.deepEqual(data.workspace.reflection, snapshot.workspace.reflection);
+  assert.deepEqual(data.workspace.bySource.recorded.reflection, snapshot.workspace.bySource.recorded.reflection);
   assert.deepEqual(snapshot, before);
   assert.throws(() => prepareImportedSnapshot(snapshot, { newId: () => snapshot.run.id }), /새로운 ID/);
 });
@@ -70,13 +70,13 @@ test('invalid references, cycles, unsafe keys and unknown versions are rejected 
     s => s.samples[1].sampleId = 1,
     s => s.samples[0].values.temperatureC = null,
     s => s.events[0].runId = 'other',
-    s => s.workspace.appliedIds.push(999),
-    s => s.workspace.exclusions[0].sampleId = 999,
-    s => s.workspace.graph.xColumnId = 'gone',
-    s => s.workspace.calculatedColumns[0].lhs = { kind: 'column', columnId: 'calc-kelvin' },
-    s => s.workspace.reflection.evidence.appliedIds.push(999),
-    s => s.workspace.reflection.answers.reasoning = 'x'.repeat(1201),
-    s => s.workspace.analysisRange.endAt -= 1000,
+    s => s.workspace.bySource.recorded.appliedIds.push(999),
+    s => s.workspace.bySource.recorded.exclusions[0].sampleId = 999,
+    s => s.workspace.bySource.recorded.graph.xColumnId = 'gone',
+    s => s.workspace.bySource.recorded.calculatedColumns[0].lhs = { kind: 'column', columnId: 'calc-kelvin' },
+    s => s.workspace.bySource.recorded.reflection.evidence.appliedIds.push(999),
+    s => s.workspace.bySource.recorded.reflection.answers.reasoning = 'x'.repeat(1201),
+    s => s.workspace.bySource.recorded.analysisRange.endAt -= 1000,
     s => { s.workspace = null; s.run.context.defaultGraph.yColumnId = 'gone'; },
   ];
   let ids = 0;
@@ -105,7 +105,7 @@ test('malformed presentation metadata and long names fail before creating an imp
     s => s.run.context.analysisTemplates[0].columns[0].lhs.columnId = 'missing-channel',
     s => s.run.context.analysisTemplates[0].columns[0].lhs.columnId = 'calc-kelvin',
     s => s.run.context.channels[0].digits = 1000,
-    s => s.workspace.reflection.answers.unexpected = '보존되지 않을 답변',
+    s => s.workspace.bySource.recorded.reflection.answers.unexpected = '보존되지 않을 답변',
   ];
   let allocations = 0;
   for (const change of changes) {
@@ -137,7 +137,7 @@ test('the shared admission limits reject 17 raw columns and 33 calculations befo
   tooWide.run.context.channels = Array.from({ length: LIMITS.maxChannels + 1 }, (_, i) => ({ id: `channel${i}`, name: `값 ${i}`, unit: null }));
   assert.throws(() => validateExperimentSnapshot(tooWide), /16/);
   const tooMany = structuredClone(snapshot);
-  tooMany.workspace.calculatedColumns = Array.from({ length: LIMITS.maxCalculatedColumns + 1 }, (_, i) => ({
+  tooMany.workspace.bySource.recorded.calculatedColumns = Array.from({ length: LIMITS.maxCalculatedColumns + 1 }, (_, i) => ({
     id: `calc-${i}`, name: `계산 ${i}`, unit: null,
     lhs: { kind: 'column', columnId: 'temperatureC' }, op: '+', rhs: { kind: 'constant', value: i },
   }));
@@ -176,11 +176,11 @@ test('generic CSV exports follow analysis scope, retain metadata and reasons, an
 
 test('analysis CSV cannot export more fixed columns than the importer can restore; full JSON keeps all formulas', () => {
   const snapshot = parseExperimentJson(legacy2);
-  snapshot.workspace.calculatedColumns = Array.from({ length: 15 }, (_, i) => ({ id: `calc-extra-${i}`, name: `계산 ${i}`, unit: null,
+  snapshot.workspace.bySource.recorded.calculatedColumns = Array.from({ length: 15 }, (_, i) => ({ id: `calc-extra-${i}`, name: `계산 ${i}`, unit: null,
     lhs: { kind: 'column', columnId: 'temperatureC' }, op: '+', rhs: { kind: 'constant', value: i } }));
   assert.throws(() => buildAnalysisCsv(snapshot), /16개 이하/);
-  assert.equal(parseExperimentJson(buildExperimentJson(snapshot)).workspace.calculatedColumns.length, 15);
-  const allowed = snapshot.workspace.calculatedColumns.slice(0, 14).map(c => c.id);
+  assert.equal(parseExperimentJson(buildExperimentJson(snapshot)).workspace.bySource.recorded.calculatedColumns.length, 15);
+  const allowed = snapshot.workspace.bySource.recorded.calculatedColumns.slice(0, 14).map(c => c.id);
   assert.equal(parseExperimentCsv(buildAnalysisCsv(snapshot, allowed), options).run.importedColumns.length, 14);
 });
 
@@ -190,7 +190,7 @@ test('subset CSV restores the original elapsed origin through CSV, JSON and work
   const origin = snapshot.samples[0].receivedAt;
   snapshot.samples.forEach((sample, index) => { sample.receivedAt = origin + [0, 1000, 60125, 61250, 70000, 80000][index]; });
   const store = { getSnapshot: () => structuredClone(snapshot), getState: () => ({writable:true}),
-    saveWorkspace(value) { snapshot.workspace = structuredClone(value); } };
+    saveWorkspace(sourceId, value) { snapshot.workspace = {runId:snapshot.run.id, envelopeRevision:(snapshot.workspace?.envelopeRevision ?? 0)+1, activeSourceId:sourceId, bySource:{...snapshot.workspace?.bySource,[sourceId]:structuredClone(value)}}; } };
   const workspace = createWorkspace({store});
   workspace.setGraph({xColumnId:'receivedAt', yColumnId:'temperatureC', type:'line'});
   workspace.applyTimeRange({startAt:origin+60125,endAt:origin+61250});
@@ -276,17 +276,17 @@ test('CSV without time remains explicitly undated through JSON and CSV roundtrip
 
 test('JSON roundtrip preserves optional right Y and fixed evidence while recomputing its fit from source', () => {
   const snapshot=parseExperimentJson(legacy2);
-  const store={getSnapshot:()=>structuredClone(snapshot),getState:()=>({writable:true}),saveWorkspace:value=>{snapshot.workspace=structuredClone(value);}};
+  const store={getSnapshot:()=>structuredClone(snapshot),getState:()=>({writable:true}),saveWorkspace:(sourceId,value)=>{snapshot.workspace = {runId:snapshot.run.id, envelopeRevision:(snapshot.workspace?.envelopeRevision ?? 0)+1, activeSourceId:sourceId, bySource:{...snapshot.workspace?.bySource,[sourceId]:structuredClone(value)}};}};
   const w=createWorkspace({store});
   w.setRightAxis({yColumnId:'calc-kelvin',trendEnabled:true,view:'extended'}); w.captureReflection();
   const expectedModel=w.getGraphData(), expectedEvidence=w.getReflectionModel();
   const restored=parseExperimentJson(buildExperimentJson(snapshot)), reopened=open(restored);
-  assert.deepEqual(restored.workspace.graph.right,snapshot.workspace.graph.right);
+  assert.deepEqual(restored.workspace.bySource.recorded.graph.right,snapshot.workspace.bySource.recorded.graph.right);
   assert.deepEqual(reopened.getGraphData(),expectedModel);
   assert.deepEqual(reopened.getReflectionModel(),expectedEvidence);
   assert.deepEqual(restored.samples,snapshot.samples);
-  const bad=structuredClone(restored);bad.workspace.graph.right.yColumnId='gone';
+  const bad=structuredClone(restored);bad.workspace.bySource.recorded.graph.right.yColumnId='gone';
   assert.throws(()=>validateExperimentSnapshot(bad),/오른쪽 세로축/);
-  const badEvidence=structuredClone(restored);badEvidence.workspace.reflection.evidence.graph.right.yColumnId='gone';
+  const badEvidence=structuredClone(restored);badEvidence.workspace.bySource.recorded.reflection.evidence.graph.right.yColumnId='gone';
   assert.throws(()=>validateExperimentSnapshot(badEvidence),/오른쪽 세로축/);
 });

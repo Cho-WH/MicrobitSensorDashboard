@@ -8,6 +8,7 @@ import { fitGraph, trendGeometry, graphWithTrends } from './regression.js';
 import { captureEvidence, evidenceKey, evidenceGraph, validateAnswers, validateReflection, REFLECTION_QUESTIONS } from './reflection.js';
 
 import { getSourceColumns, readCell } from '../domain/columns.js';
+import { pointSourceRows } from './data-source.js';
 
 const copy = structuredClone;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -25,19 +26,29 @@ const inputState = state => {
   (state.graph ? [state.graph.xColumnId, state.graph.yColumnId, state.graph.right?.yColumnId] : [...byId.keys()]).forEach(visit);
   return { axes: state.graph ? [state.graph.xColumnId, state.graph.yColumnId, state.graph.right?.yColumnId] : null,
     calculations: state.calculatedColumns.filter(c => needed.has(c.id)).map(({ id, lhs, op, rhs }) => ({ id, lhs, op, rhs })),
+    inputSnapshot: state.inputSnapshot,
     appliedIds: state.appliedIds, excludedIds: state.exclusions.filter(e => applied.has(e.sampleId)).map(e => e.sampleId) };
 };
 
 // Owns editable definitions; samples are a read-only projection from RunStore snapshots.
 // Every change is copied into RunStore immediately. Only the database write is delayed.
-/** @param {{store:any, context?:any}} options */
-export function createWorkspace({ store, context: suppliedContext }) {
+/** @param {{store:any, context?:any, sourceId?:'recorded'|'points'}} options */
+export function createWorkspace({ store, context: suppliedContext, sourceId = store.getRun?.().recordingMode === 'point' ? 'points' : 'recorded' }) {
   const snapshot = store.getSnapshot();
-  let samples = snapshot.samples;
-  const getTimeOrigin = (source = samples) => timeOrigin(source, snapshot.run);
-  const context = suppliedContext ?? snapshot.run.context;
-  const sourceColumns = getSourceColumns(context);
-  const defaultGraph = validateGraph(context?.defaultGraph ?? {
+  const savedWorkspace = snapshot.workspace?.bySource[sourceId];
+  const initial = sourceId === 'points' ? store.getAnalysisSourceSnapshot('points') : null;
+  let rawSamples = snapshot.samples;
+  const input = savedWorkspace?.inputSnapshot ?? initial?.inputSnapshot;
+  let samples = input ? pointSourceRows(rawSamples, input) : rawSamples;
+  const getTimeOrigin = (_source = samples) => timeOrigin(rawSamples, snapshot.run);
+  const baseContext = suppliedContext ?? snapshot.run.context;
+  let context = input ? {...baseContext, analysisSource: 'points', manualColumns: input.manualColumns} : baseContext;
+  let sourceColumns = getSourceColumns(context);
+  const defaultGraph = validateGraph(sourceId === 'points' ? {
+    xColumnId: input.manualColumns[0]?.id ?? (samples.some(s => Number.isFinite(s.receivedAt)) ? 'receivedAt' : 'sampleId'),
+    yColumnId: context.defaultGraph?.yColumnId ?? context.channels.find(c => c.graphable !== false && c.supported !== false)?.id,
+    type: 'scatter', connectGaps: false, view: 'measured',
+  } : context?.defaultGraph ?? {
     xColumnId: 'receivedAt', yColumnId: sourceColumns.find(c => c.calculable && c.supported !== false)?.id,
     type: 'line', connectGaps: false, view: 'measured',
   }, [], [], context);
@@ -45,21 +56,25 @@ export function createWorkspace({ store, context: suppliedContext }) {
   const questions = context?.questions ?? context?.activity?.questions ?? REFLECTION_QUESTIONS;
   const imported = validateImportedColumns(snapshot.run.importedColumns ?? [], context);
   const writable = store.getState().writable;
-  const initialIds = samples.map(s => s.sampleId);
-  let state = snapshot.workspace ? copy(snapshot.workspace) : {
+  const initialIds = samples.filter(s => !s.withdrawn).map(s => s.sampleId);
+  let state = savedWorkspace ? copy(savedWorkspace) : {
     runId: snapshot.run.id, workspaceRevision: 0, analysisInputRevision: 0,
-    tableLastSampleId: initialIds.at(-1) ?? 0,
+    tableLastSampleId: rawSamples.at(-1)?.sampleId ?? 0,
+    appliedThroughSampleId: rawSamples.at(-1)?.sampleId ?? 0,
+    ...(input ? {inputSnapshot: copy(input)} : {}),
     table: { sort: { columnId: 'sampleId', direction: 'asc' }, filter: { ...DEFAULT_FILTER } },
     selectedIds: [], appliedIds: initialIds, appliedScope: 'all', exclusions: [],
-    calculatedColumns: [], graph: null, regression: null, note: '',
+    calculatedColumns: [], graph: sourceId === 'points' ? copy(defaultGraph) : null, regression: null, note: '',
   };
   // Ignore legacy scroll positions; scrolling belongs only to the live table view.
   delete state.table.scrollTop;
+  state.appliedThroughSampleId ??= state.tableLastSampleId;
   state.calculatedColumns = validateCalculatedColumns(state.calculatedColumns ?? [], imported, context);
   state.graph = validateGraph(state.graph, state.calculatedColumns, imported, context);
   state.regression = { enabled: state.regression?.enabled === true };
   state.analysisRange = validateAnalysisRange(state.analysisRange, samples, state);
-  state.reflection = validateReflection(state.reflection, samples, imported, context);
+  // RunStore/file validation already checks point evidence against its own frozen input.
+  if (sourceId !== 'points' || !state.reflection) state.reflection = validateReflection(state.reflection, samples, imported, context);
   delete state.interpretation;
   state.table.filter = normalizeFilter(state.table.filter, [...imported, ...state.calculatedColumns], context);
   if (state.table.sort.columnId === 'segmentId') state.table.sort = { columnId: 'sampleId', direction: 'asc' };
@@ -102,21 +117,22 @@ export function createWorkspace({ store, context: suppliedContext }) {
     next.workspaceRevision = state.workspaceRevision + 1;
     next.analysisInputRevision = state.analysisInputRevision + Number(inputChanged);
     updateRegression(next, source);
-    store.saveWorkspace(copy(next));
+    store.saveWorkspace(sourceId, copy(next));
     if (label && !same(historyState(state), historyState(next))) {
       undo.push({ label, before: copy(historyState(state)), after: copy(historyState(next)) }); redo.length = 0;
     }
     state = next;
     return true;
   }
-  if (!snapshot.workspace && writable) {
+  if (!savedWorkspace && writable) {
     state.workspaceRevision = 1;
-    store.saveWorkspace(copy(state));
+    store.saveWorkspace(sourceId, copy(state));
   }
   function loadedIds() { return samples.filter(s => s.sampleId <= state.tableLastSampleId).map(s => s.sampleId); }
+  function activeIds(through = state.appliedThroughSampleId) { return samples.filter(s => s.sampleId <= through && !s.withdrawn).map(s => s.sampleId); }
   // Older workspaces could keep a partial candidate set even in 'all' mode.
   // Preserve those inputs as a designated analysis instead of expanding them on open.
-  if (snapshot.workspace && state.appliedScope === 'all' && !same(orderedIds(state.appliedIds), orderedIds(loadedIds()))) {
+  if (savedWorkspace && state.appliedScope === 'all' && !same(orderedIds(state.appliedIds), orderedIds(activeIds()))) {
     const next = { ...copy(state), appliedScope: 'selection' };
     if (writable) commit(next); else state = next;
   }
@@ -151,16 +167,17 @@ export function createWorkspace({ store, context: suppliedContext }) {
   }
   function applyScope(mode) {
     if (!['selection', 'all'].includes(mode)) throw new Error('분석 범위를 확인하세요.');
-    const ids = mode === 'selection' ? state.selectedIds : loadedIds();
+    const ids = mode === 'selection' ? state.selectedIds : activeIds();
     if (!ids.length && mode === 'selection') throw new Error('분석할 행을 먼저 선택하세요.');
-    return command({ ...copy(state), appliedIds: orderedIds(ids), appliedScope: mode, analysisRange: null }, mode === 'selection' ? '지정 분석' : '전체 자료 분석');
+    return command({ ...copy(state), appliedIds: orderedIds(ids), appliedScope: mode, analysisRange: null,
+      appliedThroughSampleId: ids.reduce((max,id) => Math.max(max,id), state.appliedThroughSampleId) }, mode === 'selection' ? '지정 분석' : '전체 자료 분석');
   }
   function applyTimeRange(range) {
     const loaded = samples.filter(s => s.sampleId <= state.tableLastSampleId);
     const ids = rangeSampleIds(loaded, range), bounds = timeBounds(loaded);
     if (!ids.length) throw new Error('선택한 구간에 자료가 없어요. 시간을 다시 골라 주세요.');
     if (range.startAt < bounds.startAt || range.endAt > bounds.endAt) throw new Error('불러온 자료의 시간 안에서 구간을 골라 주세요.');
-    return command({ ...copy(state), appliedIds: orderedIds(ids), appliedScope: 'selection',
+    return command({ ...copy(state), appliedIds: orderedIds(ids), appliedScope: 'selection', appliedThroughSampleId: state.tableLastSampleId,
       analysisRange: { startAt: range.startAt, endAt: range.endAt, throughSampleId: state.tableLastSampleId } }, '분석 구간 변경');
   }
   function exclude(ids, reason = '') {
@@ -191,11 +208,37 @@ export function createWorkspace({ store, context: suppliedContext }) {
     assertWriter();
     const next = store.getSnapshot();
     if (next.run.id !== state.runId) throw new Error('열린 실험이 바뀌었어요.');
-    const changed = commit({ ...copy(state), tableLastSampleId: next.samples.at(-1)?.sampleId ?? 0,
-      appliedIds: state.appliedScope === 'all' ? next.samples.map(s => s.sampleId) : state.appliedIds }, null, next.samples);
-    samples = next.samples;
-    loadedCount = samples.length;
-    return changed;
+    const source = sourceId === 'points' ? store.getAnalysisSourceSnapshot('points') : null;
+    const rows = source?.rows ?? next.samples, boundary = next.samples.at(-1)?.sampleId ?? 0;
+    const oldContext = context;
+    context = source ? {...baseContext, analysisSource: 'points', manualColumns: source.inputSnapshot.manualColumns} : baseContext;
+    sourceColumns = getSourceColumns(context);
+    try {
+      const changed = commit({ ...copy(state), tableLastSampleId: boundary, appliedThroughSampleId: boundary,
+        ...(source ? {inputSnapshot: source.inputSnapshot} : {}),
+        appliedIds: state.appliedScope === 'all' ? rows.filter(s => !s.withdrawn).map(s => s.sampleId) : state.appliedIds }, null, rows);
+      samples = rows; rawSamples = next.samples; loadedCount = samples.length;
+      return changed;
+    } catch (error) { context = oldContext; sourceColumns = getSourceColumns(context); projection = null; throw error; }
+  }
+  function pendingChanges() {
+    if (sourceId !== 'points') return {added: Math.max(0, store.getState().sampleCount - state.appliedThroughSampleId), changed: 0, definitions: false};
+    const previous = state.inputSnapshot;
+    if (store.getState().pointDataRevision === previous.sourceRevision) return {added:0, changed:0, definitions:false};
+    const current = {points:store.getPointRecords(), manualColumns:store.getRun().manualColumns};
+    const old = new Map(previous.points.map(p => [p.pointRecordId, p]));
+    const definitions = !same(current.manualColumns, previous.manualColumns);
+    return {added: current.points.filter(p => !old.has(p.pointRecordId)).length,
+      changed: current.points.filter(p => old.has(p.pointRecordId) && (definitions || !same(p.manualValues, old.get(p.pointRecordId).manualValues) || p.withdrawn !== old.get(p.pointRecordId).withdrawn)).length, definitions};
+  }
+  function revealSample(sampleId) {
+    if (sourceId !== 'recorded') throw new Error('연속 기록에서 원래 시점을 확인하세요.');
+    const next = store.getSnapshot();
+    if (!next.samples.some(s => s.sampleId === sampleId)) throw new Error('연결된 원자료를 찾지 못했어요.');
+    if (sampleId <= state.tableLastSampleId) return;
+    const draft = {...copy(state), tableLastSampleId: sampleId};
+    if (writable) commit(draft, null, next.samples); else state = draft;
+    rawSamples = samples = next.samples; loadedCount = samples.filter(s => s.sampleId <= sampleId).length;
   }
   function replaceColumns(definitions, label) {
     const next = { ...copy(state), calculatedColumns: validateCalculatedColumns(definitions, imported, context) };
@@ -264,7 +307,7 @@ export function createWorkspace({ store, context: suppliedContext }) {
     const item = from.at(-1);
     if (!item) return false;
     const next = { ...copy(state), ...copy(item[direction]) };
-    if (next.appliedScope === 'all') next.appliedIds = loadedIds();
+    if (next.appliedScope === 'all') next.appliedIds = activeIds();
     reconcileTableColumns(next);
     // Undoing a status change can hide checked rows under the current status filter.
     const visible = new Set(rowsFor(next).map(s => s.sampleId));
@@ -281,7 +324,7 @@ export function createWorkspace({ store, context: suppliedContext }) {
   function getReflectionModel() {
     const evidence = state.reflection.evidence, key = evidenceKey(evidence);
     if (!evidence) return null;
-    if (reflectionCache?.key !== key) reflectionCache = { key, model: evidenceGraph(samples, evidence, imported, context, getTimeOrigin()) };
+    if (reflectionCache?.key !== key) reflectionCache = { key, model: evidenceGraph(rawSamples, evidence, imported, baseContext, getTimeOrigin()) };
     return copy(reflectionCache.model);
   }
   function captureReflection() {
@@ -292,7 +335,8 @@ export function createWorkspace({ store, context: suppliedContext }) {
   }
 
   return {
-    getState: () => ({ ...copy(state), sourceColumns: copy(sourceColumns), channels: copy(context?.channels ?? []), context: copy(context), calculationTemplates: copy(calculationTemplates), questions: copy(questions), defaultGraph: copy(defaultGraph) }), isWritable: () => writable, getLoadedCount: () => loadedCount,
+    getState: () => ({ ...copy(state), sourceId, sourceColumns: copy(sourceColumns), channels: copy(context?.channels ?? []), context: copy(context), calculationTemplates: copy(calculationTemplates), questions: copy(questions), defaultGraph: copy(defaultGraph) }), isWritable: () => writable, getLoadedCount: () => loadedCount,
+    pendingChanges, revealSample,
     getRows: () => copy(rowsFor()),
     getImportedColumns: () => copy(imported), getSourceColumns: () => copy(sourceColumns),
     getSamples: () => copy(projected().filter(s => s.sampleId <= state.tableLastSampleId)),

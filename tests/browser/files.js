@@ -4,12 +4,9 @@ import { importRunSnapshot, openRunStore } from '../../src/data/run-store.js';
 import { buildExperimentJson, parseExperimentJson } from '../../src/data/files/json.js';
 import { buildCsv, buildAnalysisCsv, parseExperimentCsv } from '../../src/data/files/csv.js';
 import { createWorkspace } from '../../src/analysis/workspace.js';
+import { assertJsonEqual as equal } from '../helpers/json-equality.js';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
-const canonical = value => value && typeof value === 'object'
-  ? Array.isArray(value) ? value.map(canonical)
-    : Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
-const equal = (actual, expected, message) => check(JSON.stringify(canonical(actual)) === JSON.stringify(canonical(expected)), message);
 const expectFailure = async (action, message) => {
   let failed = false;
   try { await action(); } catch { failed = true; }
@@ -57,7 +54,9 @@ export async function runFileTests(report = (_message) => {}) {
     const reimported = await importRunSnapshot({ repository, snapshot: parseExperimentJson(exported), timers }); stores.add(reimported);
     const roundtrip = reimported.getSnapshot();
     equal(roundtrip.samples.map(withoutRunId), saved.samples.map(withoutRunId), '새 전체 실험 JSON 원자료 왕복 손실');
-    equal(withoutRunId(roundtrip.workspace), withoutRunId(saved.workspace), '새 전체 실험 JSON 분석·해석 왕복 손실');
+    equal(roundtrip.workspace, { ...saved.workspace, runId: roundtrip.run.id,
+      bySource: Object.fromEntries(Object.entries(saved.workspace.bySource).map(([sourceId, state]) =>
+        [sourceId, { ...state, runId: roundtrip.run.id }])) }, '새 전체 실험 JSON 분석·해석 왕복 손실');
     equal(roundtrip.events.map(withoutRunId), saved.events.map(withoutRunId), '새 전체 실험 JSON 사건 왕복 손실');
     report('게이뤼삭 JSON v2 및 새 전체 실험 JSON의 실제 DB 왕복·독립 Run 생성');
 
@@ -80,7 +79,7 @@ export async function runFileTests(report = (_message) => {}) {
     report('실제 Papa Parse로 기존·신규 CSV 복원, 계산값 고정, 시각 없는 CSV 보존과 DB 저장');
 
     const beforeRuns = await repository.listRuns(), beforeExisting = await repository.readSnapshot(firstId);
-    const invalid = structuredClone(second); invalid.workspace.reflection.evidence.appliedIds.push(999);
+    const invalid = structuredClone(second); invalid.workspace.bySource.recorded.reflection.evidence.appliedIds.push(999);
     await expectFailure(() => importRunSnapshot({ repository, snapshot: invalid, timers }), '없는 근거 자료 참조를 가져옴');
     const malformedContent = structuredClone(second); malformedContent.run.context.activity.events = { label: '배열 아님' };
     await expectFailure(() => importRunSnapshot({ repository, snapshot: malformedContent, timers }), '잘못된 화면 안내 형식을 가져옴');

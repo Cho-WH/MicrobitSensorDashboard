@@ -22,9 +22,10 @@ function fixture({ count = 1500, dated = true, temporary = false } = {}) {
       validity: { a: 'valid', b: 'valid', c: 'valid', strength: 'valid' } });
   }
   append(count);
-  const store = { getSnapshot: () => structuredClone(data),
+  const store = { getSnapshot: () => structuredClone(data), getRun: () => structuredClone(data.run),
+    setActiveSource(sourceId) { data.workspace.activeSourceId = sourceId; data.workspace.envelopeRevision++; },
     getState: () => ({ id: data.run.id, name: data.run.name, source: 'import', writable: true, temporary, status: 'clean', sampleCount: data.samples.length, eventCount: 0 }),
-    saveWorkspace(value) { data.workspace = structuredClone(value); } };
+    saveWorkspace(sourceId, value) { data.workspace = {runId:data.run.id, envelopeRevision:(data.workspace?.envelopeRevision ?? 0)+1, activeSourceId:sourceId, bySource:{...data.workspace?.bySource,[sourceId]:structuredClone(value)}}; } };
   return { data, store, append };
 }
 

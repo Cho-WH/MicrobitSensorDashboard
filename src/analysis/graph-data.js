@@ -14,9 +14,10 @@ export function graphData(samples, state, imported = [], context = state.context
   for (const sample of samples) {
     if (sample.sampleId > state.tableLastSampleId || !candidates.has(sample.sampleId)) continue;
     candidateCount++; if (excluded.has(sample.sampleId)) excludedCount++;
+    if (sample.withdrawn) { previous = null; line.push({x: 0, y: null}); continue; }
     const xCell = readCell(sample, graph.xColumnId), yCell = readCell(sample, graph.yColumnId);
     const x = xCell.reason ? null : xCell.value, y = yCell.reason ? null : yCell.value;
-    const point = { x, y, sampleId: sample.sampleId };
+    const point = { x, y, sampleId: sample.sampleId, ...(sample.pointRecordId ? {pointRecordId:sample.pointRecordId} : {}) };
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
       if (!excluded.has(sample.sampleId)) invalidCount++;
       line.push({ x: previous?.x ?? 0, y: null }); previous = null; continue;
