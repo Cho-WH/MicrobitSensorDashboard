@@ -2,7 +2,7 @@
 
 micro:bit 센서를 선택하고 장비 준비·측정·저장·분석까지 이어서 사용하는 교육용 웹앱입니다.
 
-**[센서 실험실 열기](https://cho-wh.github.io/MicrobitSensorDashboard/)** · [모의 장치로 살펴보기](https://cho-wh.github.io/MicrobitSensorDashboard/?mock=1)
+**[센서 실험실 열기](https://lab.sco.pe.kr/)** · [모의 장치로 살펴보기](https://lab.sco.pe.kr/?mock=1)
 
 ## 사용하기
 
@@ -83,8 +83,8 @@ GitHub Pages의 main 푸시 자동 배포는 해제했고 `.github/workflows/pag
 개발 서버 주소는 공유 링크에 자동으로 사용하지 않습니다. 공유 관련 검사는 `node --test tests/unit/tool-link.test.mjs tests/unit/routes.test.mjs`와
 `npx playwright test tests/e2e/tool-share.spec.mjs`로 실행합니다.
 
-향후 공식 주소는 **`https://lab.sco.pe.kr/`**로 확정했습니다. 포털 `sco.pe.kr`과 별도의 Cloudflare Worker로 앱을 운영하고,
-후속 교사 자료 공유 API를 같은 앱 주소 아래에 추가할 계획입니다. 현재는 위 GitHub Pages 주소를 계속 사용합니다.
+공식 주소는 **`https://lab.sco.pe.kr/`**입니다. 포털 `sco.pe.kr`과 별도의 Cloudflare Worker에서 앱을 운영합니다.
+후속 교사 자료 공유 API를 같은 앱 주소 아래에 추가할 계획이며, 현재는 정적 센서 앱만 제공합니다.
 센서 실험실은 기존 공개 배포가 없어 별도 이전 안내·구버전 빌드를 만들지 않습니다. 개발 확인 중 저장한 자료를 옮길 때에는 전체 실험 JSON을 사용하고 새 주소에서 장치 권한을 다시 받습니다.
 [도메인 연결·배포 전환 계획](docs/unified-sensor-lab-architecture.md#124-도메인-연결과-배포-전환)에서 현재 구성과 예정 작업을 구분합니다.
 

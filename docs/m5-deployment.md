@@ -39,7 +39,9 @@ GitHub Pages의 main 푸시 자동 배포를 해제했다. 기존 워크플로�
 - 커밋 전 타입 검사·전체 단위 검사 238개·빌드를 통과했다. 일반 브라우저 검사 58개 중 57개는 최초 통과했다. 종료 검사 1건은 첫 표본 수신 전 종료할 수 있던 테스트 선행 조건을 보완했고, 해당 파일의 두 검사를 3회 반복해 모두 통과했다. 동일한 보완이 센서 작업 브랜치에도 있어 그 수정과 형태를 맞췄다. 저장 자료·분석 보존 assertion은 유지했다.
 - 다른 origin으로 JSON을 가져온 뒤 원자료·사건·분석 설정과 기존 저장 자료 보존을 확인했다. 한 점 기록은 현재 main의 미구현 기능이므로 이 검증에 포함하지 않았다.
 - 후속 병합 확인: `codex/m8-2-point-recording`의 `e412949`와 M5를 합친 임시 복사본에서도 빌드와 Cloudflare 검사 3개를 통과했다. DS18B20 등 추가된 등록 경로와 자료별 분석 형식의 JSON 복원을 확인했다. 앱·배포 설정은 자동 병합되고, `UNIFIED-PLAN-INDEX.md`의 인접한 M5·M6 상태 행만 문서 충돌이 있었다. 병합 시 M5는 main의 배포 상태, M6·M8은 작업 브랜치의 구현 상태를 유지한다. 원래 작업 브랜치와 미커밋 변경은 수정하지 않았다.
-- 운영 Worker·도메인, 포털 실행 링크: 아직 전환 전. 실제 반영 결과를 확인한 뒤 이 기록을 갱신한다.
+- 운영 배포 완료: 앱 main [`051faec`](https://github.com/Cho-WH/MicrobitSensorDashboard/commit/051faec7566b296dff591a7a3faeb0fe9c7ad736)의 산출물을 Cloudflare 플러그인 인증으로 업로드했다. Worker 버전은 `cf0534df-5f0c-416c-b112-507c1a85bd83`, 배포 ID는 `0be22c55-6a28-4d5a-809a-e8c9c5c92faa`다. 계정 API 토큰을 발급하지 않고 자산 업로드 세션·Worker 업로드·Custom Domain 설정 쓰기를 실제 확인했다.
+- [lab.sco.pe.kr](https://lab.sco.pe.kr/)의 HTTPS 200, 등록된 진입 경로 6개, `/lab.html` 정규화와 검색 매개변수, QR·펌웨어·JSON 파일 열기, 데스크톱·작은 화면을 확인했다. 공용 DNS 두 곳과 일반 로컬 DNS에서 새 주소가 확인된다. `workers.dev`·미리보기는 비활성이고 포털 루트는 기존 `scope-portal`에 연결돼 있다.
+- 포털 main [`e8a68a4`](https://github.com/Cho-WH/scope-portal/commit/e8a68a4d85d5d953ce37fed45120566c87143a4b)의 이름·기능·지원 환경·대표 이미지·실행 주소를 반영했다. 기존 포털 빌드 `2670bc2b-6f7e-47d9-864e-01134da88080` 성공 후 [소개 페이지](https://sco.pe.kr/tools/sensor/)에서 새 앱을 여는 실제 조작과 배포 이미지 일치를 확인했다. 로컬 콘텐츠·Astro 검사·빌드와 관련 브라우저 검사 3개도 통과했다.
 - 미확인: 새 origin에서 사용자의 USB/Bluetooth 장치 선택·권한 승인 및 실물 수신. 자동 검사는 실기기 인수를 대체하지 않는다.
 
 일회성 화면 확인과 원본 검사 로그는 Git에서 제외된 `.local/logs/m5/`에만 보관한다.

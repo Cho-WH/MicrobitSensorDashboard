@@ -608,7 +608,7 @@ M1에서 `package.json`의 module 모드, 지원 중인 Node LTS 버전과 lockf
 |---|---|---|
 | 과학 포털 | `https://sco.pe.kr/`, 기존 `scope-portal` Worker 유지 | `Cho-WH/scope-portal` |
 | 센서 앱 소개 | `https://sco.pe.kr/tools/sensor/`, 도구 ID `sensor` 유지 | `Cho-WH/scope-portal`의 소개 콘텐츠 |
-| 센서 앱 | **`https://lab.sco.pe.kr/`**, 별도 Workers Static Assets 배포. Worker 이름은 `sensor-lab`을 계획값으로 사용하고 기존 자원과 충돌 여부 확인 | `Cho-WH/MicrobitSensorDashboard` |
+| 센서 앱 | **`https://lab.sco.pe.kr/`**, 별도 Workers Static Assets 배포. Worker 이름 `sensor-lab` | `Cho-WH/MicrobitSensorDashboard` |
 | 도구 직접 진입 | `lab.sco.pe.kr/sensors/<id>/`, `lab.sco.pe.kr/activities/<id>/`; 공유 시 `?view=preview` | 앱 레지스트리·빌드 |
 | 후속 교사 자료 공유 | 같은 앱 Worker의 `/api/shares`, `/share/`, `/share/manage/`; 비공개 R2·D1 바인딩 | 센서 앱 저장소 |
 | 기존 확인 주소 | https://cho-wh.github.io/MicrobitSensorDashboard/ — 사용자 확인상 센서 실험실 공개 배포 전이므로 별도 이전 안내·구버전 동결 배포는 하지 않음 | 센서 앱 저장소 |
@@ -641,7 +641,7 @@ M5는 `main` 기준으로 구현한다. Wrangler 설정, `/lab` 호환 경로, �
 | GitHub Actions | 로컬 OAuth나 MCP 연결과 별도로 CI용 Cloudflare API 토큰과 계정 ID가 필요하다. 대상 계정·zone에 필요한 범위로 제한한 인증 수단을 마련하고 GitHub Actions secrets에 등록한다. 토큰 발급·등록 권한이 없거나 사용자 인증이 필요하면 그 단계에만 사용자 개입을 요청한다. 토큰 값은 채팅·문서·저장소에 남기지 않는다. |
 | 장치 인수 | HTTP·경로·파일 복원 검사는 배포 도구와 브라우저로 확인한다. 새 origin의 USB/Bluetooth 장치 선택·권한 승인과 실제 센서 수신은 사용자 조작·실물 검증으로 구분한다. |
 
-**접근 환경 확인(2026-10-30):** Cloudflare 플러그인 연결 후 계정과 활성 `sco.pe.kr` zone, 기존 `scope-portal` 연결을 조회했다. 착수 시 `sensor-lab` Worker와 `lab.sco.pe.kr` 연결은 없었다. 조회 성공·계정 역할 정보는 플러그인의 실제 쓰기 성공과 구분하며 결과는 배포 기록에 남긴다. 사용자가 제외한 ‘계정 API 토큰 쓰기’ 권한은 요구하지 않는다. 로컬 Wrangler OAuth는 만료 상태이고, 플러그인 인증은 로컬 CLI나 GitHub Actions에 자동 적용되지 않는다. CI용 `CLOUDFLARE_API_TOKEN` 등록과 푸시 자동 배포는 사용자 요청으로 보류했다.
+**접근 환경 확인(2026-10-30):** Cloudflare 플러그인 연결 후 계정과 활성 `sco.pe.kr` zone, 기존 `scope-portal` 연결을 조회했다. 착수 시 `sensor-lab` Worker와 `lab.sco.pe.kr` 연결은 없었다. 플러그인 인증으로 자산 업로드·Worker 배포·Custom Domain 설정 쓰기를 실제 확인했고 운영 HTTPS·경로 검사도 통과했다. 버전과 검증 범위는 배포 기록에 남겼다. 사용자가 제외한 ‘계정 API 토큰 쓰기’ 권한은 요구하지 않는다. 로컬 Wrangler OAuth는 만료 상태이고, 플러그인 인증은 로컬 CLI나 GitHub Actions에 자동 적용되지 않는다. CI용 `CLOUDFLARE_API_TOKEN` 등록과 푸시 자동 배포는 사용자 요청으로 보류했다.
 
 연결 근거: [Cloudflare 공식 MCP](https://developers.cloudflare.com/agents/model-context-protocol/cloudflare/servers-for-cloudflare/), [Codex MCP 인증](https://developers.openai.com/codex/mcp/), [GitHub Actions 인증](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/).
 
