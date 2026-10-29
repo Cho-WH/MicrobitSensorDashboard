@@ -4,7 +4,7 @@ import { waitForConnection } from './connection-wait.js';
 // Attempts, retries and serialized teardown retained; definitions supply all sensor differences.
 import { createBleClient } from './ble-client.js';
 import { getSensorRuntime } from '../catalog/index.js';
-import { createReceptionMonitor } from '../measurement/reception-monitor.js';
+import { createReceptionMonitor, isReceptionReading } from '../measurement/reception-monitor.js';
 
 const errorMessage = error => ({
   NotFoundError: '장치 선택을 취소했거나 장치를 찾지 못했어요. 전원을 확인하고 다시 연결해 주세요.',
@@ -79,7 +79,7 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
           // Optional module protocol events stay outside samples, reception counts and RunStore.
           if (input.type === 'device-status') { preparation?.accept(input); return; }
           if (preparation && !preparation.getState().allowReadings) return;
-          const valid = input.type === 'reading' && 'validity' in input && policy.requiredChannelIds.every(channelId => input.validity[channelId] === 'valid');
+          const valid = isReceptionReading(input, policy);
           if (valid && !hasReading) { hasReading = true; clearStartup(); }
           monitor.accept(input);
           const observation = monitor.getSnapshot(at.monotonicAt).reception;

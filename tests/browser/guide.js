@@ -110,13 +110,13 @@ export async function runGuideTests(report = (_message) => {}) {
 
     check(!$('iframe').getAttribute('src'), '배선 안내를 열기 전에 3D 자원을 요청했습니다.');
     view.render({ attemptId: 'bmp-1', connected: false, busy: false }); step('vcc');
-    check($('iframe').getAttribute('src').includes('/public/viewers/bmp280/index.html'), '로컬 3D 주소가 잘못되었습니다.');
+    check($('iframe').getAttribute('src').includes('/public/viewers/wiring/index.html'), '로컬 3D 주소가 잘못되었습니다.');
     check(getComputedStyle($('iframe')).visibility==='hidden'&&$('iframe').getBoundingClientRect().height>0,'첫 장면 적용 전에 3D가 보이거나 화면 공간이 사라집니다.');
     await waitFor(() => ['applied', 'unavailable'].includes($('.guide-model').dataset.viewerState));
     const viewerState = $('.guide-model').dataset.viewerState;
-    check($('iframe').contentDocument?.querySelector('#viewport'), '원본 3D 문서를 로드하지 못했습니다.');
+    check($('iframe').contentDocument?.querySelector('#stage'), '원본 3D 문서를 로드하지 못했습니다.');
     if (viewerState === 'applied') {
-      check($('iframe').contentDocument.querySelector('#viewport canvas'), '3D 적용 응답에 실제 canvas가 없습니다.');
+      check($('iframe').contentDocument.querySelector('#stage canvas'), '3D 적용 응답에 실제 canvas가 없습니다.');
       const frame=$('iframe'), model=$('.guide-model');
       check(getComputedStyle(frame).visibility==='visible','첫 적용 완료 후 3D가 보이지 않습니다.');
       for(const id of ['gnd','scl','sda','vcc']) {
@@ -130,7 +130,7 @@ export async function runGuideTests(report = (_message) => {}) {
           check(samples.every(r=>r.slice(0,4).every((v,i)=>Math.abs(v-[before.x,before.y,before.width,before.height][i])<1)&&r[4]==='visible'),`${id}: 단계 적용 도중 3D 위치·크기·표시가 흔들립니다.`);
         } finally { observer.disconnect(); }
       }
-      click('right'); await waitFor(() => $('.guide-model').dataset.viewerState === 'applied');
+      const connector=$('.wiring-choices select');connector.value='pin';connector.dispatchEvent(new Event('change',{bubbles:true})); await waitFor(() => $('.guide-model').dataset.viewerState === 'applied');
       click('detail'); await waitFor(() => $('.guide-model').dataset.viewerState === 'applied');
     }
     $('iframe').dispatchEvent(new Event('error'));

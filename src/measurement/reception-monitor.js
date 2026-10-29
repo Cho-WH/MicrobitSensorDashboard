@@ -1,6 +1,12 @@
 // Adapted from Cho-WH/bme280 59c5c149, diagnostics/reception.js and
 // measurement/reception-monitor.js. Required channels and timing come from the sensor.
 const initial = () => ({ firstAt: null, lastAt: null, count: 0, attemptId: null });
+// An empty required list means at least one valid channel, not an empty success.
+export function isReceptionReading(input, { requiredChannelIds = [] } = {}) {
+  return input?.type === 'reading' && (requiredChannelIds.length
+    ? requiredChannelIds.every(id => input.validity?.[id] === 'valid')
+    : Object.values(input.validity ?? {}).some(value => value === 'valid'));
+}
 export function discontinuityReason(previous, input, gapMs) {
   if (!previous) return null;
   if (previous.attemptId !== input.attemptId) return 'reconnected';
@@ -14,9 +20,7 @@ export function createReceptionMonitor(config = {}) {
   const { staleMs = Number.MAX_SAFE_INTEGER, confirmationCount = 1, confirmationSpanMs = 0,
     requiredChannelIds = [] } = config;
   let reception = initial(), latest = null, lastInput = null;
-  const valid = input => input?.type === 'reading' && (requiredChannelIds.length
-    ? requiredChannelIds.every(id => input.validity?.[id] === 'valid')
-    : Object.values(input.validity ?? {}).some(value => value === 'valid'));
+  const valid = input => isReceptionReading(input, { requiredChannelIds });
   function observe(previous, input, now) {
     let next = { ...previous };
     const expired = next.lastAt !== null && (now - next.lastAt >= staleMs || now < next.lastAt);

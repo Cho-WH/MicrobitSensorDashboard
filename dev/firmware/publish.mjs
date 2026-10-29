@@ -1,4 +1,4 @@
-// Publish the verified common B runtime for the five registered sensors.
+// Publish the verified common B runtime for the registered sensors.
 // Reuses the HEX inspector: no second compile or independently generated binary.
 import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises';
 import { readFirmwareImage } from './firmware-image.mjs';

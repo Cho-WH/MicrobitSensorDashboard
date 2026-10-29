@@ -7,10 +7,11 @@
 | 센서 | 현재 정식 펌웨어 |
 |---|---|
 | 온도·밝기·가속도·자기장·BMP280 | `sensor-lab-<센서명>-v1` |
+| DS18B20 (실기기 확인 전) | `sensor-lab-ds18b20-v1` |
 
 정식 V1은 새 `sensor-lab-*` ID를 사용한다. 이전 `*-uart` 계열과 ID·버전이 충돌하지 않으며, 과거 자료의 메타데이터를 새 V1으로 바꾸지 않는다. 정식 V1 이전 설치 파일(HEX·BIN·TS·빌드 기록)은 제거했다. `src/device/stale-firmware.js`에는 과거 자료의 해석·호환되는 이어 측정에 필요한 ID·버전·해시·통신 규약만 남긴다. stale 항목에는 다운로드 주소가 없으며 USB·무선 재설치를 허용하지 않는다. 새 설치는 정식 V1의 새 실험에서 진행한다.
 
-현재 5종은 같은 B 공통 런타임(`pairing_mode: 1`, open-link)으로 빌드한다. USB용 HEX와 무선용 부분 BIN은 **같은 센서 프로그램**이며, BIN은 검증한 HEX에서 추출한다. 공통 런타임이 다른 보드·최초 준비·전송 손상은 USB 설치로 처리한다. 앱의 설치 허용 보드는 micro:bit V2다.
+현재 6종은 같은 B 공통 런타임(`pairing_mode: 1`, open-link)으로 빌드한다. USB용 HEX와 무선용 부분 BIN은 **같은 센서 프로그램**이며, BIN은 검증한 HEX에서 추출한다. 공통 런타임이 다른 보드·최초 준비·전송 손상은 USB 설치로 처리한다. 앱의 설치 허용 보드는 micro:bit V2다.
 
 - 채택한 배포본은 ID·버전·해시를 고정한다. 같은 버전의 파일을 수정하지 않고 새 버전을 발행한다.
 - 새 실험은 현재 버전, 과거 자료는 명시적으로 보존한 버전을 해석한다. 저장된 버전·해시·codec을 최신 값으로 덮어쓰지 않는다.
@@ -24,14 +25,14 @@
 | [targets.json](targets.json) | 센서별 소스·추가 소스·ID·버전·규약 선언과 고정 도구 버전 |
 | [pxt-template.json](pxt-template.json) | core + Bluetooth의 기본 설정. 정식 공통 런타임의 `pairing_mode: 1`을 기본으로 사용한다. |
 | [build.mjs](build.mjs) | 현재 후보 빌드·내장 소스·설정·V2 해석 검증 |
-| [publish.mjs](publish.mjs) | 채택할 5종의 입력·공통 런타임 확인 후 배포 파일 발행 |
+| [publish.mjs](publish.mjs) | 채택할 6종의 입력·공통 런타임 확인 후 배포 파일 발행 |
 | [sensor-display.ts](../../firmware/common/sensor-display.ts) | 공통 기본 간격·상태 표시. `additionalSources`로 포함 |
 | [wireless-firmware.js](../../src/device/wireless-firmware.js) | 발행기가 생성하는 현재 배포 메타데이터 |
 | [firmware.js](../../src/device/firmware.js) | 앱의 현재 설치 허용 목록과 과거 식별 정보 해석 |
 | `built/projects/`, `built/artifacts/` | 생성 작업 폴더와 검증된 후보. Git 비추적 |
 | [public/firmware/](../../public/firmware/) | 배포 HEX·부분 BIN·다운로드 소스·빌드 기록·라이선스 |
 
-`targets.json`의 `protocol`은 선언일 뿐 소스를 자동 수정하지 않는다. ID·버전·표시 이름은 이 파일 한 곳에서 선언하며 발행기가 그대로 사용한다. `releases`는 기본 빌드·런타임 비교·발행 대상 5종을 지정한다. 후보도 배포본과 같은 `<펌웨어 ID>-v<버전>` 이름으로 `built/artifacts/<센서>/`에 생성한다.
+`targets.json`의 `protocol`은 선언일 뿐 소스를 자동 수정하지 않는다. ID·버전·표시 이름은 이 파일 한 곳에서 선언하며 발행기가 그대로 사용한다. `releases`는 기본 빌드·런타임 비교·발행 대상 6종을 지정한다. 후보도 배포본과 같은 `<펌웨어 ID>-v<버전>` 이름으로 `built/artifacts/<센서>/`에 생성한다.
 
 ## 현재 빌드·배포 절차
 
@@ -44,12 +45,13 @@ npm ci --ignore-scripts --no-audit --no-fund
 이후 저장소 루트에서 실행한다.
 
 ```sh
-# 정식 V1 센서 5종의 후보 빌드 (기본 명령)
+# 정식 V1 센서 6종의 후보 빌드 (기본 명령)
 npm run build:firmware
 
 # 대상 목록 / 정식 센서 하나 / 배포본과 정확히 일치하는지 재빌드 확인
 npm run build:firmware -- --list
 npm run build:firmware -- magnetometer
+npm run build:firmware -- ds18b20
 npm run build:firmware -- magnetometer --check
 
 # 개발 예제는 이름을 명시했을 때만 빌드
@@ -58,7 +60,7 @@ npm run build:firmware -- analog-raw
 # 후보들의 현재 소스·HEX·V2 네이티브 영역 일치 확인
 node dev/firmware/check-common-runtime.mjs
 
-# 채택된 5종의 검증된 파일과 현재 버전 목록을 발행
+# 채택된 6종의 검증된 파일과 현재 버전 목록을 발행
 npm run publish:firmware
 
 # 배포본 해시·소스·USB/무선 일치와 프로그램 동작의 모의 검사
@@ -66,12 +68,30 @@ npm run check:firmware
 ```
 
 1. 센서 프로그램과 규약을 수정하고 영향받는 동작을 검사한다. 새 센서 등록은 [센서·활동 등록 절차](../../src/catalog/README.md)를 따른다.
-2. 채택할 버전을 `targets.json`에서 정한다. 현재 발행기는 5종을 함께 검증하므로 다른 센서의 후보도 현재 소스와 일치해야 한다.
+2. 채택할 버전을 `targets.json`에서 정한다. 현재 발행기는 6종을 함께 검증하므로 다른 센서의 후보도 현재 소스와 일치해야 한다.
 3. 빌드는 HEX에 내장된 소스·설정, 공식 V2 해석 결과, 도구·런타임 해시를 확인한 뒤 후보를 남긴다. 컴파일 전에 낡은 `binary.hex`를 제거하며 실패한 결과로 마지막 검증 후보를 교체하지 않는다.
 4. 발행기는 모든 센서의 입력과 네이티브 영역 일치를 먼저 확인하고 HEX·BIN·TS·빌드 기록과 앱 목록을 생성한다. 이미 발행한 같은 버전의 HEX 내용 변경은 거부한다.
 5. 변경한 동작에 필요한 USB·무선 실물 확인을 수행하고 확인 범위만 기록한다. 원본 로그는 Git 비추적 경로에, 날짜·결과·한계는 짧은 요약에 둔다.
 
 빌드 성공, 파일 발행, 앱 배포, 실기기 확인은 각각 별개다. 앱 등록·배포가 빌드만으로 자동 완료되지 않는다. 소스만 수정해도 기존 보드의 프로그램은 바뀌지 않는다.
+
+## DS18B20 (M8-1)
+
+2026-10-29: 방수 프로브 **1~2개**, **DQ→P1/P2 각각, VDD→3V·GND→GND 공통**으로 연결하는 센서 프로그램을
+구현했다. 선 색상은 제품의 핀 표기를 따른다. 외부 저항을 추가하지 않는 내부 풀업·직접 HIGH 구동을
+검증 대상으로 삼으며, 데이터선으로 전원을 공급하는 2선 기생 전원 방식은 지원하지 않는다.
+앱 센서 목록·codec·설치 허용 목록에 등록했다. `/sensors/ds18b20/`에서 준비·기록·분석을
+제공한다. 공통 배선표와 기존 준비·설치 화면을 재사용한다. SEN050007 프로브·터미널 모듈 그림과
+배선 단계의 공통 3D 뷰어를 추가했으며, WebGL을 사용할 수 없어도 배선표로 준비할 수 있다.
+
+- 소스: [메인](../../firmware/examples/ds18b20.js), [드라이버](../../firmware/drivers/ds18b20.ts), [고정 출처·라이선스](../../firmware/drivers/DS18B20-NOTICES.md).
+- `npm run build:firmware -- ds18b20`으로 후보를 만들고 `npm run publish:firmware`로 검증 후 `public/firmware/sensor-lab-ds18b20-v1.*`의 HEX·부분 BIN·합본 TS·빌드 기록을 발행했다. 앱 배포·실기기 확인과는 별개다. 이후 같은 V1의 내용을 변경하지 않는다.
+- Bluetooth UART의 `start\n`으로 송신, `stop\n`으로 중단한다. P1·P2 순서의 섭씨 두 필드를 보내며 미연결·오류인 쪽은 빈 필드다. 명목 주기는 두 프로브의 공통 변환 대기를 포함해 1000ms이며 실측 주기 보증은 아니다. 실패 시 이전 값·보드 온도·0을 대신 보내지 않는다. 상세 계약은 [센서 프로그램 규약 §4](../../docs/sensor-program-contract.md#4-센서별-계약)를 따른다.
+- 검증: 관련 단위 검사 75개, 타입 검사·앱 빌드 통과. HEX 내장 소스·설정·공식 V2 해석·부분 BIN 해시 검증 완료. 기존 센서와 네이티브 바이트가 같고 B 런타임 `5f21a4c8e2b240e5`를 유지한다. 1개·2개 수신과 부분 결측·독립 오류 복구·한 점 캡처를 검사했다. 브라우저에서 모의 수신·연속 기록·한 점 캡처·분석·CSV 원값 보존과 데스크톱/320px 준비 흐름을 확인했다.
+- **미확인:** V2 실물에서 BLE 동시 통신 중 1-Wire 타이밍·오류율, 실제 프로브의 배선 길이·전원 조건, USB 설치와 무선 부분 설치. `hardwareVerified`는 false다. 자동 검사는 GPIO 호출 비용·인터럽트·아날로그 파형을 모사하지 않는다.
+
+실물에서는 1개·2개 정상 수신, 음수/상온/가열 시 온도 변화, 한쪽 센서 분리·재연결, 변환 대기 중 중단·BLE 재연결을 확인한다.
+외부 풀업을 추가하지 않는 이 구현의 판단에는 CRC 오류율과 가능한 경우 데이터선 파형을 사용하며, 원본 드라이버의 성공을 이 구현의 검증으로 대체하지 않는다.
 
 ## 공통 런타임과 검증 경계
 
@@ -87,6 +107,6 @@ npm run check:firmware
 
 ## 명령과 기록의 구분
 
-`npm run build:firmware`와 `--all`은 정식 센서 5종을 빌드한다. `analog-raw`·`temperature-light`는 대상 이름을 명시해야 하며 기본 발행 목록에 들어가지 않는다. 모든 대상은 같은 정식 공통 런타임 설정을 사용한다. 과거 `pairing_mode: 0` 빌드 경로와 `:wireless` 명령은 제거했다.
+`npm run build:firmware`와 `--all`은 정식 센서 6종을 빌드한다. `analog-raw`·`temperature-light`는 대상 이름을 명시해야 하며 기본 발행 목록에 들어가지 않는다. 모든 대상은 같은 정식 공통 런타임 설정을 사용한다. 과거 `pairing_mode: 0` 빌드 경로와 `:wireless` 명령은 제거했다.
 
 빌드는 비추적 후보만 만들고, `npm run publish:firmware`가 검증 후 배포 파일을 갱신한다.

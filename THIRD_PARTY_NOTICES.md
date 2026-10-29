@@ -23,7 +23,9 @@ fixtures retain their source references.
 The common device assets in `public/assets/devices/` reuse the pinned BMP280
 viewer's geometry, text and connector helpers. Its bundled Three.js r180 and
 OrbitControls now live in one shared `public/vendor/three-r180.js` ES module;
-the existing BMP280 scene is extracted into `public/viewers/bmp280/scene.js`.
+BMP280 and DS18B20 use the shared `public/viewers/wiring/` viewer. The old
+BMP280-specific scene and bridge have been replaced; provenance remains in
+`public/viewers/bmp280/README.md`.
 Three.js notices are preserved in `public/vendor/three-r180-LICENSE.txt`.
 The micro:bit rear details, USB cable and open 2×AAA battery holder are local
 additions/adaptations. Asset versions, source links and the upstream

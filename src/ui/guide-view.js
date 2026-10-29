@@ -138,8 +138,7 @@ export function createGuideView(host, callbacks = {}) {
   button('model',labels.guide.model,()=>{mode='3d'; loadViewer(); paintViewer();},modes);
   button('table',labels.guide.table,()=>{mode='table'; paintViewer();},modes);
   button('retry-model',labels.guide.retryModel,()=>{viewer?.dispose(); viewer=null; frame.removeAttribute('src'); delete frame.dataset.step; mode='3d'; loadViewer(); paintViewer();},modes);
-  button('left',labels.guide.cableLeft,()=>viewer?.setCableSide('left'),controls);
-  button('right',labels.guide.cableRight,()=>viewer?.setCableSide('right'),controls);
+  const viewerChoices = element('div','wiring-choices'); controls.append(viewerChoices);
   button('detail',labels.guide.detail,()=>viewer?.toggleDetail(),controls);
   button('restore',labels.guide.restore,()=>viewer?.restoreStep(),controls);
   const cableHelp=element('button','help-trigger','?'); cableHelp.type='button'; cableHelp.dataset.actionHelp='cable'; cableHelp.setAttribute('aria-label','케이블 끝 모양 도움말'); controls.append(cableHelp);
@@ -152,21 +151,24 @@ export function createGuideView(host, callbacks = {}) {
       frame.classList.toggle('viewer-pending',!detail.hasAppliedState);
       buttons.get('detail').setAttribute('aria-pressed',String(detail.detail));
       buttons.get('detail').textContent=detail.detail?labels.guide.whole:labels.guide.detail;
-      for (const side of ['left','right']) buttons.get(side).setAttribute('aria-pressed',String(detail.side===side));
+      for (const select of viewerChoices.querySelectorAll('select')) select.value=detail.options[select.name]??'';
       if (state==='unavailable') mode='table';
       paintViewer();
-    },{url:content.viewer.url,...callbacks.viewerOptions});
+    },{...content.viewer,...callbacks.viewerOptions});
     if (frame.dataset.step!==step.id || viewerState==='idle') {frame.dataset.step=step.id; viewer.applyStep(step);}
   }
   function paintViewer() {
-    const wire=currentStep()?.model?.wire, fallback=mode==='table';
+    const step=currentStep(), wire=content.wiring.find(wire=>wire.id===step?.id)?.id;
+    const fallback=!content.viewer||mode==='table';
+    findElement(model,'div','.model-toolbar').hidden=!content.viewer;
     frame.hidden=fallback; tablePanel.hidden=!fallback;
     buttons.get('model').setAttribute('aria-pressed',String(!fallback));
     buttons.get('table').setAttribute('aria-pressed',String(fallback));
     buttons.get('model').disabled=viewerState==='unavailable';
     buttons.get('retry-model').hidden=viewerState!=='unavailable'; controls.hidden=fallback;
-    for (const id of ['left','right','detail']) buttons.get(id).hidden=!wire;
-    for (const id of ['left','right','detail','restore']) buttons.get(id).disabled=viewerState!=='applied';
+    buttons.get('detail').hidden=!wire; viewerChoices.hidden=!wire; cableHelp.hidden=!content.cableHelp;
+    for (const id of ['detail','restore']) buttons.get(id).disabled=viewerState!=='applied';
+    for (const select of viewerChoices.querySelectorAll('select')) select.disabled=viewerState!=='applied';
     modelStatus.hidden=viewerState==='applied'||viewerState==='idle';
     setText(modelStatus,viewerState==='unavailable'?labels.guide.modelUnavailable:labels.guide.modelLoading);
     for (const row of tableBody.querySelectorAll('tr')) {
@@ -180,8 +182,15 @@ export function createGuideView(host, callbacks = {}) {
     const buttonLabels = {previous:labels.guide.previous,confirm:labels.guide.confirm,next:labels.guide.next,measure:labels.guide.measure,
       'quick-confirm':labels.guide.quickConfirm,install:labels.guide.install,'program-confirm':labels.guide.programConfirm,
       connect:labels.common.connect,reconnect:labels.common.reconnect,disconnect:labels.common.disconnect,battery:labels.guide.battery,
-      model:labels.guide.model,table:labels.guide.table,'retry-model':labels.guide.retryModel,left:labels.guide.cableLeft,right:labels.guide.cableRight,detail:labels.guide.detail,restore:labels.guide.restore};
+      model:labels.guide.model,table:labels.guide.table,'retry-model':labels.guide.retryModel,detail:labels.guide.detail,restore:labels.guide.restore};
     for (const [id, label] of Object.entries(buttonLabels)) setText(buttons.get(id), label);
+    viewerChoices.replaceChildren();
+    for (const choice of content.viewer?.choices??[]) {
+      const label=element('label','',choice.label),select=element('select',''); select.name=choice.id;
+      for (const value of choice.values) {const option=element('option','',value.label);option.value=value.id;select.append(option);}
+      select.value=content.viewer.defaults[choice.id];
+      select.addEventListener('change',()=>viewer?.setOption(choice.id,select.value)); label.append(select);viewerChoices.append(label);
+    }
     preparationView?.dispose(); suggestion=''; preparationHost.hidden=true;
     preparationView=getSensorPreparation(context)?.createView(preparationHost,{onAction:action=>run(()=>callbacks.onDeviceAction?.(action))})??null;
     help?.dispose(); layout?.dispose(); contentAbort.abort(); contentAbort=new AbortController();
@@ -191,11 +200,11 @@ export function createGuideView(host, callbacks = {}) {
     frame.title=content.viewer?.title??'배선 3D 안내';
     const large=findElement(shell,'a','.viewer-large');
     if (content.viewer) {const url=new URL(content.viewer.url); url.searchParams.delete('embed'); large.href=url.href;} else large.removeAttribute('href');
-    findElement(shell,'caption','.guide-wiring caption').textContent=content.viewer?.tableCaption??'배선표';
-    findElement(shell,'th','[data-wiring-board]').textContent=content.viewer?.boardLabel??'보드';
-    findElement(shell,'th','[data-wiring-sensor]').textContent=content.viewer?.sensorLabel??'센서';
-    findElement(wiringNote,'summary','summary').textContent=content.viewer?.noteTitle??'';
-    findElement(wiringNote,'p','p').textContent=content.viewer?.note??'';
+    findElement(shell,'caption','.guide-wiring caption').textContent=content.wiringTable?.tableCaption??'배선표';
+    findElement(shell,'th','[data-wiring-board]').textContent=content.wiringTable?.boardLabel??'보드';
+    findElement(shell,'th','[data-wiring-sensor]').textContent=content.wiringTable?.sensorLabel??'센서';
+    findElement(wiringNote,'summary','summary').textContent=content.wiringTable?.noteTitle??'';
+    findElement(wiringNote,'p','p').textContent=content.wiringTable?.note??'';
     for (const step of steps) {
       if (!groupButtons.has(step.group)) {
         const item=element('li'), node=element('button','ui-tab'); node.type='button'; node.dataset.guideGroup=step.group;
@@ -203,7 +212,7 @@ export function createGuideView(host, callbacks = {}) {
         node.addEventListener('click',()=>select(step.id),{signal}); item.append(node); nav.append(item); groupButtons.set(step.group,node);
       }
       const item=element('li'), node=element('button'); node.type='button'; node.dataset.guideStep=step.id;
-      node.textContent=step.model?.wire ? content.wiring.find(wire=>wire.id===step.id)?.role : ({program:labels.guide.programLabel,connection:labels.guide.connectionLabel,reception:labels.guide.receptionLabel,calibration:labels.guide.calibrationLabel}[step.id]??step.groupLabel);
+      node.textContent=content.wiring.find(wire=>wire.id===step.id)?.role ?? ({program:labels.guide.programLabel,connection:labels.guide.connectionLabel,reception:labels.guide.receptionLabel,calibration:labels.guide.calibrationLabel}[step.id]??step.groupLabel);
       node.addEventListener('click',()=>select(step.id),{signal}); item.append(node); subnav.append(item); stepButtons.set(step.id,node);
     }
     for (const track of [nav,subnav]) track.addEventListener('keydown',event=>{
@@ -318,7 +327,7 @@ export function createGuideView(host, callbacks = {}) {
     evidence.dataset.state=skipped?'skipped':step?.complete?'complete':'pending';
     equipment.hidden=!quick&&step?.id!=='equipment';
     activityEquipment.hidden=equipment.hidden||!content.activityEquipment.length;
-    model.hidden=quick||isSummary||!content.viewer||!content.wiring.length||step?.group!=='wiring';
+    model.hidden=quick||isSummary||!content.wiring.length||step?.group!=='wiring';
     const stepImage = quick || isSummary ? null : step?.image;
     stepFigure.hidden = !stepImage;
     const img = findElement(stepFigure,'img','img');
@@ -472,7 +481,7 @@ export function createGuideView(host, callbacks = {}) {
     buttons.get('connect').disabled ||= facts.canConnect===false; buttons.get('connect').textContent=facts.canReconnect?labels.common.chooseDevice:facts.mock?labels.common.mockConnect:labels.common.connect;
     buttons.get('reconnect').disabled ||= facts.canConnect===false;
     buttons.get('disconnect').textContent=facts.connecting?labels.common.cancelConnection:labels.common.disconnect; buttons.get('disconnect').disabled=Boolean(facts.programmerState?.busy);
-    buttons.get('battery').disabled ||= !facts.connected; deviceActions.hidden=!connectionStep; wiringNote.hidden=step?.group!=='wiring'||!content.viewer?.note;
+    buttons.get('battery').disabled ||= !facts.connected; deviceActions.hidden=!connectionStep; wiringNote.hidden=step?.group!=='wiring'||!content.wiringTable?.note;
     const noteText=facts.recording?labels.guide.reconnectNote:facts.mock&&step?.kind==='program'?labels.guide.mockProgramNote:step?.kind==='program'?'':step?.kind==='battery'&&state.observations.battery.startedAt!==null?step.complete?labels.guide.batterySeen:labels.guide.batteryWaiting:step?.kind==='calibration'&&!managed?labels.guide.calibrationNote:'';
     setText(note,noteText); note.hidden=!noteText;
     copy.dataset.group=step?.group??''; layout?.measure(); layout?.syncProgress();

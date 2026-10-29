@@ -1,8 +1,9 @@
 // Geometry, label and hollow socket helpers adapted from Cho-WH/bme280@59c5c149.
 // Original application-code license qualification: see ../README.md.
 import { id, to, In, ge, qn, Fs, Rn, Cn, Qi, Xs, Ls, we, pi, _i, ye, ts, P, mi, Ee, Yn, Ki, qs, ra, _o, Ds, $s, Zs, ns, Pe, la, js, up, $n, Ks, nt } from "../../../vendor/three-r180.js";
-const Bl=new Map(), zl=new Map();
-function xe(i, t = 0, e = .55) { let n = `${i}/${t}/${e}`; return Bl.has(n) || Bl.set(n, new In({ color: i, metalness: t, roughness: e })), Bl.get(n); }
+const Bl=new Map(), zl=new Map(), sharedMaterials=new WeakSet();
+function xe(i, t = 0, e = .55) { let n = `${i}/${t}/${e}`; if(!Bl.has(n)){const value=new In({ color: i, metalness: t, roughness: e });Bl.set(n,value);sharedMaterials.add(value);} return Bl.get(n); }
+export const isSharedMaterial = value => sharedMaterials.has(value);
 function At(i, t, e, n, s, r, o, a) { let l = new ge(new qn(t, e, n), a); return l.position.set(s, r, o), i.add(l), l; }
 function ei(i, t, e, n, s, r, o) { let a = new ge(new Fs(t, t, e, 24), o); return a.rotation.x = Math.PI / 2, a.position.set(n, s, r), i.add(a), a; }
 function Kh(i, t, e) { let n = new Rn, s = -i / 2, r = -t / 2; return n.moveTo(s + e, r), n.lineTo(s + i - e, r), n.quadraticCurveTo(s + i, r, s + i, r + e), n.lineTo(s + i, r + t - e), n.quadraticCurveTo(s + i, r + t, s + i - e, r + t), n.lineTo(s + e, r + t), n.quadraticCurveTo(s, r + t, s, r + t - e), n.lineTo(s, r + e), n.quadraticCurveTo(s, r, s + e, r), n; }

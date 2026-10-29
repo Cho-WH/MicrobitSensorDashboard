@@ -34,7 +34,8 @@ export function getGuideContent(context, modules = registry) {
   const sensor = modules.getSensor(context?.sensor), activity = modules.getActivity(context?.activity, context?.sensor);
   const guide = sensor?.guide, activityGuide = activity?.guide;
   return structuredClone({ equipment: guide?.equipment ?? [], activityEquipment: activityGuide?.equipment ?? [],
-    wiring: guide?.wiring ?? [], cableHelp: guide?.cableHelp ?? '', viewer: guide?.viewer ?? null, illustrations: guide?.illustrations ?? null,
+    wiring: guide?.wiring ?? [], wiringTable: guide?.wiringTable ?? null,
+    cableHelp: guide?.cableHelp ?? '', viewer: guide?.viewer ?? null, illustrations: guide?.illustrations ?? null,
     calibrationInstructions: guide?.calibrationInstructions ?? [],
     experimentGuide: activityGuide?.experimentGuide ?? guide?.experimentGuide ?? null });
 }

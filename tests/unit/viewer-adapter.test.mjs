@@ -7,13 +7,13 @@ const equipment = { id: 'equipment', model: { view: 'iso', wire: null, explosion
 function fixture() {
   const events = new EventTarget(), frame = new EventTarget(), sent = [], notices = [], timers = new Map(); let timerId = 0;
   frame.contentWindow = { postMessage: (data, origin) => sent.push({ data, origin }) };
-  const options = { url: 'https://lab.test/base/public/viewers/bmp280/index.html?embed=1', origin: 'https://lab.test', events,
+  const options = { url: 'https://lab.test/base/public/viewers/wiring/index.html?embed=1', origin: 'https://lab.test', events, defaults:{connector:'socket'}, choices:[{id:'connector',values:[{id:'socket'},{id:'pin'}]}],
     setTimeout(fn) { const id = ++timerId; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); } };
   const adapter = createViewerAdapter(frame, (state, detail) => notices.push({ state, detail }), options);
   function reply(type, overrides = {}) {
     const last = sent.at(-1)?.data;
     const event = new Event('message'); Object.assign(event, { origin: options.origin, source: frame.contentWindow,
-      data: { channel: 'gay-lussac-guide', version: 1, requestId: last?.requestId, type }, ...overrides }); events.dispatchEvent(event);
+      data: { channel: 'sensor-lab-wiring', version: 1, requestId: last?.requestId, type }, ...overrides }); events.dispatchEvent(event);
   }
   return { adapter, frame, sent, notices, timers, reply, events, options };
 }
@@ -21,9 +21,9 @@ function fixture() {
 test('3D assets load lazily and only the current step is applied after handshake', () => {
   const { adapter, frame, sent, reply, notices } = fixture();
   assert.equal(frame.src, undefined); assert.equal(sent.length, 0);
-  adapter.applyStep(wiring('vcc')); assert.match(frame.src, /\/base\/public\/viewers\/bmp280\/index.html\?embed=1$/);
+  adapter.applyStep(wiring('vcc')); assert.match(frame.src, /\/base\/public\/viewers\/wiring\/index.html\?embed=1$/);
   adapter.applyStep(wiring('sda')); frame.dispatchEvent(new Event('load')); assert.equal(sent.at(-1).data.type, 'prepare');
-  reply('ready'); assert.deepEqual(sent.at(-1).data.state, { view: 'front', wire: 'sda', explosion: 18, side: 'left' });
+  reply('ready'); assert.deepEqual(sent.at(-1).data.state, { view: 'front', wire: 'sda', explosion: 18, options: {connector:'socket'} });
   reply('applied'); assert.equal(notices.at(-1).detail.hasAppliedState, true);
   frame.dispatchEvent(new Event('load')); assert.equal(notices.at(-1).detail.hasAppliedState, false);
   adapter.dispose();
@@ -43,16 +43,17 @@ test('viewer rejects wrong origin, source, contract, stale ID, type and response
   adapter.dispose();
 });
 
-test('wire side persists, detail resets across steps, failed viewer can retry, dispose removes pending work', () => {
+test('connector selection persists, detail resets across steps, failed viewer can retry, dispose removes pending work', () => {
   const { adapter, frame, sent, reply, timers, notices } = fixture();
   adapter.applyStep(wiring('vcc')); frame.dispatchEvent(new Event('load')); reply('ready'); reply('applied');
-  adapter.setCableSide('right'); assert.equal(sent.at(-1).data.type, 'set-side'); reply('applied');
+  adapter.setOption('connector','pin'); assert.equal(sent.at(-1).data.type, 'apply-state'); reply('applied');
+  adapter.setOption('connector','unknown'); assert.equal(notices.at(-1).state,'applied');
   adapter.toggleDetail(); assert.equal(sent.at(-1).data.state.view, 'connector'); reply('applied');
-  adapter.applyStep(wiring('scl')); assert.deepEqual(sent.at(-1).data.state, { view: 'front', wire: 'scl', explosion: 18, side: 'right' });
+  adapter.applyStep(wiring('scl')); assert.deepEqual(sent.at(-1).data.state, { view: 'front', wire: 'scl', explosion: 18, options: {connector:'pin'} });
   reply('error'); assert.equal(notices.at(-1).state, 'unavailable');
   adapter.restoreStep(); assert.equal(sent.at(-1).data.type, 'prepare'); reply('ready'); reply('applied');
-  adapter.applyStep(equipment); assert.equal(sent.at(-1).data.state.side, 'left');
-  adapter.setCableSide('left'); assert.equal(sent.at(-1).data.type, 'apply-state');
+  adapter.applyStep(equipment); assert.equal(sent.at(-1).data.state.options.connector, 'pin');
+  adapter.setOption('connector','socket'); assert.equal(sent.at(-1).data.type, 'apply-state');
   adapter.dispose(); assert.equal(timers.size, 0); const sentCount = sent.length, noticesCount = notices.length;
   reply('applied'); frame.dispatchEvent(new Event('load')); adapter.applyStep(wiring('sda'));
   assert.equal(sent.length, sentCount); assert.equal(notices.length, noticesCount);

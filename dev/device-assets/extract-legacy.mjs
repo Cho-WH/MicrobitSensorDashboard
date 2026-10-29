@@ -3,12 +3,17 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
+import { resolve } from 'node:path';
 
 const sourcePath = process.argv[2];
-if (!sourcePath) throw new Error('Usage: node dev/device-assets/extract-legacy.mjs <original-html>');
+const destination = process.argv[3];
+if (!sourcePath || !destination) throw new Error('Usage: node dev/device-assets/extract-legacy.mjs <original-html> <new-output-directory>');
 const html = await readFile(sourcePath, 'utf8');
 const sourceHash = createHash('sha256').update(html).digest('hex');
 if (sourceHash !== '3212905c9963dd360791a43f1b7500bddd4dbeffcafee2f5153bda1fdd61fe47') throw new Error('Input does not match the pinned original bundle');
+// Historical reproduction only. Never overwrite the maintained shared models.
+const output = resolve(destination); await mkdir(output); process.chdir(output);
+await mkdir('public/vendor', { recursive:true }); await mkdir('public/viewers/bmp280', { recursive:true });
 const start = html.indexOf('<script>(()=>{'), end = html.indexOf('</script>', start);
 if (start < 0 || end < 0) throw new Error('Expected pinned inline viewer bundle');
 const code = html.slice(start + 8, end);

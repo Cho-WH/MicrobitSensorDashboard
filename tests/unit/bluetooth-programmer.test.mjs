@@ -109,9 +109,14 @@ test('cancelling file preparation ignores a late download and allows a fresh pre
   assert.equal(programmer.getState().status, 'ready'); await programmer.dispose();
 });
 test('current releases share a wireless runtime; stale identities allow compatible measurement but not installation', () => {
-  for (const [id, current] of Object.entries(firmwareManifest)) {
+  for (const current of Object.values(firmwareManifest)) {
     assert.equal(current.partial.runtimeHash, artifact.partial.runtimeHash);
-    const old = staleFirmware.find(item => item.id === current.sensorId + '-uart');
+  }
+  // New sensors need not have a historical release. Exercise every actual stale
+  // identity separately, without inventing a DS18B20 predecessor or skipping it.
+  for (const old of staleFirmware) {
+    const current = Object.values(firmwareManifest).find(item => item.sensorId + '-uart' === old.id);
+    assert.ok(current, `Missing current release for ${old.id}`);
     assert.equal(getFirmwareIdentity(old.id, old.version).sha256, old.sha256);
     assert.throws(() => getFirmwareArtifact(old.id, old.version), { code: 'unknown-firmware' });
     const context = getExperiment(current.partial.id);

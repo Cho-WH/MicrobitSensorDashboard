@@ -2,12 +2,18 @@
 
 The current official V1 releases are `sensor-lab-temperature-v1`,
 `sensor-lab-light-level-v1`, `sensor-lab-accelerometer-v1`,
-`sensor-lab-magnetometer-v1`, and `sensor-lab-bmp280-v1`.
+`sensor-lab-magnetometer-v1`, `sensor-lab-bmp280-v1`, and `sensor-lab-ds18b20-v1`.
 They are built from this repository's matching `firmware/examples/` sources
 and shared `firmware/common/sensor-display.ts` (MIT). BMP280 also includes
 `firmware/drivers/bmp280.ts` (MIT). Each downloadable `.ts` combines its
 inputs; each release includes a build record and a partial-installation
-`.bin` extracted from the same HEX. All five share the verified B runtime.
+`.bin` extracted from the same HEX. All six share the verified B runtime.
+DS18B20 also includes `firmware/drivers/ds18b20.ts`, adapted from
+[Tinkertanker/ELECFREAKS v5.2.1](https://github.com/tinkertanker/pxt-iot-environment-kit/tree/babda2ad46be9ec861ad94e5fd258c4a938c6331)
+and [bsiever/microbit-dstemp-2wire](https://github.com/bsiever/microbit-dstemp-2wire/tree/509e06fafc23d0cc14e0aeccb0d8fc17c72c6e68), both MIT.
+The full notices are embedded in the downloadable TypeScript source;
+fixed source hashes and provenance are in `firmware/drivers/DS18B20-NOTICES.md`.
+DS18B20 installation and probe operation have not yet been checked on hardware.
 Pre-V1 `*-uart` artifacts have been retired and removed. Only historical
 identity and protocol metadata remain for saved-record compatibility.
 Build and publication commands are documented in `dev/firmware/README.md`.

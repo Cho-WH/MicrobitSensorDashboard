@@ -10,10 +10,5 @@ export const equipment = [
   { id: 'wires', name: '연결선 4개', help: '확장 보드와 센서의 단자 모양에 맞는 선을 준비하세요. 수는 핀, 암은 핀이 들어가는 구멍이에요.' },
   { id: 'usb', name: 'USB 데이터 케이블', help: '처음 프로그램을 넣을 때는 Micro-B 데이터 케이블이 필요해요. 센서 실험실의 다른 프로그램이 있다면 무선으로 바꿀 수 있어요. USB로 설치할 때는 충전 전용 케이블을 사용할 수 없어요.' },
 ];
-export const wiring = [
-  { id: 'vcc', board: 'V · 3.3V', sensor: 'VCC', role: '전원', description: 'USB와 배터리를 분리한 상태에서 연결하세요. 확장 보드의 V와 센서의 VCC를 연결합니다. 전압을 선택할 수 있다면 3.3V로 맞추세요.' },
-  { id: 'gnd', board: 'G · GND', sensor: 'GND', role: '접지', description: '확장 보드의 G와 센서의 GND를 연결하세요. 전원 선과 접지 선이 서로 바뀌지 않았는지 확인합니다.' },
-  { id: 'scl', board: 'CL · SCL · P19', sensor: 'SCL', role: '클록', description: '확장 보드의 CL과 센서의 SCL을 연결하세요. 보드에 따라 SCL 또는 P19로 표시됩니다. 정보를 주고받는 시점을 맞추는 선이에요.' },
-  { id: 'sda', board: 'DA · SDA · P20', sensor: 'SDA', role: '데이터', description: '확장 보드의 DA와 센서의 SDA를 연결하세요. 보드에 따라 SDA 또는 P20으로 표시됩니다. 네 선의 양 끝이 올바른 단자에 꽂혔는지 확인하세요.' },
-];
+export { wiring } from './wiring.js';
 export const cableHelp = 'sensor:bit의 왼쪽 소켓에는 수–암, 오른쪽 핀에는 암–암 케이블을 연결해요. 센서 쪽은 모두 암이에요. 보드가 다르면 단자 이름을 배선표와 비교하세요.';

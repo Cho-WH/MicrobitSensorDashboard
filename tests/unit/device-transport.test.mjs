@@ -63,6 +63,24 @@ test('BMP280 sends at most five bme commands and rejects invalid channels for it
   assert.match(f.transport.getState().message, /온도/);
 });
 
+test('DS18B20 confirms either probe without accepting wholly missing or corrupt rows as first reception', async () => {
+  const invalid = fixture('ds18b20'); await invalid.connect();
+  invalid.ble.handlers[0](','); invalid.ble.handlers[0]('NaN,Infinity');
+  assert.equal(invalid.transport.getState().firstReading, false);
+  assert.equal(invalid.transport.getState().lastReceivedAt, null);
+  await invalid.timers.advance(5000);
+  assert.equal(invalid.transport.getState().status, 'disconnected');
+  for (const line of ['0,', ',-10.0625', '23.9375,25.0625']) {
+    const f = fixture('ds18b20'); await f.connect();
+    for (let i = 0; i < 3; i++) { f.ble.handlers[0](line); await f.timers.advance(1000); }
+    assert.equal(f.transport.getState().firstReading, true);
+    assert.equal(f.transport.getState().confirmed, true);
+    await f.timers.advance(5000);
+    assert.equal(f.transport.getState().confirmed, false);
+    await f.transport.disconnect();
+  }
+});
+
 test('magnetic handshake handles silence, old numeric firmware and write failure; timeout cleans up and permits a fresh reconnect', async () => {
   for(const scenario of ['silent','numeric-only','write-failure','calibrating-only']) {
     const f=fixture('magnetometer'), originalSend=f.ble.sendStartCommand;

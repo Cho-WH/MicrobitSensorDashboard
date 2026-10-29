@@ -1,7 +1,7 @@
 /**
  * @typedef {ReturnType<import('../catalog/index.js').getExperiment>} ExperimentContext
  * @typedef {{id:string,group:string,groupLabel:string,title:string,description:string,scope:string,
- * kind:string,action?:string,required:boolean,model?:{view:string,wire:string|null,explosion:number},
+ * kind:string,action?:string,required:boolean,model?:{view:string,wire:string|null,explosion:number,options?:Record<string,string>},
  * image?:{src:string,alt:string,caption:string},instructions?:string[],quickConfirm?:boolean,complete?:boolean,evidence?:string|null}} GuideStep
  * @typedef {{id:string,name:string,help:string}} Equipment
  * @typedef {{src:string,alt:string}} GuideImage
@@ -11,7 +11,8 @@
  * @typedef {{id:string,version:number,title:string,label?:string,buttonLabel?:string,placement?:'measurement-tabs',pages:ExperimentGuidePage[]}} ExperimentGuide
  * @typedef {{equipment:Equipment[],equipmentDescription:string,beforeProgram?:GuideStep[],afterConnect?:GuideStep[],experimentGuide?:ExperimentGuide,
  * wiring?:Wire[],cableHelp?:string,calibrationInstructions?:string[],illustrations?:DeviceIllustrations,
- * viewer?:{url:string,title:string,tableCaption:string,boardLabel:string,sensorLabel:string,noteTitle:string,note:string}}} SensorGuide
+ * wiringTable?:{tableCaption:string,boardLabel:string,sensorLabel:string,noteTitle:string,note:string},
+ * viewer?:{url:string,title:string,defaults:Record<string,string>,choices:{id:string,label:string,values:{id:string,label:string}[]}[]}}} SensorGuide
  * @typedef {{equipment:Equipment[],afterReception:GuideStep[],
  * experimentGuide?:ExperimentGuide}} ActivityGuide
  * @typedef {{mode?:string,usbRequired?:boolean,status?:string,phase?:string,busy?:boolean,progress?:number|null,message?:string,deviceName?:string}} ProgramState

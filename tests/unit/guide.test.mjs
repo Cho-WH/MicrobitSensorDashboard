@@ -17,7 +17,7 @@ function fixture(context = bmp(), initialNow = 10000) {
 const step = (progress, id) => progress.getState().steps.find(item => item.id === id);
 
 test('fresh reception permits measurement without fabricating preparation confirmations', () => {
-  for (const context of [bmp(), bmp('gay-lussac'), magnet(), ...['temperature','light-level','accelerometer'].map(id=>getExperiment(id))]) {
+  for (const context of [bmp(), bmp('gay-lussac'), magnet(), ...['temperature','light-level','accelerometer','ds18b20'].map(id=>getExperiment(id))]) {
     const { progress, observe } = fixture(context);
     assert.equal(progress.getState().canMeasure, false);
     observe({ receptionReady: false }); assert.equal(progress.getState().canMeasure, false);

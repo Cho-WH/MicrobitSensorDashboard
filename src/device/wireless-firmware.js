@@ -179,5 +179,41 @@ export const wirelessFirmware = {
       "target": "pxt-microbit@9.1.1",
       "compiler": "pxt-core@13.0.1"
     }
+  },
+  "sensor-lab-ds18b20": {
+    "id": "sensor-lab-ds18b20",
+    "sensorId": "ds18b20",
+    "version": 1,
+    "name": "DS18B20 센서 프로그램",
+    "boards": [
+      "micro:bit-v2"
+    ],
+    "digestMode": "utf8-crlf-to-lf",
+    "codecId": "ds18b20-csv-v1",
+    "startCommand": "start",
+    "sampleIntervalMs": 1000,
+    "hardwareVerified": false,
+    "fileName": "sensor-lab-ds18b20-v1.hex",
+    "sha256": "0a316f1d7318fd8c043353f096b25c94433ad23278134cfb21e5bf052db1ec10",
+    "partial": {
+      "id": "ds18b20",
+      "name": "ds18b20",
+      "file": "sensor-lab-ds18b20-v1.bin",
+      "start": 299008,
+      "end": 307072,
+      "runtimeHash": "5f21a4c8e2b240e5",
+      "programHash": "1c0074000c001400",
+      "sha256": "b92c70cc4585147e239924dbf1695cfdf9bcf73e49b577ba31e8d8063f335fbb",
+      "hexSha256": "0a316f1d7318fd8c043353f096b25c94433ad23278134cfb21e5bf052db1ec10",
+      "runtimeSha256": "01170c7b83185c2d2e49eb83432a893511f160a67af90c0baf20de5841487da2",
+      "bytes": 8064
+    },
+    "source": {
+      "path": "firmware/examples/ds18b20.js",
+      "build": "dev/firmware/publish.mjs",
+      "buildRecord": "public/firmware/sensor-lab-ds18b20-v1.build.json",
+      "target": "pxt-microbit@9.1.1",
+      "compiler": "pxt-core@13.0.1"
+    }
   }
 };

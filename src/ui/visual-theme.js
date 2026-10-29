@@ -15,10 +15,16 @@ export function readVisualTheme(root, channels = []) {
     analysis:{point:color('--sl-analysis-point'), excluded:color('--sl-analysis-excluded'),
       pointText:color('--sl-analysis-point-text'), focused:color('--sl-analysis-focused'), trend:color('--sl-analysis-trend')},
   };
+  const used = new Set(), reserved = new Set(channels.map(channel => quantitySlots[channel.quantity]).filter(slot => slot !== undefined));
   for (const [index, channel] of channels.entries()) {
-    const key = quantitySlots[channel.quantity];
-    theme.channelColors[channel.id] = theme.colors[key ?? index % theme.colors.length];
-    theme.channelTextColors[channel.id] = theme.textColors[key ?? index % theme.textColors.length];
+    const preferred = quantitySlots[channel.quantity] ?? index % theme.colors.length;
+    // Repeated quantities (e.g. two probes) need separate identities. Preserve
+    // the reserved colors of other quantities, such as BMP280 pressure.
+    const available = used.has(preferred) ? theme.colors.findIndex((_, slot) => !used.has(slot) && !reserved.has(slot)) : preferred;
+    const slot = available < 0 ? preferred : available;
+    used.add(slot);
+    theme.channelColors[channel.id] = theme.colors[slot];
+    theme.channelTextColors[channel.id] = theme.textColors[slot];
   }
   return theme;
 }

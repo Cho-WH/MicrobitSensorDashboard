@@ -87,6 +87,23 @@
       },
       "displayName": "BMP280 센서 프로그램"
     },
+    "ds18b20": {
+      "id": "sensor-lab-ds18b20",
+      "version": 1,
+      "name": "sensor-lab-ds18b20-v1",
+      "description": "Microbit Sensor Lab DS18B20 P1/P2 dual-probe temperature UART program with CRC validation",
+      "source": "firmware/examples/ds18b20.js",
+      "additionalSources": {
+        "sensor-display.ts": "firmware/common/sensor-display.ts",
+        "ds18b20-driver.ts": "firmware/drivers/ds18b20.ts"
+      },
+      "protocol": {
+        "codecId": "ds18b20-csv-v1",
+        "startCommand": "start",
+        "sampleIntervalMs": 1000
+      },
+      "displayName": "DS18B20 센서 프로그램"
+    },
     "analog-raw": {
       "id": "analog-raw-uart",
       "version": 1,
@@ -117,6 +134,7 @@
     "light-level",
     "accelerometer",
     "magnetometer",
-    "bmp280"
+    "bmp280",
+    "ds18b20"
   ]
 }

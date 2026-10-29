@@ -13,10 +13,11 @@
 | [accelerometer.js](accelerometer.js) | 내장 가속도 X/Y/Z·크기 |
 | [magnetometer.js](magnetometer.js) | 앱에서 선택하는 보정과 이번 부팅 중 완료 기억. 통신 규약 v2 |
 | [bmp280.js](bmp280.js) | 현재 앱의 BMP280 프로그램. [드라이버](../drivers/bmp280.ts)의 보정식·일괄 읽기 사용 |
+| [ds18b20.js](ds18b20.js) | 앱에 등록한 P1/P2·3선 방수 프로브 1~2개. 내부 풀업·직접 HIGH 구동, 채널별 CRC 검사·결측. 실기기 확인 전 |
 | [analog-raw.js](analog-raw.js) | 개발용 P0/P1/P2 원시 ADC 예제. 물리량 환산·앱 등록 전 |
 | [temperature-light.js](temperature-light.js) | 개발용 온도·밝기 결합 예제. 앱 미등록 |
 
-등록 5종은 [공통 표시 모듈](../common/sensor-display.ts)을 함께 빌드한다. 새 센서는 `targets.json`의 `additionalSources`에 이 모듈을 포함하고, UART 준비 후 `SensorDisplay.start(true)`를 한 번 호출한다. 연결·송신·보정 전환 시 `setMode()`를 호출하며 표시를 별도로 복제하지 않는다. 조도처럼 LED를 쓰면 안 되는 측정은 `start(false)`로 지정한다. 측정 루프는 공통 `DEFAULT_SAMPLE_INTERVAL_MS`(100ms)를 사용하며 내장 온도는 1000ms 예외다.
+등록 6종은 [공통 표시 모듈](../common/sensor-display.ts)을 함께 빌드한다. 새 센서는 `targets.json`의 `additionalSources`에 이 모듈을 포함하고, UART 준비 후 `SensorDisplay.start(true)`를 한 번 호출한다. 연결·송신·보정 전환 시 `setMode()`를 호출하며 표시를 별도로 복제하지 않는다. 조도처럼 LED를 쓰면 안 되는 측정은 `start(false)`로 지정한다. 측정 루프는 공통 `DEFAULT_SAMPLE_INTERVAL_MS`(100ms)를 사용하며 내장 온도와 DS18B20은 1000ms 예외다.
 
 새 프로그램은 최신 배포 소스와 공통 동작 규약을 함께 참고한다. 예제를 복사했다고 연결·취소·센서별 준비 조건이 자동 충족되는 것은 아니다. 공통 UX 규칙은 센서별로 임의 변경하지 않으며, 네이티브 입력 변경 여부는 빌드 절차에서 확인한다.
 

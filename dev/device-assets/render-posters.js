@@ -1,8 +1,13 @@
 import { Scene, Group, PerspectiveCamera, WebGLRenderer, HemisphereLight, DirectionalLight, Vector3, SRGBColorSpace, ACESFilmicToneMapping } from '../../public/vendor/three-r180.js';
 import { createDeviceScene } from '../../public/assets/devices/scenes.js';
 import { boardSpec } from '../../public/assets/devices/microbit-v2/model.js';
-import { createExpansionBoard, createBmp280, addJumperEnd } from '../../public/assets/devices/bmp280/model.js';
+import { createBmp280 } from '../../public/assets/devices/bmp280/model.js';
+import { createExpansionBoard } from '../../public/assets/devices/sensorbit/model.js';
+import { addJumperEnd } from '../../public/assets/devices/shared/connectors.js';
 import { cable } from '../../public/assets/devices/shared/cable.js';
+import { createProbe } from '../../public/assets/devices/ds18b20/model.js';
+import { createTerminalAdapter } from '../../public/assets/devices/terminal-3p/model.js';
+import { modelBounds } from '../../public/assets/devices/shared/bounds.js';
 
 // Derived images only: geometry stays in the shared device factories.
 const width=1440;
@@ -16,7 +21,8 @@ const renderer=new WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffe
 renderer.outputColorSpace=SRGBColorSpace;
 renderer.toneMapping=ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
 renderer.setClearColor('#edf1eb',0);
-for(const kind of ['board','usb','battery','reset','bmp280','expansion-board','jumper-wires',...Object.keys(sensorViews)]){
+const requested = new URLSearchParams(location.search).get('only')?.split(',');
+for(const kind of ['board','usb','battery','reset','bmp280','expansion-board','jumper-wires','ds18b20','terminal-3p',...Object.keys(sensorViews)].filter(id=>!requested||requested.includes(id))){
   const sensorView=sensorViews[kind];
   const height=sensorView?1100:['board','reset'].includes(kind)?600:900;renderer.setSize(width,height);
   const scene=new Scene(),root=new Group();scene.add(root);
@@ -24,21 +30,13 @@ for(const kind of ['board','usb','battery','reset','bmp280','expansion-board','j
   for(const [x,y,z,color,power] of [[-70,100,-130,'#ffffff',3.3],[80,10,110,'#d7eaff',2.4],[-20,-80,-40,'#ffe2bb',.9]]){
     const light=new DirectionalLight(color,power);light.position.set(x,y,z);scene.add(light);
   }
-  const factories={bmp280:createBmp280,'expansion-board':createExpansionBoard,'jumper-wires':createJumperWires};
+  const factories={bmp280:createBmp280,'expansion-board':createExpansionBoard,'jumper-wires':createJumperWires,'ds18b20':createProbe,'terminal-3p':createTerminalAdapter};
   const asset=factories[kind]?{root:factories[kind]()} : createDeviceScene(kind==='reset'||sensorView?'board':kind);root.add(asset.root);
   if(kind==='board'){
     asset.root.position.x=-30;
     const front=createDeviceScene('board').root;front.rotation.y=Math.PI;front.position.x=30;root.add(front);
   }
-  root.updateMatrixWorld(true);
-  const corners=[],min=new Vector3(Infinity,Infinity,Infinity),max=new Vector3(-Infinity,-Infinity,-Infinity);
-  root.traverse(node=>{
-    if(!node.geometry)return;
-    node.geometry.computeBoundingBox();const box=node.geometry.boundingBox;
-    for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]){
-      const point=new Vector3(x,y,z).applyMatrix4(node.matrixWorld);corners.push(point);min.min(point);max.max(point);
-    }
-  });
+  const {corners,min,max}=modelBounds(root);
   const camera=new PerspectiveCamera(32,width/height,2,1000);
   const center=min.clone().add(max).multiplyScalar(.5);
   // Frame only the rear USB, reset switch and battery socket, not the whole board.
@@ -87,6 +85,7 @@ for(const kind of ['board','usb','battery','reset','bmp280','expansion-board','j
 renderer.dispose();
 
 // The compass fallback is the first pose of the actual demonstration, with the same camera.
+if(!requested||requested.includes('calibration')){
 const {createCalibrationScene}=await import('../../src/catalog/sensors/magnetometer/calibration-scene.js');
 const calibrationCanvas=document.createElement('canvas'), calibration=createCalibrationScene(calibrationCanvas);
 calibration.resize(720,540);calibration.render(0);
@@ -94,6 +93,7 @@ const calibrationFigure=document.createElement('figure'), calibrationImage=docum
 calibrationImage.id='calibration';calibrationImage.alt='보정 시범 시작 자세';calibrationImage.src=calibrationCanvas.toDataURL('image/png');
 calibrationLink.href=calibrationImage.src;calibrationLink.download='calibration.png';calibrationLink.textContent='calibration.png 저장';
 calibrationFigure.append(calibrationImage,calibrationLink);document.querySelector('main').append(calibrationFigure);calibration.dispose();
+}
 
 function createJumperWires(){
   const group=new Group();

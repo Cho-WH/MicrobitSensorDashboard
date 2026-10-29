@@ -5,6 +5,7 @@ import { createSession } from '../../src/measurement/session.js';
 import { openRunStore } from '../../src/data/run-store.js';
 import { fixture, reading, locks, memoryRepository, timers, utc } from './storage-support.mjs';
 import { getExperiment } from '../../src/catalog/index.js';
+import { decodeDs18b20 } from '../../src/catalog/sensors/ds18b20/codec.js';
 
 function captureFixture(config = {}) {
   let mono = 100, wall = utc + 100;
@@ -13,6 +14,23 @@ function captureFixture(config = {}) {
   const connection = { connected: true, confirmed: true, attemptId: 1 };
   return { capture, clock, connection, advance(ms) { mono = ms; wall = utc + ms; }, wall(ms) { wall = ms; } };
 }
+
+test('one-probe point capture keeps the absent channel null and never falls back after a wholly invalid reading', () => {
+  for (const line of ['0,', ',-10.0625', '23.9375,25.0625']) {
+    const f = captureFixture(getExperiment('ds18b20').connectionPolicy);
+    for (const mono of [0, 1000, 2000]) {
+      f.advance(mono);
+      f.capture.accept(decodeDs18b20(line, { receivedAt: utc + mono, monotonicAt: mono, attemptId: 1 }));
+    }
+    const request = f.capture.prepare(f.connection);
+    assert.deepEqual(request.sample.values, decodeDs18b20(line).values);
+    assert.deepEqual(request.sample.validity, decodeDs18b20(line).validity);
+    request.accept();
+    f.advance(3000);
+    f.capture.accept(decodeDs18b20(',', { receivedAt: utc + 3000, monotonicAt: 3000, attemptId: 1 }));
+    assert.equal(f.capture.status(f.connection).ready, false);
+  }
+});
 
 test('capture freezes click values and UTC time while newer observations arrive; duplicate observation is blocked, equal numbers are allowed', () => {
   const f = captureFixture(), values = { 'manual-condition': 0 }, input = reading(100);

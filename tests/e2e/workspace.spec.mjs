@@ -110,14 +110,22 @@ test('actual page: 3D network failure preserves wiring and retry recovers', asyn
   const frame = page.locator('.guide-frame');
   await page.locator('[data-guide-group="wiring"]').click();
   await expect(page.locator('.guide-model')).toHaveAttribute('data-viewer-state', 'applied');
-  await expect(page.frameLocator('.guide-frame').locator('#viewport canvas')).toBeVisible();
-  await page.route('**/public/viewers/bmp280/index.html*', route => route.abort());
+  await expect(page.frameLocator('.guide-frame').locator('#stage canvas')).toBeVisible();
+  await page.route('**/public/viewers/wiring/index.html*', route => route.abort());
   // A real failed reload exercises the timeout/fallback rather than dispatching
   // an iframe error event, which browsers do not reliably emit for navigation.
   await frame.evaluate(node => { node.src = node.src; });
   await expect(page.locator('.guide-model')).toHaveAttribute('data-viewer-state', 'unavailable');
   await expect(page.locator('.guide-wiring tbody tr')).toHaveCount(4);
-  await page.unroute('**/public/viewers/bmp280/index.html*');
+  await page.unroute('**/public/viewers/wiring/index.html*');
+  await page.locator('[data-guide-action="retry-model"]').click();
+  await expect(page.locator('.guide-model')).toHaveAttribute('data-viewer-state', 'applied');
+  // Losing an already rendered WebGL context must also expose the usable table.
+  await page.frameLocator('.guide-frame').locator('canvas').evaluate(canvas => {
+    const gl=canvas.getContext('webgl2'); gl.getExtension('WEBGL_lose_context').loseContext();
+  });
+  await expect(page.locator('.guide-model')).toHaveAttribute('data-viewer-state', 'unavailable');
+  await expect(page.locator('.guide-wiring')).toBeVisible();
   await page.locator('[data-guide-action="retry-model"]').click();
   await expect(page.locator('.guide-model')).toHaveAttribute('data-viewer-state', 'applied');
 });

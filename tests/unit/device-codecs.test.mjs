@@ -3,6 +3,38 @@ import assert from 'node:assert/strict';
 import { getExperiment, getSensorRuntime } from '../../src/catalog/index.js';
 import { decodeBmp280 } from '../../src/catalog/sensors/bmp280/codec.js';
 import { decodeMagnetometer } from '../../src/catalog/sensors/magnetometer/codec.js';
+import { decodeDs18b20 } from '../../src/catalog/sensors/ds18b20/codec.js';
+
+test('DS18B20 preserves 12-bit Celsius readings and distinguishes corrupt, missing and out-of-range data', () => {
+  const context = getExperiment('ds18b20'), runtime = getSensorRuntime(context);
+  assert.equal(context.channels[0].unit, '℃');
+  assert.equal(context.firmware.sampleIntervalMs, 1000);
+  assert.equal(context.firmware.codecId, 'ds18b20-csv-v1');
+  for (const value of [-55, -10.0625, 0, 23.9375, 85, 125]) {
+    const reading = runtime.decode(`${value},${value}`, { receivedAt: 123, monotonicAt: 5, attemptId: 9 });
+    assert.deepEqual(reading.values, { temperature1C: value, temperature2C: value });
+    assert.deepEqual(reading.validity, { temperature1C: 'valid', temperature2C: 'valid' });
+    assert.equal(reading.receivedAt, 123); assert.equal(reading.attemptId, 9);
+  }
+  for (const value of [-55.0625, 125.0625]) {
+    const reading = decodeDs18b20(`${value},0`);
+    assert.equal(reading.values.temperature1C, value);
+    assert.equal(reading.validity.temperature1C, 'out-of-range');
+    assert.equal(reading.validity.temperature2C, 'valid');
+  }
+  assert.deepEqual(decodeDs18b20(' ,0').values, { temperature1C: null, temperature2C: 0 });
+  assert.deepEqual(decodeDs18b20(' ,0').validity, { temperature1C: 'missing', temperature2C: 'valid' });
+  assert.deepEqual(decodeDs18b20('1, ').validity, { temperature1C: 'valid', temperature2C: 'missing' });
+  for (const token of ['NaN', 'Infinity', '0x10', '23°C']) {
+    const reading = decodeDs18b20(`${token},23.9375`);
+    assert.equal(reading.values.temperature1C, null);
+    assert.equal(reading.validity.temperature1C, 'error');
+    assert.equal(reading.values.temperature2C, 23.9375);
+  }
+  assert.equal(decodeDs18b20('23').type, 'parse-error');
+  assert.equal(decodeDs18b20('23,24,25').type, 'parse-error');
+  assert.throws(() => getExperiment('ds18b20', 'gay-lussac'));
+});
 
 test('magnetometer preserves all four ordered channels, zero, signs and scientific notation', () => {
   const input = decodeMagnetometer('0, -2.5, +3e1, 30.1', { receivedAt: 123, monotonicAt: 10, attemptId: 7 });

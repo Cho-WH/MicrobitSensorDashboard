@@ -75,6 +75,9 @@
 .viewer-modes button[aria-pressed="true"], .wiring-view-controls button[aria-pressed="true"] { background:var(--sl-stage-soft); border-color:rgb(155, 186, 180); color:var(--sl-stage-selection); }
 .viewer-large { font-size:0.75rem; margin:0px 6px; white-space:nowrap; }
 .wiring-view-controls { padding:6px 10px; display:flex; flex-wrap:wrap; gap:5px; border-bottom:1px solid var(--sl-stage-line); }
+.wiring-choices { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
+.wiring-choices label { display:flex; align-items:center; gap:5px; font-size:0.75rem; }
+.wiring-choices select { min-height:32px; max-width:100%; padding:4px 6px; font-size:0.75rem; }
 .wiring-view-controls [data-guide-action="restore"] { margin-left:auto; }
 .guide-model { position:relative; }
 .guide-frame { display:block; width:100%; background:rgb(237, 243, 245); }
@@ -83,10 +86,11 @@
 .guide-model[data-viewer-state="loading"] .guide-model-status { position:absolute; z-index:2; left:12px; right:12px; bottom:12px; border:1px solid var(--sl-stage-line); border-radius:6px; pointer-events:none; }
 .guide-table-panel { padding:24px; min-height:330px; }
 .guide-table-panel > p { font-size:0.8125rem; color:var(--sl-stage-muted); line-height:1.8; }
-.guide-wiring { width:100%; border-collapse:collapse; font-size:0.8125rem; }
+.guide-wiring { width:100%; min-width:0; table-layout:fixed; border-collapse:collapse; font-size:0.8125rem; }
+.guide-wiring th:first-child { width:22%; }
 .guide-wiring caption { text-align:left; font-size:1rem; font-weight:600; margin:0px 0px 20px; }
-.guide-wiring th, .guide-wiring td { padding:14px 8px; border-bottom:1px solid rgb(204, 220, 216); text-align:left; overflow-wrap:anywhere; }
-.guide-wiring small { display:block; font-size:0.625rem; margin-top:4px; color:var(--sl-stage-selection); }
+.guide-wiring th, .guide-wiring td { padding:14px 8px; border-bottom:1px solid rgb(204, 220, 216); text-align:left; white-space:normal; overflow-wrap:anywhere; }
+.guide-wiring small { display:block; font-size:0.625rem; margin-top:4px; color:var(--sl-stage-selection); word-break:keep-all; }
 .wiring-note { border-top:1px solid var(--sl-stage-line); margin-top:20px; padding-top:12px; font-size:0.75rem; line-height:1.8; color:var(--sl-stage-muted); }
 .wiring-note summary { cursor:pointer; color:var(--sl-stage-selection); }
 .guide-equipment { padding:24px; }
