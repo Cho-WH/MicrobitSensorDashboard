@@ -22,6 +22,7 @@
 :focus-visible { outline:rgb(189, 123, 54) solid 3px; outline-offset:4px; }
 :is(button, :where(.ui-button)) { touch-action:manipulation; }
 .button-row { display:flex; gap:8px; }
+.ui-chevron, .disclosure-menu > summary::after { display:inline-block; width:7px; height:7px; flex:none; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(45deg); }
 input { accent-color:var(--sl-selection-text); }
 .stop-button:not(:disabled) { color:rgb(155, 57, 51); background:rgb(252, 241, 239); border-color:rgb(227, 185, 180); }
 .stop-button:not(:disabled):hover { color:rgb(129, 46, 41); background:rgb(247, 225, 221); border-color:rgb(203, 140, 133); }

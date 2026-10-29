@@ -1,14 +1,14 @@
 // A workspace receives the space between its document position and the viewport
 // bottom. CSS distributes that budget among controls, plots and tables. Expanded
 // content may exceed it; this helper never shrinks text or scrolls the document.
-/** @param {HTMLElement} root @param {{regions:HTMLElement[],signal:AbortSignal}} options */
-export function createViewportLayout(root, { regions, signal }) {
+/** @param {HTMLElement} root @param {{regions:HTMLElement[],signal:AbortSignal,minWidth?:number}} options */
+export function createViewportLayout(root, { regions, signal, minWidth = 1001 }) {
   const doc = root.ownerDocument, win = doc.defaultView;
-  const desktop = win.matchMedia('(min-width: 1001px)');
+  const eligible = win.matchMedia(`(min-width: ${minWidth}px)`);
   let frame = null;
   function fit() {
     frame = null;
-    const active = desktop.matches && root.getClientRects().length;
+    const active = eligible.matches && root.getClientRects().length;
     const inset = parseFloat(win.getComputedStyle(doc.body).paddingBottom) || 0;
     const bottom = root.getBoundingClientRect().bottom;
     for (const region of regions) {

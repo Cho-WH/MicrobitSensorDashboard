@@ -43,7 +43,7 @@ export const labDefaults = {
     number: '번호', received: '수신 시각', captured: '버튼을 누른 시각', options: '옵션', note: '점 메모',
     editValue: '{number}번 변인값', editNote: '{number}번 메모', enterValue: '입력하기',
     withdraw: '기록 취소', restore: '기록 복원', withdrawn: '취소됨', count: '한 점 기록 {count}개 · 취소 {withdrawn}개',
-    recorded: '{number}번 기록 완료', updated: '{number}번 수정 완료', newRecords: '새 기록 {count}개 보기',
+    recorded: '{number}번 기록', updated: '{number}번 수정 완료', newRecords: '새 기록 {count}개 보기',
     preview: '현재값은 미리보기입니다. 한 점 기록을 누른 값만 저장됩니다.',
     'capture-reception': '장치를 연결하고 새 값이 정상적으로 들어오는지 확인하세요.',
     'capture-duplicate': '이미 기록한 수신값입니다. 새 값이 들어오면 다시 기록할 수 있어요.',

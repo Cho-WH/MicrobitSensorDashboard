@@ -19,7 +19,7 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
   const unitToggle=findElement(root,'button','#acceleration-unit-toggle');
   const reception=findElement(root,'p','#measurement-reception'), abort=new AbortController();
   createViewportLayout(findElement(root,'section','[data-screen="measure"]'), {
-    regions:[findElement(root,'div','.measurement-workspace')], signal:abort.signal,
+    regions:[findElement(root,'div','.luminous-graph')], signal:abort.signal, minWidth:0,
   });
   const receptionState=element('span'), receptionTime=element('span');
   reception.replaceChildren(receptionState,receptionTime);

@@ -27,7 +27,8 @@ export function createPointRecordingView(root, { onCapture, onChange, onError })
   function clearFeedback() { clearTimeout(feedbackTimer); feedbackTimer = null; feedback = ''; }
   function renderSummary() {
     if (panel.open) clearFeedback();
-    setText(count, feedback || countText);
+    setText(countValue, feedback || countText);
+    setText(countReserve, countText);
     count.dataset.feedback = String(!!feedback);
   }
   let cachedPoints = [], cachedRevision = -1, rowFrame = null;
@@ -83,6 +84,9 @@ export function createPointRecordingView(root, { onCapture, onChange, onError })
   const currentClear = clearablePointInput(current, '이번 변인값 비우기', signal);
   current.addEventListener('input', () => { validateCurrent(); onChange(); }, { signal });
   const count = find('span', '#point-table-count'), empty = find('p', '#point-table-empty');
+  const countValue = element('span'), countReserve = element('span', 'point-count-reserve');
+  countReserve.setAttribute('aria-hidden', 'true');
+  count.append(countValue, countReserve);
   const viewport = find('div', '.point-table-scroll'), body = find('tbody', '.point-table tbody');
   const table = find('table', '.point-table');
   let rowHeight = tableRowHeight(table);

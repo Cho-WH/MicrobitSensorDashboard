@@ -588,7 +588,6 @@ export function createController(root = document, { repository = null, deviceTra
     for (const [id, action] of Object.entries(recordingActions)) {
       button(id).hidden = !action.visible; button(id).disabled = action.disabled;
     }
-    button('prepare-new-experiment').dataset.uiAction = current?.state === 'ended' ? 'secondary' : 'quiet';
     button('measurement-reconnect').textContent = connecting ? copy.common.connecting : copy.measurement.reconnect;
     $('connect').textContent=canReconnect?copy.common.chooseDevice:mock?copy.common.mockConnect:copy.common.connect;
     button('disconnect').disabled = (!connected && !connecting) || !!programmerState.busy;
