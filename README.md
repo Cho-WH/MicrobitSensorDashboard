@@ -71,8 +71,10 @@ UI 검사는 실제 앱 구조·스타일을 사용하며 모의 장치 입력�
 
 Pretendard 1.3.9의 공식 가변 글꼴 분할본은 잠금 파일에 고정된 npm 패키지에서 복사합니다. 브라우저가 실제 글자에 필요한 범위만 같은 사이트에서 받으므로 문구 수정이나 학생의 한글 입력에 맞춰 글꼴을 다시 추출하지 않습니다. 개발 서버도 같은 분할본을 제공합니다. 별도 CDN이나 수동 다운로드 단계 없이 기존 `npm ci` → `npm run build` → `dist/` 배포 순서를 유지합니다. 빌드·자원 경로·초기화 변경 시에는 `test:e2e:build`로 생성된 파일을 확인합니다.
 
-GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위 검사·빌드가 성공한 뒤
-`dist/`를 배포합니다. 저장소 Settings → Pages의 Source는 **GitHub Actions**를 사용합니다.
+Cloudflare 운영 배포는 `main`의 `dist/`를 `wrangler.jsonc`의 `sensor-lab` Worker에 올립니다.
+자동 배포 연결은 보류했고 `.github/workflows/cloudflare.yml`은 main의 수동 실행용으로 준비했습니다.
+GitHub Pages의 main 푸시 자동 배포는 해제했고 `.github/workflows/pages.yml`은 main에서 수동 실행할 때만 동작합니다.
+저장소 Settings → Pages의 Source는 **GitHub Actions**를 사용합니다. [M5 배포 기록과 실행 방법](docs/m5-deployment.md)을 따릅니다.
 루트 홈, 다섯 센서, 게이뤼삭 활동의 진입 페이지를 함께 생성하므로 직접 진입과 새로고침을 지원합니다.
 종료된 대시보드 코드와 MakeCode 수동 편집 안내는 제거했습니다. 당시 구현은 Git 커밋 `5d80407`에서 확인할 수 있습니다. 현재 설치 기준은 [센서 프로그램 공통 동작 규약](docs/sensor-program-contract.md)과 [펌웨어 빌드·배포](dev/firmware/README.md)를 따릅니다.
 
@@ -83,7 +85,7 @@ GitHub Pages는 `.github/workflows/pages.yml`로 `main`의 타입 검사·단위
 
 향후 공식 주소는 **`https://lab.sco.pe.kr/`**로 확정했습니다. 포털 `sco.pe.kr`과 별도의 Cloudflare Worker로 앱을 운영하고,
 후속 교사 자료 공유 API를 같은 앱 주소 아래에 추가할 계획입니다. 현재는 위 GitHub Pages 주소를 계속 사용합니다.
-주소 이전 시 브라우저의 실험 자료·장치 권한은 자동 이전되지 않으므로 기존 주소의 JSON 내보내기 경로를 유지합니다.
+센서 실험실은 기존 공개 배포가 없어 별도 이전 안내·구버전 빌드를 만들지 않습니다. 개발 확인 중 저장한 자료를 옮길 때에는 전체 실험 JSON을 사용하고 새 주소에서 장치 권한을 다시 받습니다.
 [도메인 연결·배포 전환 계획](docs/unified-sensor-lab-architecture.md#124-도메인-연결과-배포-전환)에서 현재 구성과 예정 작업을 구분합니다.
 
 ## 구조와 개발 문서

@@ -4,6 +4,16 @@ import { entryRoutes, parseRoute, routeUrl, sameExperiment } from '../../src/app
 import { getExperiment } from '../../src/catalog/index.js';
 import { renderEntry } from '../../scripts/entry-pages.mjs';
 
+test('static-host home aliases preserve the requested screen at root and project paths', () => {
+  for (const base of ['https://lab.sco.pe.kr/', 'https://example.test/MicrobitSensorDashboard/']) {
+    for (const path of ['', 'index.html', 'lab', 'lab.html']) {
+      assert.deepEqual(parseRoute(path + '?view=saved', base), { context: null, screen: 'saved' });
+    }
+    assert.throws(() => parseRoute('lab?cfg=arbitrary', base));
+    assert.throws(() => parseRoute('lab?view=unknown', base));
+  }
+});
+
 test('home has no selected context; sensor/activity links resolve independently under a project path', () => {
   const base = new URL('https://example.test/MicrobitSensorDashboard/');
   assert.deepEqual(parseRoute('lab.html',base),{context:null,screen:'home'});

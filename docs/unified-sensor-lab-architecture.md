@@ -611,7 +611,7 @@ M1에서 `package.json`의 module 모드, 지원 중인 Node LTS 버전과 lockf
 | 센서 앱 | **`https://lab.sco.pe.kr/`**, 별도 Workers Static Assets 배포. Worker 이름은 `sensor-lab`을 계획값으로 사용하고 기존 자원과 충돌 여부 확인 | `Cho-WH/MicrobitSensorDashboard` |
 | 도구 직접 진입 | `lab.sco.pe.kr/sensors/<id>/`, `lab.sco.pe.kr/activities/<id>/`; 공유 시 `?view=preview` | 앱 레지스트리·빌드 |
 | 후속 교사 자료 공유 | 같은 앱 Worker의 `/api/shares`, `/share/`, `/share/manage/`; 비공개 R2·D1 바인딩 | 센서 앱 저장소 |
-| 이전 앱 주소 | `https://cho-wh.github.io/MicrobitSensorDashboard/`, 기존 저장 자료 열기·JSON 내보내기 유지 | 센서 앱 저장소의 이전 주소 배포 |
+| 기존 확인 주소 | https://cho-wh.github.io/MicrobitSensorDashboard/ — 사용자 확인상 센서 실험실 공개 배포 전이므로 별도 이전 안내·구버전 동결 배포는 하지 않음 | 센서 앱 저장소 |
 
 포털 아래 경로 대신 전용 하위 도메인을 선택해 정적 배포·API·브라우저 저장 공간을 포털과 분리한다. 포털 Worker에 센서 앱 프록시·저장소를 추가하지 않는다. 별도 게이뤼삭·자기장 도구의 소개 주소나 실행 앱도 이번 전환에서 변경하지 않는다.
 
@@ -619,14 +619,31 @@ M1에서 `package.json`의 module 모드, 지원 중인 Node LTS 버전과 lockf
 
 1. **앱 배포 준비:** 이 저장소에 별도의 Wrangler 설정을 추가하고 기존 `npm run build`의 `dist/`를 배포한다. Node 24·lockfile과 기존 검사 기준을 유지한다. GitHub Actions에서 Cloudflare 배포를 관리하는 것을 기준으로 하며 같은 운영 Worker를 수정하는 자동 배포 경로를 중복 운영하지 않는다. 먼저 정적 파일만 연결하므로 이 단계에는 D1·R2·업로드 API가 필요하지 않다. 서버 코드·비밀·실험 자료는 정적 빌드 대상 밖에 둔다.
 2. **새 도메인 연결:** Cloudflare의 `sco.pe.kr` zone과 `lab`에 이미 연결된 자원을 확인한 뒤 앱 Worker에 `lab.sco.pe.kr`을 Custom Domain으로 연결한다. Wrangler의 `routes`에 해당 hostname과 `custom_domain: true`를 명시하고 DNS·인증서 활성화를 확인한다. GitHub Pages의 사용자 지정 도메인에 같은 주소를 중복 설정하지 않는다. 기존 포털의 루트 도메인 연결은 유지한다. [Custom Domains 공식 문서](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
-3. **실제 경로 확인:** 루트·등록된 모든 센서/활동의 `index.html`을 그대로 제공하고 모든 미지정 경로를 홈으로 보내는 SPA fallback은 사용하지 않는다. Static Assets의 기본 HTML 정규화는 `lab.html`을 `/lab`으로 바꿀 수 있으므로 현재 `parseRoute()`에 `lab` 별칭을 추가해 기존 홈·화면 이동을 보존한다. 소개의 `?view=preview`, 현재 `lab.html?view=…` 탐색, 뒤로 가기, 펌웨어·중첩 뷰어·아이콘·manifest 경로를 새 호스트에서 검증한다. 이 별칭은 현재 구현된 상태가 아니라 배포 전 필요한 호환 보완이다. [HTML 처리 공식 문서](https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/)
-4. **자료 이전과 공개 전환:** 기존 주소에서 JSON을 내보내고 새 주소에서 원자료·사건·분석을 복원하는 경로를 확인한다. IndexedDB·localStorage와 USB/BLE 권한은 origin이 달라 자동 이전되지 않는다. 이전 주소에는 안내와 내보내기 기능을 남기고 강제 리디렉션하지 않는다. 새 주소의 동작 확인 후 `publicBaseUrl`을 변경하고 OG·canonical·아이콘·홈 화면 바로가기를 함께 점검한다. 이전 주소에서 향후 생성하는 도구 공유도 새 공식 주소를 사용하도록 하되 기존 파일 자원은 이전 호스트에서 계속 제공한다.
-5. **포털 연결 갱신:** `scope-portal/src/content/tools/sensor.json`의 `launchUrl`을 새 공식 주소로 바꾸고 이름·설명·기능 목록·대표 이미지를 현재 앱에 맞춘다. ‘설정 링크·QR 공유’는 제거하고 M3 완료 후 ‘도구 링크·QR 공유’를 안내한다. 기존 `/tools/sensor/`를 유지하며 포털의 실행 버튼에서 앱을 여는 경로를 확인한다. 이 작업은 포털 저장소의 별도 변경이며 현재 문서 수정에 포함된 실제 배포가 아니다.
+3. **실제 경로 확인:** Wrangler에 `assets.html_handling: "auto-trailing-slash"`를 명시한다. 루트·등록된 모든 센서/활동의 `index.html`을 제공하고 모든 미지정 경로를 홈으로 보내는 SPA fallback은 사용하지 않는다. 이 HTML 정규화는 `lab.html`을 `/lab`으로 바꾸므로 현재 `parseRoute()`에 `lab` 별칭을 추가해 기존 홈·화면 이동을 보존한다. 소개의 `?view=preview`, 현재 `lab.html?view=…` 탐색과 리디렉션 후 검색 매개변수 보존, 뒤로 가기, 펌웨어·중첩 뷰어·아이콘·manifest 경로를 새 호스트에서 검증한다. 이 별칭은 M5에서 추가한 호환 경로다. [HTML 처리 공식 문서](https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/)
+4. **최초 공식 배포:** 기존 센서 실험실은 공개 배포한 적 없다는 사용자 확인에 따라 이전 안내 배너·별도 구버전 빌드·동결 배포는 만들지 않는다. 최종 공식 주소를 적용한 빌드로 HTTPS·직접 진입·자원·파일 열기·공유 링크·QR·OG·canonical·아이콘·홈 화면 바로가기를 검증한 뒤 포털의 실행 주소를 변경한다. 브라우저 저장소와 USB/BLE 권한은 origin별로 분리되며, 개발 확인 중 저장한 자료를 옮길 필요가 있으면 기존 전체 실험 JSON 내보내기·열기를 사용한다.
+5. **포털 연결 갱신:** `scope-portal/src/content/tools/sensor.json`의 `launchUrl`을 새 공식 주소로 바꾸고 이름·설명·기능 목록·대표 이미지·지원 환경(`environment`)을 현재 앱에 맞춘다. USB·Bluetooth 각각의 확인된 브라우저·기기 조건을 반영하고 미확인 지원 범위를 추가하지 않는다. ‘설정 링크·QR 공유’는 제거하고 구현된 ‘도구 링크·QR 공유’를 안내한다. 기존 `/tools/sensor/`를 유지하며 포털의 실행 버튼에서 앱을 여는 경로를 확인한다. 이 작업은 포털 저장소의 별도 변경이며 실제 반영 결과를 배포 기록에 남긴다.
 6. **후속 API 연결:** 동일 앱 Worker에 API 코드·R2·D1 바인딩과 정기 정리를 추가한다. `assets.run_worker_first`는 `/api/*`에만 우선 적용하고 일반 앱 자원은 정적 제공을 유지한다. 알 수 없는 API 경로는 JSON 오류를 반환한다. §10.4의 공유·관리 진입 HTML과 라우터도 이 단계에서 추가한다. 별도 시험 자원으로 생성·조회·삭제·만료와 한도를 확인한 뒤 교사 자료 공유 UI를 공개한다. [Worker와 정적 자원 라우팅](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/)
 
-운영 주소·환경별 공개 설정·배포 버전은 코드와 함께 추적한다. 이전 GitHub Pages와 새 앱의 배포를 구분해 한쪽 실패가 다른 쪽의 내보내기를 없애지 않게 한다. 새 도메인에서 사용을 시작한 뒤에는 롤백도 같은 origin의 호환 버전으로 먼저 수행한다. 포털 링크를 옛 주소로 되돌리는 것만으로 새 주소의 실험 자료가 따라오지 않으며, 필요하면 새 주소에서도 JSON 내보내기를 유지한다. 이전 주소의 종료나 강제 이동은 별도 자료 보존 결정 없이 시행하지 않는다.
+운영 주소·공개 설정·배포 버전은 코드와 함께 추적한다. GitHub Pages의 main 푸시 자동 배포는 해제해 운영 배포 대상이 분산되지 않게 한다. 공식 공개 이후 문제가 생기면 같은 lab.sco.pe.kr origin의 호환 버전으로 복구한다. 포털 링크를 다른 주소로 바꾸는 것만으로 저장 자료가 이전되지 않으므로 새 주소의 자료 열기·JSON 내보내기 기능을 보존한다.
 
-이번 작업은 주소·전환·백엔드 연결 **설계**를 확정한 것이다. 앱의 Wrangler 설정·DNS·Cloudflare 자원·CI 비밀·포털 실행 링크는 아직 변경하지 않았다. 완료 판정은 새 주소의 실제 응답·경로·파일 복원, 장치 권한과 실물 수신 확인을 구분해 남긴 뒤 한다.
+공식 전환 후 운영 Worker는 `workers_dev: false`, `preview_urls: false`를 명시해 별도 호스트에 학생의 기록·기기 권한이 흩어지지 않게 한다. 시험 배포가 필요하면 별도 Worker와 접근이 제한된 시험 주소를 사용하고 수업용으로 배포하지 않는다. 시험 주소의 자료도 공식 주소로 자동 이전되지 않으며 시험 주소를 공식 링크·QR·OG의 기준으로 사용하지 않는다. 운영 Worker에 다른 공개 별칭·시험 주소가 남아 있는지도 전환 때 확인한다. [workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)·[버전별 주소](https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/)
+
+M5는 `main` 기준으로 구현한다. Wrangler 설정, `/lab` 호환 경로, 배포 검사를 추가했다. 센서 확장 작업 브랜치의 미병합 기능은 포함하지 않는다. 사용자 요청으로 GitHub 자동 배포 연결은 보류하고 수동 실행용 워크플로만 준비한다. 운영 반영·검증 상태는 [M5 배포 기록](m5-deployment.md)에서 관리한다. 완료 판정은 실제 도메인·파일 복원 검사와 새 origin의 장치 권한·실물 수신 확인을 구분한다.
+
+**구현·배포에 필요한 접근 환경**
+
+앱 구현·빌드·검사와 Wrangler/Actions 설정 작성은 Cloudflare 인증 전에 진행할 수 있다. 실제 계정 자원 조회·배포는 인증된 도구로 계정·zone·권한을 확인한 뒤 진행한다. Cloudflare API MCP 또는 로컬 Wrangler/API를 사용할 수 있으며, MCP 연결 자체를 M5의 필수 조건으로 만들지 않는다. Sites 플러그인의 호스팅은 사용자의 기존 Cloudflare 계정을 직접 관리하는 대체 경로로 간주하지 않는다.
+
+| 작업 | 자동 처리 범위와 사용자 개입 조건 |
+|---|---|
+| Cloudflare 연결 | 공식 API MCP는 `https://mcp.cloudflare.com/mcp`에서 제공하며 최초 연결 시 사용자 OAuth 승인과 권한 선택이 필요하다. 로컬 Wrangler를 쓰면 유효한 로그인 또는 API 토큰이 필요하며 만료·갱신 실패 시 사용자가 재인증한다. |
+| Worker·도메인 배포 | 인증 후 계정·`sco.pe.kr` zone·기존 `lab` 연결을 조회하고 허용된 권한 안에서 앱 배포·Custom Domain 연결·상태 확인을 수행한다. 계정 선택이 모호하거나 권한·zone 소유권이 부족하면 해당 부분만 사용자에게 확인한다. |
+| GitHub Actions | 로컬 OAuth나 MCP 연결과 별도로 CI용 Cloudflare API 토큰과 계정 ID가 필요하다. 대상 계정·zone에 필요한 범위로 제한한 인증 수단을 마련하고 GitHub Actions secrets에 등록한다. 토큰 발급·등록 권한이 없거나 사용자 인증이 필요하면 그 단계에만 사용자 개입을 요청한다. 토큰 값은 채팅·문서·저장소에 남기지 않는다. |
+| 장치 인수 | HTTP·경로·파일 복원 검사는 배포 도구와 브라우저로 확인한다. 새 origin의 USB/Bluetooth 장치 선택·권한 승인과 실제 센서 수신은 사용자 조작·실물 검증으로 구분한다. |
+
+**접근 환경 확인(2026-10-30):** Cloudflare 플러그인 연결 후 계정과 활성 `sco.pe.kr` zone, 기존 `scope-portal` 연결을 조회했다. 착수 시 `sensor-lab` Worker와 `lab.sco.pe.kr` 연결은 없었다. 조회 성공·계정 역할 정보는 플러그인의 실제 쓰기 성공과 구분하며 결과는 배포 기록에 남긴다. 사용자가 제외한 ‘계정 API 토큰 쓰기’ 권한은 요구하지 않는다. 로컬 Wrangler OAuth는 만료 상태이고, 플러그인 인증은 로컬 CLI나 GitHub Actions에 자동 적용되지 않는다. CI용 `CLOUDFLARE_API_TOKEN` 등록과 푸시 자동 배포는 사용자 요청으로 보류했다.
+
+연결 근거: [Cloudflare 공식 MCP](https://developers.cloudflare.com/agents/model-context-protocol/cloudflare/servers-for-cloudflare/), [Codex MCP 인증](https://developers.openai.com/codex/mcp/), [GitHub Actions 인증](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/).
 
 ## 13. 새 센서·활동을 추가하는 절차
 

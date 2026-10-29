@@ -10,7 +10,7 @@ export function parseRoute(input, base = appBaseUrl, modules = registry) {
   if (url.searchParams.has('cfg')) throw new Error('수업 설정 링크는 아직 이 실험실에서 지원하지 않습니다. 홈에서 센서나 활동을 선택하세요.');
   const path = url.pathname.slice(root.pathname.length).replace(/index\.html$/, '');
   const entry = modules.entryRoutes.find(route => route.path === path || route.path.slice(0, -1) === path);
-  if (!entry && !['', 'lab.html'].includes(path)) throw new Error('이 센서·활동 경로를 찾을 수 없습니다. 홈에서 다시 선택하세요.');
+  if (!entry && !['', 'lab', 'lab.html'].includes(path)) throw new Error('이 센서·활동 경로를 찾을 수 없습니다. 홈에서 다시 선택하세요.');
   const requestedView = url.searchParams.get('view');
   if (requestedView && !['home', 'preview', 'prepare', 'measure', 'analysis', 'saved'].includes(requestedView)) throw new Error('알 수 없는 실험 화면입니다.');
   if (requestedView === 'preview' && !entry) throw new Error('미리 볼 실험을 선택하세요.');

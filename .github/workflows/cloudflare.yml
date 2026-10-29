@@ -1,0 +1,38 @@
+name: Deploy Sensor Lab to Cloudflare
+
+on:
+  # Enable push/main only after the CI token is registered and first deployment verified.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sensor-lab-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PUBLIC_BASE_URL: https://lab.sco.pe.kr/
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.18.0'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:cloudflare
+      - run: npx wrangler deploy --dry-run
+      - name: Deploy main to lab.sco.pe.kr
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
