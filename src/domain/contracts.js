@@ -21,6 +21,11 @@ export function withEventNote(event, note) {
   if (typeof note !== 'string' || note.length > 500) throw new Error('메모는 500자 이내로 입력하세요.');
   return { ...event, payload: { ...event.payload, note: note.trim() } };
 }
+export const isExperimentMemo = event => event?.type === 'note' && event.source === 'user';
+export function withEventWithdrawn(event, withdrawn) {
+  if (!isExperimentMemo(event) || typeof withdrawn !== 'boolean') throw new Error('직접 남긴 메모만 취소하거나 복구할 수 있어요.');
+  return { ...event, payload: { ...event.payload, withdrawn } };
+}
 export function validateChannels(channels) {
   if (!Array.isArray(channels) || !channels.length || channels.length > LIMITS.channels) throw new Error('측정 항목은 1~16개여야 합니다.');
   const ids = new Set(['sampleId', 'receivedAt', 'timestamp', 'usage', 'note', '__proto__', 'constructor', 'prototype']);

@@ -78,7 +78,7 @@ if (state !== 'idle') {
   if (state !== 'preview') {
     await click('#start-recording');
     await advance(24000);
-    $('#event-note').value = '주변 조건을 그대로 유지하며 변화를 관찰함'; await click('#add-note');
+    await click('#add-note'); $('#event-note').value = '주변 조건을 그대로 유지하며 변화를 관찰함'; $('#event-note').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
     await advance(36000);
     if (state === 'paused' || state === 'disconnected') await click('#pause-recording');
     if (state === 'disconnected') await click('#disconnect');

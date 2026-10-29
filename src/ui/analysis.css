@@ -35,16 +35,9 @@
 .analysis-screen .history-actions button { width:30px; min-height:30px; padding:0px; border:0px; background:transparent; display:inline-flex; align-items:center; justify-content:center; }
 .analysis-feedback { margin:0px; padding:10px 24px; color:rgb(161, 75, 55); font-size:0.8125rem; }
 .analysis-feedback:empty { display:none; }
-.analysis-input-notice { margin:0; padding:12px 20px; color:var(--sl-recording-text); background:var(--sl-recording-bg); font-size:var(--sl-type-small); }
-.condition-pending { display:block; color:var(--sl-recording-text); font-size:var(--sl-type-caption); line-height:1.5; }
-.raw-table .condition-pending { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .overview-pane { padding:24px 26px 0px; }
 .plot-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
 .plot-heading h2 { font-size:1.25rem; letter-spacing:-0.035em; margin:0px; }
-.series-keys { display:flex; gap:18px; font-size:0.75rem; }
-.series-keys span::before { content:""; display:inline-block; width:16px; height:3px; vertical-align:middle; margin-right:7px; border-radius:2px; background:currentcolor; }
-.temperature-key { color:rgb(184, 106, 51); }
-.pressure-key { color:rgb(25, 127, 136); }
 .overview-stage { position:relative; height:clamp(260px, 32vh, 340px); }
 .overview-readout { height:4.8em; overflow:auto; scrollbar-gutter:stable; padding:6px 8px; line-height:1.6; overflow-wrap:anywhere; color:rgb(105, 129, 127); font-size:0.75rem; font-variant-numeric:tabular-nums; margin:7px 0px 10px; }
 .overview-actions { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px; margin:18px 0px 24px; }
@@ -87,6 +80,7 @@
 .table-tools > div { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
 .analysis-screen .table-tools button { font-size:0.6875rem; min-height:28px; padding:4px 7px; }
 .table-selection-slot { padding:10px 12px 14px; }
+.table-selection-hint { margin:0; padding:8px 12px; color:var(--sl-muted); font-size:var(--sl-type-small); }
 .table-selection { display:flex; flex-direction:column; align-items:flex-start; gap:8px; visibility:hidden; opacity:0; background:rgb(232, 243, 238); border:1px solid rgb(212, 229, 220); border-radius:10px; padding:10px; font-size:0.6875rem; transition:opacity 160ms; }
 .table-selection[data-active="true"] { visibility:visible; opacity:1; }
 .selection-actions { display:flex; flex-wrap:wrap; gap:6px; }
@@ -246,7 +240,6 @@
   .analysis-screen[data-task="relationship"] .scope-context { flex-basis:100%; }
   .overview-pane { padding:18px 14px 0px; }
   .plot-heading h2 { font-size:1.125rem; }
-  .series-keys { font-size:0.625rem; gap:12px; }
   .overview-stage { height:290px; }
   .overview-readout { font-size:0.625rem; line-height:1.6; }
   .overview-actions { gap:7px; }
@@ -385,6 +378,16 @@
 
 }
 @media (max-width: 720px) {
+  [data-visual-theme="luminous"] .analysis-screen { margin-top:var(--sl-space-3); }
+  [data-visual-theme="luminous"] .analysis-topline { gap:8px 12px; margin-bottom:8px; }
+  .analysis-source-control { gap:8px; margin-bottom:0; font-size:var(--sl-type-small); }
+  .analysis-source-control select { min-width:0; }
+  [data-visual-theme="luminous"] .analysis-screen :is(.analysis-tabs,.layout-switch) button { padding:6px 4px; min-height:var(--sl-target-compact); }
+  [data-visual-theme="luminous"] .analysis-screen .analysis-graph-pane { padding:12px; }
+  .analysis-graph-pane > .plot-heading { margin-bottom:4px; gap:8px; }
+  .axis-settings-bar { margin-bottom:0; }
+  .axis-summary { flex:1; font-size:var(--sl-type-small); }
+  .analysis-screen .table-selection-slot:has([data-active="true"]) { position:sticky; bottom:0; z-index:2; background:var(--sl-surface); }
   .relationship-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; align-items:stretch; }
   [data-visual-theme="luminous"] .analysis-screen .relationship-exports { display:contents; }
   .relationship-finish { grid-column:3; margin:0; min-width:0; }

@@ -122,7 +122,7 @@ export async function runLuminousTests(report=()=>{}) {
           const samples=()=>JSON.stringify(chart().data.datasets[0].data.filter(point=>point.sampleId));
           const original=samples();
           for (const text of ['같은 시각의 첫 메모','두 번째 메모 · '+ '긴 관찰 내용 '.repeat(25)+'<img src=x>']) {
-            $('#event-note').value=text;$('#add-note').click();await settle();
+            $('#add-note').click();$('#event-note').value=text;$('#event-note').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await settle();
           }
           check($('#lab-events').children.length===3&&!$('#lab-events img'),'조작 메모가 누락되거나 메모를 HTML로 해석했습니다.');
           check($('.measurement-system-events').textContent.includes('기록 시작'),'기록·수신 상태를 보조 목록에 보존하지 않았습니다.');

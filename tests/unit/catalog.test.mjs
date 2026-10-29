@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 import { getExperiment, resolveExperiment } from '../../src/catalog/index.js';
 import { decodeBmp280 } from '../../src/catalog/sensors/bmp280/codec.js';
 import { validateChannels } from '../../src/domain/contracts.js';
-import { reduceActivity } from '../../src/catalog/activities/gay-lussac/policy.js';
-test('BMP280 free measurement and Gay-Lussac share channels and firmware, activity alone supplies heating and calculations',()=>{
+test('BMP280 free measurement and Gay-Lussac share channels and firmware, activity alone supplies actions and calculations',()=>{
   const free=getExperiment(), activity=getExperiment('bmp280','gay-lussac');
   const measurementDefinition = channels => channels.map(({name, ...channel}) => channel);
   assert.deepEqual(measurementDefinition(free.channels),measurementDefinition(activity.channels));
@@ -25,12 +24,4 @@ test('BMP280 codec preserves zero and finite range failures, missing channels an
   const sample=decodeBmp280('0,0,1000');assert.equal(sample.values.temperatureC,0);assert.equal(sample.validity.temperatureC,'valid');assert.equal(sample.values.humidityPct,undefined);assert.equal(sample.rawExtra.humidityValidity,'unsupported');
   const invalid=decodeBmp280(',0,1200');assert.equal(invalid.values.temperatureC,null);assert.equal(invalid.validity.temperatureC,'missing');assert.equal(invalid.values.pressureHpa,1200);assert.equal(invalid.validity.pressureHpa,'out-of-range');
   assert.equal(decodeBmp280('1,2').type,'parse-error');assert.equal(decodeBmp280('abc,0,1000').validity.temperatureC,'error');
-});
-test('activity heating requires placement and fresh reception and never duplicates an event',()=>{
-  const facts={recording:true,reception:{ready:true}};
-  assert.ok(reduceActivity({}, {type:'heating-start'},facts).error);
-  const placed=reduceActivity({}, {type:'placement'},facts).nextState;
-  assert.ok(reduceActivity(placed,{type:'heating-start'},{...facts,reception:{ready:false}}).error);
-  const heated=reduceActivity(placed,{type:'heating-start'},facts);
-  assert.equal(heated.events.length,1);assert.ok(reduceActivity(heated.nextState,{type:'heating-start'},facts).error);
 });

@@ -267,7 +267,8 @@ export function createChartView(canvas, { context, channels, displayValue = (val
       elements: { point: { radius: 0, hitRadius: 8 }, line: { borderWidth: 2 } },
       plugins: { tooltip: { enabled: !inspect, callbacks: {
         title: items => hasTime ? formatElapsedTime(items[0]?.raw.elapsedSeconds) : '자료 ' + items[0]?.raw.sampleId,
-      } }, legend: { display: !inspect && !theme, position: 'bottom', labels: { usePointStyle: true, boxWidth: 7, font: { size: 13 } } } },
+      } }, legend: { display: inspect || !theme, position: 'bottom', labels: { usePointStyle: true, boxWidth: 7,
+        color: theme?.text ?? '#53657d', font: { size: 12, family: theme?.font } } } },
       scales: {
         x: { type: 'linear', min: -60, max: 0,
           title: { display: true, text: '지금으로부터', ...(theme ? {color:theme.text,font:{family:theme.font,size:12}} : {}) },

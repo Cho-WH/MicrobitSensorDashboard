@@ -108,7 +108,7 @@ export async function runAppTests(report=()=>{}, flow='activity') {
       check(document.activeElement===$('#show-experiment-guide'),'실험 안내를 닫은 뒤 초점을 돌려주지 않았습니다.');
       await click('#start-recording');await receiveUntil(()=>app.getState().session?.reception==='receiving','활동 기록의 안정적인 수신 확인 실패');
       const activityId=app.getState().storage.id;
-      await click('[data-activity-event="placement"]');await click('[data-activity-event="heating-start"]');
+      for(let i=0;i<2;i++){await click('[data-memo-preset="water-added"]');$('#event-note').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));}
       const beforeGuide=app.getState().storage.sampleCount;
       await click('#show-experiment-guide');
       check(!$('[data-guide-recording]').hidden,'기록 중 안내 문구가 빠졌습니다.');
@@ -118,8 +118,8 @@ export async function runAppTests(report=()=>{}, flow='activity') {
       await receiveUntil(()=>app.getState().storage.sampleCount>beforeGuide+2,'안내를 보는 동안 기록이 멈췄습니다.');
       await click('.experiment-guide-close');await click('#finish-recording');
       const activityData=await repo.readSnapshot(activityId);
-      check(['placement','heating-start','measurement-end'].every(type=>activityData.events.some(event=>event.type===type)),'활동 조작이 보관되지 않았습니다.');
-      report('M2 통합 · 활동 안내·키보드·초점 복귀, 기록 유지와 배치·가열 조작 저장');
+      check(activityData.events.filter(event=>event.type==='note').length===2&&activityData.events.some(event=>event.type==='measurement-end'),'반복한 물 추가 또는 마감 기록이 보관되지 않았습니다.');
+      report('M2 통합 · 활동 안내·키보드·초점 복귀, 기록 유지와 반복 물 추가 저장');
 
     }
 

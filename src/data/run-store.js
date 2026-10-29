@@ -1,7 +1,7 @@
 import { createUuid } from '../domain/uuid.js';
 // Adapted from Cho-WH/bme280 59c5c149450f970bace2deaa183857c275595853,
 // gay-lussac/data/run-store.js. Pending queues, revision acknowledgements and locks retained.
-import { DATABASE, withEventNote, validateSample, RUN_SCHEMA_VERSION, EXPERIMENT_FILE_VERSION } from '../domain/contracts.js';
+import { DATABASE, withEventNote, withEventWithdrawn, validateSample, RUN_SCHEMA_VERSION, EXPERIMENT_FILE_VERSION } from '../domain/contracts.js';
 import { validateManualColumns, validatePointRecord } from '../domain/point-records.js';
 import { getAnalysisSourceSnapshot } from '../analysis/data-source.js';
 import { LIMITS } from '../domain/limits.js';
@@ -239,6 +239,15 @@ export async function openRunStore({ repository, id = createUuid(), context, sou
     events[index] = next; eventBytes = bytes;
     editedEvents.set(eventId, run.runRevision + 1); eventsVersion++; changed();
   }
+  function setEventWithdrawn(eventId, withdrawn) {
+    assertWriter();
+    const index = events.findIndex(event => event.eventId === eventId), previous = events[index];
+    const next = withEventWithdrawn(previous, withdrawn);
+    if (!!previous.payload.withdrawn === withdrawn) return;
+    const bytes = eventBytes - jsonBytes(previous) + jsonBytes(next);
+    admit({ nextEventBytes: bytes }); events[index] = next; eventBytes = bytes;
+    editedEvents.set(eventId, run.runRevision + 1); eventsVersion++; changed();
+  }
   function saveWorkspace(sourceId, next) {
     assertWriter();
     if (!['recorded', 'points'].includes(sourceId) || (sourceId === 'recorded' && run.recordingMode === 'point')
@@ -321,7 +330,7 @@ export async function openRunStore({ repository, id = createUuid(), context, sou
     getAnalysisSourceSnapshot: sourceId => getAnalysisSourceSnapshot({ run, samples, pointRecords }, sourceId),
     updateRun, appendSample, appendPointRecord, updatePointRecord, setManualColumn,
     setPointWithdrawn: (pointRecordId, withdrawn) => editPoint(pointRecordId, { withdrawn }),
-    appendEvent, updateEventNote, saveWorkspace, setActiveSource, flush, close, dispose, remove };
+    appendEvent, updateEventNote, setEventWithdrawn, saveWorkspace, setActiveSource, flush, close, dispose, remove };
 }
 
 export const importRunSnapshot = (options) => openRunStore({ ...options, importSnapshot: options.snapshot });

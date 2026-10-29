@@ -19,7 +19,7 @@ async function setup() {
   return store;
 }
 
-test('point input is applied explicitly, counts records, preserves frozen evidence and isolated histories', async () => {
+test('confirmed point edits synchronize analysis while preserving frozen evidence and isolated histories', async () => {
   const store = await setup();
   try {
     const recorded = createWorkspace({store}), points = createWorkspace({store,sourceId:'points'});
@@ -32,11 +32,12 @@ test('point input is applied explicitly, counts records, preserves frozen eviden
     assert.equal(points.pendingChanges().changed,2);
     assert.equal(points.getGraphData().points[0].x,0);
     assert.deepEqual(points.getReflectionModel(),evidence);
-    points.showNewData();
+    assert.equal(points.syncExplicitChanges(),true);
     assert.equal(points.getGraphData().points[0].x,9);
     assert.equal(points.getGraphData().xUnit,'m');
     assert.deepEqual(points.getReflectionModel(),evidence);
     assert.deepEqual(recorded.getState(),recordedState);
+    assert.equal(points.syncExplicitChanges(),false);
     points.undo(); assert.equal(points.getGraphData().points.length,2);
     const restored = parseExperimentJson(buildExperimentJson(store.getSnapshot()));
     const reopened = createWorkspace({sourceId:'points',store:{getSnapshot:()=>restored,getAnalysisSourceSnapshot:()=>store.getAnalysisSourceSnapshot('points'),getState:()=>({writable:false})}});
@@ -50,15 +51,88 @@ test('withdrawn selected points stay candidates for restoration; explicit exclus
   try {
     const work=createWorkspace({store,sourceId:'points'});
     work.setSelection([2,5]); work.applyScope('selection'); work.exclude([5]);
-    store.setPointWithdrawn(1,true); work.showNewData();
+    store.setPointWithdrawn(1,true); work.syncExplicitChanges();
     assert.deepEqual(work.getState().appliedIds,[2,5]); assert.equal(work.getGraphData().points.length,0);
     assert.equal(work.getGraphData().excludedPoints.length,1);
-    store.setPointWithdrawn(1,false); work.showNewData();
+    store.setPointWithdrawn(1,false); work.syncExplicitChanges();
     assert.deepEqual(work.getGraphData().points.map(p=>p.sampleId),[2]);
-    work.applyScope('all'); store.setPointWithdrawn(1,true); work.showNewData();
+    work.applyScope('all'); store.setPointWithdrawn(1,true); work.syncExplicitChanges();
     assert.deepEqual(work.getState().appliedIds,[5]);
-    store.setPointWithdrawn(1,false); work.showNewData();
+    store.setPointWithdrawn(1,false); work.syncExplicitChanges();
     assert.deepEqual(work.getState().appliedIds,[2,5]);
+  } finally {store.dispose();}
+});
+
+test('confirmed captures update all-point analysis but retain designated candidates and exclusions', async () => {
+  const store=await setup();
+  try {
+    const work=createWorkspace({store,sourceId:'points'});
+    work.exclude([5],'확인 필요');
+    store.appendPointRecord({capturedSampleId:6,capturedAt:utc+3000,manualValues:{[column.id]:4}});
+    work.syncExplicitChanges();
+    assert.deepEqual(work.getGraphData().points.map(p=>p.sampleId),[2,6]);
+    work.setSelection([2,5]); work.applyScope('selection');
+    store.appendSample(sample(7));
+    store.appendPointRecord({capturedSampleId:7,capturedAt:utc+4000,manualValues:{[column.id]:5}});
+    work.syncExplicitChanges();
+    assert.deepEqual(work.getState().appliedIds,[2,5]);
+    assert.deepEqual(work.getState().exclusions,[{sampleId:5,reason:'확인 필요'}]);
+    assert.deepEqual(work.getGraphData().points.map(p=>p.sampleId),[2]);
+    assert.equal(work.getSamples().length,4);
+  } finally {store.dispose();}
+});
+
+test('streaming and pause keep analysis fixed; finishing synchronizes even after reopening and preserves evidence and scope', async () => {
+  const store=await setup();
+  try {
+    const work=createWorkspace({store});
+    work.captureReflection(); const evidence=work.getReflectionModel();
+    store.appendSample(sample(7));
+    assert.equal(work.syncExplicitChanges(),false);
+    store.updateRun({status:'paused'});
+    assert.equal(work.syncExplicitChanges(),false);
+    assert.equal(work.pendingChanges().added,1);
+    store.updateRun({status:'complete'});
+    assert.equal(work.syncExplicitChanges(),true);
+    assert.equal(work.getGraphData().points.length,7);
+    assert.deepEqual(work.getReflectionModel(),evidence);
+    assert.equal(work.syncExplicitChanges(),false);
+    work.setSelection([2,5]); work.applyScope('selection'); work.exclude([5],'잡음');
+    const before=work.getState();
+    store.updateRun({status:'open'}); store.appendSample(sample(8));
+    assert.equal(work.syncExplicitChanges(),false);
+    store.updateRun({status:'complete'});
+    const reopened=createWorkspace({store});
+    reopened.syncExplicitChanges();
+    assert.deepEqual(reopened.getState().appliedIds,before.appliedIds);
+    assert.deepEqual(reopened.getState().exclusions,before.exclusions);
+    assert.deepEqual(reopened.getReflectionModel(),evidence);
+    assert.equal(reopened.pendingChanges().added,0);
+    assert.equal(reopened.getSamples().length,8);
+  } finally {store.dispose();}
+});
+
+test('automatic synchronization respects read-only state and retries a failed save without losing analysis', async () => {
+  const store=await setup();
+  try {
+    let rejectSave=false;
+    const work=createWorkspace({sourceId:'points',store:{...store,saveWorkspace(...args) {
+      if (rejectSave) throw new Error('저장 공간 부족');
+      return store.saveWorkspace(...args);
+    }}});
+    work.captureReflection(); const before=work.getState();
+    store.updatePointRecord(1,{manualValues:{[column.id]:8}});
+    const readOnly=createWorkspace({sourceId:'points',store:{...store,getState:()=>({...store.getState(),writable:false})}});
+    assert.equal(readOnly.syncExplicitChanges(),false);
+    assert.equal(readOnly.getGraphData().points[0].x,0);
+    rejectSave=true;
+    assert.throws(()=>work.syncExplicitChanges(),/저장 공간/);
+    assert.deepEqual(work.getState(),before);
+    assert.equal(work.getGraphData().points[0].x,0);
+    rejectSave=false;
+    assert.equal(work.syncExplicitChanges(),true);
+    assert.equal(work.getGraphData().points[0].x,8);
+    assert.deepEqual(work.getState().reflection,before.reflection);
   } finally {store.dispose();}
 });
 

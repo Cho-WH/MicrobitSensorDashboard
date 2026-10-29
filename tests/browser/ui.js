@@ -68,6 +68,9 @@ export async function runUiTests(report = (_message) => {}) {
     const first = fixture(), original = structuredClone(first.data.samples);
     view.open(first.store); await settle();
     check(!failures.length, failures.join('\n'));
+    const overviewChart = globalThis.Chart.getChart($('#overview-chart'));
+    check(first.data.run.context.channels.every(channel => overviewChart.legend.legendItems.some(item => item.text.includes(channel.name) && item.text.includes(channel.unit))),
+      '원자료 그래프에서 각 채널의 이름과 단위를 구분할 수 없습니다.');
     await click('#overview-table-toggle');
     const scroller = $('#raw-scroll');
     check(scroller.clientHeight > 0 && scroller.clientHeight < 1500 * 32, '가상 표 스크롤 영역의 실제 높이가 잘못되었습니다.');

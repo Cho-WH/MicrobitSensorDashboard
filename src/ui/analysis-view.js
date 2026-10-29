@@ -58,23 +58,20 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   async function editCondition(pointId) {
     const point = store.getPointRecords().find(p => p.pointRecordId === pointId), column = store.getRun().manualColumns[0];
     if (!point || !column) return;
-    await dialogs.condition(point, column, value => { store.updatePointRecord(pointId, {manualValues:{[column.id]:value}}); updateStatus(); });
+    await dialogs.condition(point, column, value => { store.updatePointRecord(pointId, {manualValues:{[column.id]:value}}); });
     render();
   }
-  // This is a display overlay only. Workspace remains the sole owner of the
-  // applied analysis inputs (including sorting, filters, exports and evidence).
-  function pendingConditions(state) {
-    const result = new Map();
-    if (state?.sourceId !== 'points') return result;
-    const column = store.getRun().manualColumns[0], appliedColumn = state.context.manualColumns?.[0];
-    if (!column || !appliedColumn) return result;
-    const latest = new Map(store.getPointRecords().map(point => [point.pointRecordId, point]));
-    for (const sample of workspace.getSamples()) {
-      const point = latest.get(sample.pointRecordId), value = point?.manualValues[column.id] ?? null;
-      if (point && (value !== readCell(sample, column.id).value || column.name !== appliedColumn.name || column.unit !== appliedColumn.unit))
-        result.set(point.pointRecordId, {value, name:column.name, unit:column.unit});
+  function syncInputs() {
+    let activeChanged = false;
+    // Also update cached sources while measurement is visible. Each Workspace
+    // retains its own scope, exclusions, undo history and frozen evidence.
+    for (const target of new Set([workspace, ...[...sources.values()].map(source => source.workspace)])) {
+      if (!target) continue;
+      try {
+        if (target.syncExplicitChanges() && target === workspace) activeChanged = true;
+      } catch (error) { $('analysis-feedback').textContent = error.message; }
     }
-    return result;
+    return activeChanged;
   }
   const number = value => value.toLocaleString('ko-KR');
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -152,10 +149,18 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   });
   function openRange() {
     if (!workspace?.isWritable()) return;
+    if (sourceId === 'points') {
+      relationshipMode = 'table';
+      changeTask('relationship');
+      $('analysis-table-pane').scrollIntoView({block:'nearest'});
+      ($('raw-rows').querySelector('input[data-select]') ?? $('raw-scroll')).focus({preventScroll:true});
+      return;
+    }
     changeTask('overview'); range.open(workspace.getState()); animate($('range-form'));
   }
   click('choose-range', openRange); click('edit-analysis-range', openRange);
   click('use-all-data', () => { if (act(() => workspace.applyScope('all'))) { range.close(); changeTask('relationship'); } });
+  click('use-all-points', () => { if (act(() => workspace.applyScope('all'))) { relationshipMode = 'split'; changeTask('relationship'); } });
   click('apply-new-data', () => act(() => { workspace.showNewData(); overviewKey = null; }));
   click('point-origin', () => { if (act(() => {
     const point = store.getPointRecords().find(p => p.capturedSampleId === focusedId);
@@ -190,7 +195,10 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   });
   click('restore-selection', () => act(() => workspace.restore(workspace.getState().selectedIds)));
   $('analyze-selection')?.addEventListener('click', () => {
-    if (act(() => workspace.applyScope('selection'))) { range.close(); changeTask('relationship'); }
+    if (act(() => workspace.applyScope('selection'))) {
+      if (sourceId === 'points') relationshipMode = 'split';
+      range.close(); changeTask('relationship');
+    }
   }, { signal });
   click('undo-analysis', () => act(() => workspace.undo())); click('redo-analysis', () => act(() => workspace.redo()));
   click('undo-toast', () => { if (workspace?.getState().workspaceRevision === toastRevision) act(() => workspace.undo()); dismissToast(); });
@@ -231,7 +239,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   click('point-restore', () => act(() => workspace.restore([focusedId])));
   root.addEventListener('keydown', event => { if (event.key === 'Escape' && focusedId !== null && !root.querySelector(':popover-open, dialog[open]')) closePoint(); }, { signal });
   for (const button of root.querySelectorAll('[data-export]')) button.addEventListener('click', () => { if (reflection.flush()) onExport(button.dataset.export, button); }, { signal });
-  function renderPoint(state, rows, pending) {
+  function renderPoint(state, rows) {
     const samples = workspace?.getSamples() ?? [], sample = samples.find(s => s.sampleId === focusedId);
     const inspector = $('point-inspector'), host = $(tableOpen ? 'table-point-slot' : 'graph-point-slot');
     $('graph-point-slot').hidden = tableOpen;
@@ -252,9 +260,8 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     const values = [], extra = [];
     const format = (value, unit) => value === null ? '미입력' : formatCalculated(value) + (unit ? ' ' + unit : '');
     for (const c of sourceChannels) {
-      const cell = readCell(sample, c.id), saved = c.manual ? pending.get(sample.pointRecordId) : null;
-      const pair = {name:saved?.name ?? c.name, value:saved ? format(saved.value, saved.unit) : cell.reason ?? format(cell.value, c.unit),
-        pending:saved ? `분석: ${format(cell.value, c.unit)} · 반영 대기` : ''};
+      const cell = readCell(sample, c.id);
+      const pair = {name:c.name, value:cell.reason ?? format(cell.value, c.unit)};
       (c.manual || primaryIds.has(c.id) ? values : extra).push(pair);
     }
     const shown = new Set(['receivedAt', ...sourceChannels.map(c => c.id)]);
@@ -268,10 +275,9 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     const reason = state.exclusions.find(e => e.sampleId === focusedId)?.reason;
     if (reason) values.push({name:'제외 사유', value:reason});
     if (sample.pointRecordId && store.getRun().recordingMode === 'continuous') extra.push({name:'연결된 원자료', value:`${sample.sampleId}번`});
-    const valuePair = ({name, value, pending}) => {
+    const valuePair = ({name, value}) => {
       const pair = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd');
       dt.textContent = name; dd.textContent = value; pair.append(dt, dd);
-      if (pending) { const note = document.createElement('small'); note.className = 'condition-pending'; note.textContent = pending; dd.append(note); }
       return pair;
     };
     $('point-values').replaceChildren(...values.map(valuePair));
@@ -283,12 +289,12 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     if (sample.withdrawn) { $('point-exclude').hidden = true; $('point-restore').hidden = true; }
   }
   function render({ resetScroll = false } = {}) {
+    syncInputs();
     tableOpen = task === 'overview' ? overviewTableOpen : relationshipMode !== 'graph';
     allColumns = task === 'relationship' && relationshipMode === 'table';
     const writable = workspace?.isWritable() ?? false;
     root.querySelectorAll('[data-workspace-action]').forEach(el => { el.disabled = !writable; });
     const state = workspace?.getState(), summary = workspace?.getSummary(), rows = workspace?.getRows() ?? [], samples = workspace?.getSamples() ?? [];
-    const pending = pendingConditions(state);
     currentModel = workspace?.getGraphData() ?? null;
     const importedColumns = workspace?.getImportedColumns() ?? [], axisIds = task !== 'overview' && !allColumns && currentModel ? [currentModel.xColumnId, currentModel.yColumnId, ...(currentModel.right?[currentModel.right.yColumnId]:[]), ...(revealedColumnId ? [revealedColumnId] : [])] : null;
     root.dataset.task = task; root.dataset.source = sourceId; $('analysis-layout').dataset.tableOpen = String(tableOpen);
@@ -320,11 +326,17 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     $('point-origin-label').textContent = originLink ? `${originLink.pointId}번 기록의 원래 시점 · 원자료 ${originLink.sampleId}번` : '';
     const bounds = timeBounds(samples, origin), elapsed = at => formatCalculated((at - bounds.origin) / 1000);
     $('overview-title').textContent = samples.length && !bounds ? copy.analysis.orderTitle : copy.analysis.timeTitle;
-    $('overview-chart').setAttribute('aria-label', bounds ? copy.accessibility.timeChart : copy.accessibility.orderChart);
+    const chartChannels = state?.sourceColumns.filter(c => !['sampleId','pointRecordId','receivedAt'].includes(c.id) && !c.manual && c.supported !== false) ?? [];
+    $('overview-chart').setAttribute('aria-label', [bounds ? copy.accessibility.timeChart : copy.accessibility.orderChart,
+      ...chartChannels.map(c => c.name + (c.unit ? ' (' + c.unit + ')' : ''))].join(' · '));
     $('scope-time').textContent = state?.appliedScope === 'all' ? copy.analysis.allData : state?.analysisRange && bounds
       ? elapsed(state.analysisRange.startAt) + '–' + elapsed(state.analysisRange.endAt) + copy.analysis.seconds : copy.analysis.selectedData;
-    $('edit-analysis-range').disabled = !writable || !bounds;
-    $('choose-range').disabled = !writable || !bounds;
+    $('edit-analysis-range').textContent = sourceId === 'points' ? '기록 선택' : copy.analysis.editRange;
+    $('choose-range').textContent = sourceId === 'points' ? '표에서 기록 선택' : copy.analysis.chooseRange;
+    $('edit-analysis-range').disabled = $('choose-range').disabled = !writable || (sourceId === 'points' ? !samples.length : !bounds);
+    $('use-all-points').hidden = sourceId !== 'points';
+    $('use-all-points').disabled = !writable || !samples.length || state.appliedScope === 'all';
+    $('point-range-hint').hidden = sourceId !== 'points' || !allColumns;
     $('use-all-data').disabled = !writable || !samples.length;
     $('selection-toolbar').dataset.active = String(Boolean(summary?.selectedCount));
     $('selection-toolbar').inert = !summary?.selectedCount;
@@ -339,12 +351,12 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     all.checked = rows.length > 0 && count === rows.length; all.indeterminate = count > 0 && count < rows.length; all.disabled = !writable || !rows.length;
     table.render({ samples: rows, selectedIds: state?.selectedIds ?? [], excluded: state?.exclusions ?? [], appliedIds: state?.appliedIds ?? [],
       focusedSampleId: focusedId, calculatedColumns: state?.calculatedColumns ?? [], importedColumns, axisIds,
-      filter: state?.table.filter, sort: state?.table.sort ?? { columnId: 'sampleId', direction: 'asc' }, canEdit: writable, resetScroll, context: state?.context, pendingConditions: pending });
+      filter: state?.table.filter, sort: state?.table.sort ?? { columnId: 'sampleId', direction: 'asc' }, canEdit: writable, resetScroll, context: state?.context });
     graph.render(state, currentModel, task === 'relationship' && !allColumns, writable, focusedId);
     $('use-graph-for-reflection').disabled = !writable || !(currentModel?.points.length||currentModel?.right?.points.length);
     reflection.render(task === 'interpretation');
     if (task === 'overview' && workspace) {
-      overview ??= createChartView($('overview-chart'), { inspect: true, theme, context: state.context, onLayout: () => range.layout(), onCursor(sample, elapsedSeconds) {
+      overview ??= createChartView($('overview-chart'), { inspect: true, legendToggle: false, eventMarkers: false, theme, context: state.context, onLayout: () => range.layout(), onCursor(sample, elapsedSeconds) {
         $('overview-readout').textContent = sample ? (Number.isFinite(elapsedSeconds) ? formatElapsedTime(elapsedSeconds) : '자료 ' + sample.sampleId + ' · 시각 정보 없음')
           + workspace.getSourceColumns().filter(c => !['sampleId', 'pointRecordId', 'receivedAt'].includes(c.id)).map(c => { const cell = readCell(sample, c.id); return ' · ' + c.name + ' ' + (cell.reason ?? formatCalculated(cell.value) + (c.unit ? ' ' + c.unit : '')); }).join('')
           : copy.analysis.cursorHint;
@@ -361,15 +373,16 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     }
     $('overview-empty').hidden = samples.length > 0;
     if (state) range.update(samples, state, origin);
-    renderPoint(state, rows, pending);
+    renderPoint(state, rows);
     for (const button of root.querySelectorAll('[data-export]'))
       button.disabled = !workspace || (button.dataset.export === 'analysis-csv' && !summary?.includedCount) || (button.dataset.export === 'png' && !currentModel);
     updateStatus();
     fittedLayout.schedule();
   }
   function updateStatus() {
+    if (syncInputs()) { render(); return; }
     reflection.updateStatus();
-    if (!workspace || !store) { $('analysis-message').textContent = copy.analysis.noRun; $('apply-new-data').hidden = true; $('point-input-notice').hidden = true; return; }
+    if (!workspace || !store) { $('analysis-message').textContent = copy.analysis.noRun; $('apply-new-data').hidden = true; return; }
     const saved = store.getState(), pending = workspace.pendingChanges(), added = pending.added;
     const options = [...(saved.recordingMode !== 'point' ? [['recorded', `${saved.recordingMode === null ? '가져온 자료' : '연속 기록'} ${saved.sampleCount}개`]] : []),
       ...(saved.pointCount + saved.withdrawnPointCount || saved.recordingMode === 'point' ? [['points', `한 점 기록 ${saved.pointCount}개`]] : [])];
@@ -377,9 +390,8 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     if (key !== sourceOptionsKey) { $('analysis-source').replaceChildren(...options.map(([value, label]) => new Option(label, value))); sourceOptionsKey = key; }
     $('analysis-source').value = sourceId;
     $('analysis-message').textContent = !saved.writable ? copy.common.readOnly : '';
-    const waiting = added || pending.changed || pending.definitions;
-    $('point-input-notice').hidden = sourceId !== 'points' || !(pending.changed || pending.definitions);
-    $('apply-new-data').textContent = sourceId === 'points' ? [added ? `새 기록 ${added}개` : '', pending.changed ? `입력 수정 ${pending.changed}개` : pending.definitions ? '조건 설정 변경' : '', '변경 반영'].filter(Boolean).join(' · ') : formatCopy(copy.analysis.newData,{count:number(added)});
+    const waiting = sourceId === 'recorded' && added > 0;
+    $('apply-new-data').textContent = formatCopy(copy.analysis.newData,{count:number(added)});
     $('apply-new-data').hidden = !waiting; $('apply-new-data').disabled = !saved.writable || !waiting;
   }
   function reset() {

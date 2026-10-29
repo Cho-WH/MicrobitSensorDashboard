@@ -118,16 +118,12 @@
 .lab-card small { display:block; min-height:18px; }
 #sample-count, #live-chart-summary { font-variant-numeric:tabular-nums; }
 .lab-chart { position:relative; }
-.note-controls label { flex:1 1 0%; }
-.note-controls input { width:100%; }
 @media (max-width: 370px) {
   #measurement-reception { grid-template-columns:1fr; min-height:40px; }
   #measurement-reception span { min-height:20px; }
 }
 @media (min-width: 1001px) {
   .measurement-layout { grid-template-columns:300px minmax(0px, 1fr); align-items:start; }
-  .note-controls { margin-top:14px; font-size:0.8125rem; }
-  #activity-actions:not(:empty) { margin-top:12px; }
 }
 .luminous-heading { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 .luminous-overview { margin-top:var(--sl-space-4); }
@@ -188,16 +184,12 @@
 [data-visual-theme="luminous"] #measurement-reception { display:flex; flex-wrap:wrap; gap:var(--sl-space-3); margin:0px; font-size:var(--sl-type-small); }
 [data-visual-theme="luminous"] #measurement-reception[data-fresh="true"] > span:first-child { color:var(--sl-success); }
 [data-visual-theme="luminous"] #live-chart-summary { margin:0px; font-size:var(--sl-type-small); }
-.luminous-notes { display:grid; grid-template-columns:minmax(0px, 1fr) minmax(300px, 0.85fr); gap:var(--sl-space-3); margin-top:14px; }
-[data-visual-theme="luminous"] .measurement-events, [data-visual-theme="luminous"] .note-controls { margin:0px; padding:12px 16px; background:rgba(255, 255, 255, 0.65); border:1px solid var(--sl-surface); border-radius:var(--sl-radius-note); min-width:0px; }
+.luminous-notes { display:grid; grid-template-columns:minmax(0px, 1fr); gap:var(--sl-space-3); margin-top:14px; }
+[data-visual-theme="luminous"] .measurement-events { margin:0px; padding:12px 16px; background:rgba(255, 255, 255, 0.65); border:1px solid var(--sl-surface); border-radius:var(--sl-radius-note); min-width:0px; }
 [data-visual-theme="luminous"] .measurement-events summary { font-size:var(--sl-type-label); color:var(--sl-navy); font-weight:600; }
-[data-visual-theme="luminous"] #lab-events { margin:6px 0px 0px; padding:0px; display:grid; gap:6px; max-height:156px; overflow:hidden auto; list-style:none; }
-[data-visual-theme="luminous"] #lab-events li { min-width:0px; }
-[data-visual-theme="luminous"] #lab-events:empty::after { content:"실험 조작과 메모를 남기면 여기에 표시돼요."; color:var(--sl-muted); font-size:var(--sl-type-small); padding:6px 0px; }
 [data-visual-theme="luminous"] .measurement-event-row { --sl-button-bg:transparent; --sl-button-line:var(--sl-event-line); --sl-button-hover:var(--sl-event-row-hover); --sl-button-hover-line:var(--sl-selection); display:grid; grid-template-columns:minmax(0px, 1fr) auto; gap:3px 12px; width:100%; min-width:0px; padding:7px 10px; text-align:left; border-top:0px; border-right:0px; border-bottom:0px; border-image:none; border-left:3px solid var(--sl-event-line); background:transparent; font-size:var(--sl-type-small); line-height:1.5; }
 .measurement-event-row strong { font-weight:600; overflow-wrap:anywhere; }
 .measurement-event-row time { color:var(--sl-muted); font-size:var(--sl-type-caption); font-variant-numeric:tabular-nums; white-space:nowrap; }
-.measurement-event-excerpt { grid-column:1 / -1; min-width:0px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:400; color:var(--sl-muted); }
 .measurement-system-events { margin-top:6px; border-top:1px solid var(--sl-line); padding-top:6px; }
 [data-visual-theme="luminous"] .measurement-system-events summary { color:var(--sl-muted); font-size:var(--sl-type-small); font-weight:400; }
 .measurement-system-events ol { list-style:none; padding:0px; margin:8px 0px 0px; max-height:140px; overflow:auto; }
@@ -218,10 +210,6 @@
 .measurement-event-dialog time { margin-left:12px; font-size:var(--sl-type-small); color:var(--sl-muted); font-variant-numeric:tabular-nums; }
 .measurement-event-dialog p { white-space:pre-wrap; overflow-wrap:anywhere; font-size:var(--sl-type-control); line-height:1.7; margin:8px 0px 0px; }
 
-[data-visual-theme="luminous"] .note-controls { gap:var(--sl-space-2); align-items:end; }
-[data-visual-theme="luminous"] .note-controls label { min-width:120px; font-size:var(--sl-type-label); color:var(--sl-navy); font-weight:600; }
-[data-visual-theme="luminous"] #event-note { font-weight:400; font-size:var(--sl-type-label); border-color:var(--sl-input-border); background:var(--sl-surface); padding:10px; min-width:0px; }
-[data-visual-theme="luminous"] #add-note { --sl-button-bg:var(--sl-surface-soft); min-height:var(--sl-target); font-size:var(--sl-type-small); padding:10px; border:0px; }
 @media (min-width: 1600px) {
   .luminous-overview { grid-template-columns:200px minmax(0px, 1fr) 280px; }
 }
@@ -256,7 +244,7 @@
   #acceleration-unit-toggle { grid-column:2; grid-row:2; justify-self:end; }
   [data-visual-theme="luminous"] .lab-chart { height:290px; }
   [data-visual-theme="luminous"] #measurement-reception { gap:4px 10px; }
-  [data-visual-theme="luminous"] .measurement-events, [data-visual-theme="luminous"] .note-controls { padding:14px; }
+  [data-visual-theme="luminous"] .measurement-events { padding:14px; }
 }
 #connect { min-width:152px; }
 
@@ -328,3 +316,17 @@
   }
   :root[data-visual-theme="luminous"] #continuous-recording { gap:calc(var(--sl-space-1) / 2); }
 }
+
+.memo-toolbar { display:flex; align-items:center; justify-content:space-between; gap:var(--sl-space-2); margin-block:var(--sl-space-2); flex-wrap:wrap; }
+.memo-toolbar #add-note { margin-left:auto; }
+.memo-toolbar #activity-actions { display:flex; flex:1; flex-wrap:wrap; gap:var(--sl-space-2); min-width:0; }
+.memo-toolbar button { --sl-button-min-height:var(--sl-target-compact); padding:6px 10px; }
+.memo-scroll { max-height:18rem; overflow:auto; }
+.memo-table { table-layout:fixed; }
+.memo-table th:first-child { width:6rem; }
+.memo-table th:last-child { width:2.5rem; }
+.memo-table .data-row[data-selected=true] { background:var(--sl-surface-soft); }
+.memo-table .data-row[data-withdrawn=true] [data-memo-action=edit] { text-decoration:line-through; color:var(--sl-muted); }
+.memo-table .table-cell-input { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+.measurement-event-marker button[data-selected=true] { outline:2px solid var(--sl-selection); outline-offset:1px; }
+.memo-options button { width:100%; }

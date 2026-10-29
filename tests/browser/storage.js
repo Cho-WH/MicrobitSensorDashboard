@@ -64,6 +64,17 @@ export async function runStorageTests(report = (_message) => {}) {
       run: { ...snapshot.run, runRevision: snapshot.run.runRevision + 1 }, workspace: null }), '낡은 작성자 저장을 허용함');
     report('사용자 메모만 수정·낡은 작성자 충돌 거부');
 
+    store.setEventWithdrawn(1, true); await store.flush();
+    const withdrawn = parseExperimentJson(buildExperimentJson(await repository.readSnapshot(id)));
+    check(withdrawn.events[0].payload.withdrawn === true && withdrawn.events[0].payload.note === '수정된 메모'
+      && withdrawn.events[0].receivedAt === snapshot.events[0].receivedAt, '메모 취소 상태·내용·시각의 파일 왕복 실패');
+    await expectFailure(() => repository.commitBatch({ ...withdrawn, baseRunRevision: withdrawn.run.runRevision,
+      run: { ...withdrawn.run, runRevision: withdrawn.run.runRevision + 1 },
+      events: [{ ...withdrawn.events[0], receivedAt: withdrawn.events[0].receivedAt + 1 }], workspace: null }), '메모 편집으로 시각 변경을 허용함');
+    store.setEventWithdrawn(1, false); await store.flush();
+    check((await repository.readSnapshot(id)).events[0].payload.withdrawn === false, '메모 복구 저장 실패');
+    report('메모 취소·복구 저장과 파일 왕복·원래 시각 보존');
+
     store.setManualColumn({ id: 'manual-condition', name: '거리', unit: 'cm', type: 'number' });
     store.appendPointRecord({ capturedSampleId: 1, capturedAt: 1700000000100, manualValues: { 'manual-condition': 5 } });
     const input = store.getAnalysisSourceSnapshot('points');

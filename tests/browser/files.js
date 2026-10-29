@@ -81,7 +81,7 @@ export async function runFileTests(report = (_message) => {}) {
     const beforeRuns = await repository.listRuns(), beforeExisting = await repository.readSnapshot(firstId);
     const invalid = structuredClone(second); invalid.workspace.bySource.recorded.reflection.evidence.appliedIds.push(999);
     await expectFailure(() => importRunSnapshot({ repository, snapshot: invalid, timers }), '없는 근거 자료 참조를 가져옴');
-    const malformedContent = structuredClone(second); malformedContent.run.context.activity.events = { label: '배열 아님' };
+    const malformedContent = structuredClone(second); malformedContent.run.context.activity.memoPresets = { text: '배열 아님' };
     await expectFailure(() => importRunSnapshot({ repository, snapshot: malformedContent, timers }), '잘못된 화면 안내 형식을 가져옴');
     equal(await repository.listRuns(), beforeRuns, '실패한 파일 검증이 일부 Run을 생성함');
     equal(await repository.readSnapshot(firstId), beforeExisting, '실패한 파일 검증이 열린 실험을 변경함');

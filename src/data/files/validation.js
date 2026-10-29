@@ -1,6 +1,6 @@
 // Adapted from Cho-WH/bme280 gay-lussac/data/import-validation.js, 59c5c149450f970bace2deaa183857c275595853.
 // Validate complete files before opening a Run or starting any database transaction.
-import { validateCalculatedColumns, validateGraph, validateImportedColumns, validateChannels, validateSample, EXPERIMENT_FILE_VERSION } from '../../domain/contracts.js';
+import { validateCalculatedColumns, validateGraph, validateImportedColumns, validateChannels, validateSample, isExperimentMemo, EXPERIMENT_FILE_VERSION } from '../../domain/contracts.js';
 import { validateManualColumns, validatePointRecord, validatePointInput } from '../../domain/point-records.js';
 import { upgradeRun, upgradeWorkspace } from '../schema.js';
 import { pointSourceRows } from '../../analysis/data-source.js';
@@ -56,10 +56,10 @@ function validateContextContent(context, imported) {
     }
     if (owner.defaultGraph != null) validateGraph(owner.defaultGraph, [], imported, context);
   }
-  if (context.activity?.events != null) {
-    const events = context.activity.events;
-    requireValue(Array.isArray(events) && new Set(events.map(e => e?.type)).size === events.length
-      && events.every(e => object(e) && string(e.type) && string(e.label)), '활동 조작의 종류·표시 이름을 확인하세요.');
+  if (context.activity?.memoPresets != null) {
+    const presets = context.activity.memoPresets;
+    requireValue(Array.isArray(presets) && new Set(presets.map(item => item?.id)).size === presets.length
+      && presets.every(item => object(item) && string(item.id) && string(item.text) && item.text.length <= 500), '빠른 메모의 이름·내용을 확인하세요.');
   }
   for (const channel of context.channels) {
     if (channel.digits != null) requireValue(Number.isInteger(channel.digits) && channel.digits >= 0 && channel.digits <= 20, '측정값의 표시 자릿수는 0~20이어야 합니다.');
@@ -120,8 +120,11 @@ export function validateExperimentSnapshot(input) {
     if (s.extraChannels != null) requireValue(object(s.extraChannels)
       && Object.values(s.extraChannels).every(Number.isFinite), '추가 채널의 숫자를 확인하세요.');
   }
-  for (const [i, e] of events.entries()) requireValue(object(e) && e.runId === run.id && e.eventId === i + 1
-    && date(e.receivedAt) && string(e.type) && object(e.payload) && ['user', 'system'].includes(e.source), '사건 ID·시각·내용을 확인하세요.');
+  for (const [i, e] of events.entries()) {
+    requireValue(object(e) && e.runId === run.id && e.eventId === i + 1
+      && date(e.receivedAt) && string(e.type) && object(e.payload) && ['user', 'system'].includes(e.source), '사건 ID·시각·내용을 확인하세요.');
+    if (isExperimentMemo(e) && Object.hasOwn(e.payload, 'withdrawn')) requireValue(typeof e.payload.withdrawn === 'boolean', '메모의 취소 상태를 확인하세요.');
+  }
   for (const [key, max] of [['lastSavedSampleId', samples.length], ['lastSavedEventId', events.length]])
     requireValue(integer(run[key]) && run[key] <= max, '저장 위치가 원자료·사건 범위를 벗어납니다.');
   if (run.schemaVersion === 1) {

@@ -1,6 +1,6 @@
 // Adapted from Cho-WH/bme280 59c5c149450f970bace2deaa183857c275595853,
 // gay-lussac/data/repository.js. Atomic transactions and retry semantics retained.
-import { DATABASE, withEventNote } from '../domain/contracts.js';
+import { DATABASE, withEventNote, withEventWithdrawn } from '../domain/contracts.js';
 import { samePointOrigin, validatePointRecord } from '../domain/point-records.js';
 import { upgradeRun, upgradeWorkspace } from './schema.js';
 
@@ -89,8 +89,10 @@ export function createRepository({ onUnavailable = (_message) => {}, databaseNam
           const existing = await store.get([run.id, record[key]]);
           if (retry && !sameRecord(existing, record)) throw conflict('재시도하는 저장 묶음이 원래 내용과 다릅니다.');
           if (existing && !sameRecord(existing, record)) {
-            // Only user notes can change. Source values, times and automatic events cannot.
-            if (name !== 'events' || retry || !sameRecord(withEventNote(existing, record.payload?.note), record)) {
+            // Only memo text and its withdrawal flag can change; origins stay immutable.
+            let edited = name === 'events' && !retry ? withEventNote(existing, record.payload?.note) : null;
+            if (edited && record.payload?.withdrawn !== existing.payload?.withdrawn) edited = withEventWithdrawn(edited, record.payload?.withdrawn);
+            if (!edited || !sameRecord(edited, record)) {
               throw conflict('원자료 ID가 충돌했습니다. 원자료는 덮어쓰지 않습니다.');
             }
             await store.put(record);

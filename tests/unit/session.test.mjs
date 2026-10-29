@@ -84,18 +84,19 @@ test('restoration marks unfinished recording interrupted once and never auto-rec
   }
 });
 
-test('free measurement has no activity rules; injected policy alone owns activity progress', async () => {
+test('memos use the opening time, preserve input and follow recording lifetime', async () => {
   const { store } = await fixture(), session = createSession({ store });
+  assert.equal(session.addMemo('before'), false);
   session.start();
-  assert.equal(session.markEvent('heating-start'), false);
-  assert.equal(session.markEvent('note', { note: '자유 측정' }), true);
-  const commands = [], activity = createSession({ store, activityPolicy: { initialState: { count: 0 },
-    reduceActivity(state, command, facts) { commands.push({ command, facts }); return {
-      nextState: { count: state.count + 1 }, events: [{ type: command.type, payload: command.payload }] }; },
-  } });
-  activity.start(); assert.equal(activity.markEvent('custom-activity', { value: 1 }), true);
-  assert.equal(activity.getState().activity.count, 1);
-  assert.equal(commands[0].facts.recording, true);
+  assert.throws(() => session.addMemo(' '));
+  assert.throws(() => session.addMemo('a'.repeat(501)));
+  assert.equal(session.addMemo(' observation ', utc + 123), true);
+  await session.pause();
+  assert.equal(session.addMemo('paused', utc + 456), true);
+  await session.finish();
+  assert.equal(session.addMemo('after'), false);
+  const memos = store.getEvents().filter(event => event.type === 'note');
+  assert.deepEqual(memos.map(event => [event.receivedAt,event.payload.note]), [[utc+123,'observation'],[utc+456,'paused']]);
   await store.close();
 });
 
@@ -125,10 +126,8 @@ test('paused activity events and changed additional conditions retain their mean
   const context=getExperiment('bmp280','gay-lussac'), activityPolicy=getActivityPolicy(context);
   const {store,repository,lockManager}=await fixture({context}), session=createSession({store,activityPolicy});
   session.start();session.acceptInput(reading(0));await session.pause();
-  assert.equal(session.markEvent('placement'),false);
-  assert.equal(session.markEvent('water-added'),true);
-  assert.equal(session.markEvent('device-change',{kind:'unknown'}),false);
-  assert.equal(session.markEvent('device-change',{kind:'opened',note:'뚜껑을 열어 센서를 확인함'}),true);
+  assert.equal(session.addMemo('물 추가'),true);
+  assert.equal(session.addMemo('뚜껑을 열어 센서를 확인함'),true);
   session.acceptInput(reading(100));assert.equal(store.getState().sampleCount,1);
   await session.finish();
   assert.throws(()=>session.startAdditional({sameContext:true,conditions:{container:'same',seal:'changed',sensor:'unsure'},note:''}),/메모/);
@@ -138,7 +137,7 @@ test('paused activity events and changed additional conditions retain their mean
   const reopened=await openRunStore({repository,id:'test',locks:lockManager,timers});
   assert.deepEqual(reopened.getSnapshot(),saved);
   assert.deepEqual(saved.events.find(e=>e.type==='additional-measurement').payload,{...confirmation,previousLastSampleId:1});
-  assert.equal(saved.events.find(e=>e.type==='device-change').payload.kind,'opened');await reopened.close();
+  assert.ok(saved.events.some(e=>e.type==='note' && e.payload.note==='뚜껑을 열어 센서를 확인함'));await reopened.close();
 });
 
 test('legacy device JSON resumes explicitly without changing existing samples, analysis or evidence', async () => {

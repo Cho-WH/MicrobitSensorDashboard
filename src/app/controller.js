@@ -1,5 +1,6 @@
+import { createExperimentMemos } from '../ui/experiment-memos.js';
 import { createLivePreview } from '../measurement/live-preview.js';
-import { catalog, getExperiment, getSensorRuntime, getActivityPolicy, getActivityEvents } from '../catalog/index.js';
+import { catalog, getExperiment, getSensorRuntime, getActivityPolicy } from '../catalog/index.js';
 import { canResumeImportedRun } from '../data/files/recording-source.js';
 import { createTransport } from '../device/transport.js';
 import { createMockBleClient } from '../device/mock-client.js';
@@ -50,7 +51,7 @@ export function createController(root = document, { repository = null, deviceTra
   let preview = null, attempt = 0, connected = false, connecting = false, busy = false;
   let leaving = false, navigatingDocument = false;
   let connectionRequest = 0, handingOff = false;
-  let renderRequested = true, renderedEvents = -1, renderedContext = null, exportedRevision = -1;
+  let renderRequested = true, renderedEvents = -1, renderedContext, exportedRevision = -1;
   const mock = new URL(initialUrl).searchParams.get('mock') === '1';
   const repo = repository ?? createRepository({ onUnavailable: message => showError(message) });
   const transport = deviceTransport ?? createTransport(mock ? {ble:createMockBleClient(()=>context)} : {});
@@ -75,7 +76,10 @@ export function createController(root = document, { repository = null, deviceTra
     onDisconnect: () => disconnect().catch(showError), onChange: () => { renderRequested = true; }, onMeasure:()=>navigate('measure'), onError: showError,
     onDeviceAction: action => act(async()=>{if(!context || !runtime || screen !== 'prepare' || session?.getState().recording) return; await transport.performAction(action);}) });
   const dialogs = createRecordDialogs(root.querySelector('.lab-shell'));
-  const measurement = createMeasurementView(root,()=>{renderRequested=true;}, event=>act(()=>editEventNote(event)), number => pointView.reveal(number));
+  const memoView = createExperimentMemos(root,{onChange:()=>{renderRequested=true;render();},onAdd:(note,receivedAt)=>{
+    if(!session?.addMemo(note,receivedAt)) throw new Error('기록 중이거나 일시정지 상태에서 메모를 남길 수 있어요.');
+  }});
+  const measurement = createMeasurementView(root,()=>{renderRequested=true;}, event=>memoView.edit(event), number => pointView.reveal(number));
   const pointView = createPointRecordingView(root, { onCapture: () => act(capturePoint), onChange: () => { renderRequested = true; }, onError: showError });
   const experimentGuide = createExperimentGuide(root.querySelector('.lab-shell'));
   const share = createShareView(findElement(root, 'section', '[data-screen="preview"]'));
@@ -200,7 +204,7 @@ export function createController(root = document, { repository = null, deviceTra
   async function start() {
     if (screen !== 'measure') return;
     if (recordingMode === 'point') return;
-    if (!pointView.flush()) return;
+    if (!memoView.flush() || !pointView.flush()) return;
     requireReady();
     if (store) throw new Error('새 실험 준비를 눌러 다음 실험을 시작하세요.');
     const recordedContext = { ...context, setup: guide.getProgress().setup };
@@ -256,13 +260,14 @@ export function createController(root = document, { repository = null, deviceTra
     }
   }
   async function persistCurrent() {
-    if (!pointView.flush()) throw new Error(copy.point.numberInvalid);
+    if (!memoView.flush() || !pointView.flush()) throw new Error(copy.point.numberInvalid);
     if (!analysis.flush()) throw new Error('분석 글을 먼저 확인해 주세요.');
     if (session && !['ended','preview'].includes(session.getState().state)) await session.finish();
+    analysis.updateStatus();
     if (store?.getState().writable) await store.flush();
   }
   async function confirmTransition({ask = true, exit = false} = {}) {
-    if (!pointView.flush()) return false;
+    if (!memoView.flush() || !pointView.flush()) return false;
     if (!store && !exit) return true;
     if (!exit && !analysis.flush()) return false;
     const temporary = store?.getState().temporary;
@@ -282,7 +287,7 @@ export function createController(root = document, { repository = null, deviceTra
   async function releaseCurrent() {
     await store?.close();
     analysis.reset(); session = null; store = null; exportedRevision = -1; renderedEvents = -1;
-    pointView.reset(); recordingMode = 'continuous'; measurementTab = 'continuous';
+    memoView.reset(); pointView.reset(); recordingMode = 'continuous'; measurementTab = 'continuous';
   }
   // Save before replacing the document. The browser releases the old page's
   // connections; do not start another device teardown before this navigation.
@@ -301,9 +306,9 @@ export function createController(root = document, { repository = null, deviceTra
       await releaseCurrent();
       transport.forgetDevice?.(); deviceState = transport.getState();
       programmer = null; programmerState = {}; runtime = null; installed = false;
-      context = null; targetContext = null; renderedContext = null;
+      context = null; targetContext = null;
       preview = null; livePreview.reset();
-      input('run-name').value = ''; input('event-note').value = '';
+      input('run-name').value = '';
       guide.close(); experimentGuide.close(); measurement.reset();
       return 'left';
     } finally { leaving = navigatingDocument; renderRequested = true; }
@@ -340,7 +345,7 @@ export function createController(root = document, { repository = null, deviceTra
   async function activateExperiment(prepared=false) {
     const next = targetContext;
     if (screen !== 'preview' || !next || context || store) return;
-    context = next; targetContext = null; renderedContext = null; input('run-name').value = '';
+    context = next; targetContext = null; input('run-name').value = '';
     resetPreparation();
     navigate('prepare');
     if(prepared)guide.showPrepared();
@@ -356,7 +361,7 @@ export function createController(root = document, { repository = null, deviceTra
       if (route.context && !sameExperiment(route.context, context)) {
         const result = await leaveExperiment(route.context, route.screen, false);
         if (result !== 'left') { if (result === 'cancelled') restoreLocation(); return; }
-        context = route.context; renderedContext = null; resetPreparation();
+        context = route.context; resetPreparation();
       }
       navigate(route.screen === 'analysis' && !store ? 'saved' : route.screen, false);
     } catch(error) { restoreLocation(); showError(error); }
@@ -372,7 +377,7 @@ export function createController(root = document, { repository = null, deviceTra
     // A saved run is opened for analysis; recording only resumes through an explicit action.
     session = store.getState().writable && (store.getState().source !== 'import' || canResumeImportedRun(store.getRun())) ? createSession({ store, activityPolicy: policy() }) : null;
     renderedEvents = -1;
-    renderedContext = null; resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous'; measurementTab = recordingMode;
+    resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous'; measurementTab = recordingMode;
     analysis.open(store); navigate(destination, push);
   }
   async function importSnapshot(snapshot) {
@@ -390,7 +395,7 @@ export function createController(root = document, { repository = null, deviceTra
     store = next; context = store.getRun().context;
     session = !store.getState().temporary && canResumeImportedRun(store.getRun()) ? createSession({ store, activityPolicy: policy() }) : null;
     renderedEvents = -1;
-    renderedContext = null; resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous'; measurementTab = recordingMode;
+    resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous'; measurementTab = recordingMode;
     analysis.open(store); navigate('analysis');
   }
   async function readFile(file) {
@@ -441,7 +446,7 @@ export function createController(root = document, { repository = null, deviceTra
     if (snapshot) await importSnapshot(snapshot);
   }
   async function exportFile(kind) {
-    if (!store || !analysis.flush() || !pointView.flush()) return;
+    if (!store || !analysis.flush() || !memoView.flush() || !pointView.flush()) return;
     const snapshot = store.getSnapshot(), name = snapshot.run.name.replace(/[<>:"/\\|?*]/g,'-');
     if (kind === 'png') {
       await settlePendingFonts(root.ownerDocument ?? document);
@@ -491,12 +496,9 @@ export function createController(root = document, { repository = null, deviceTra
     } finally { if (!current) target.dispose(); }
     await listRuns(); renderRequested=true;
   }
-  async function editEventNote(event) {
-    if (!store?.getState().writable || event.runId!==store.getState().id) throw new Error('현재 실험의 편집 가능한 조작을 선택하세요.');
-    await dialogs.note(event,context,async note=>{store.updateEventNote(event.eventId,note);await store.flush();renderRequested=true;});
-  }
+  function editEventNote(event) { memoView.edit(event,document.activeElement); }
   function navigate(next, push = true) {
-    if (programmerState.busy || !analysis.flush() || !pointView.flush()) return;
+    if (programmerState.busy || !analysis.flush() || !memoView.flush() || !pointView.flush()) return;
     if (['prepare','measure','analysis'].includes(next) && !context) return;
     if (next === 'preview' && !targetContext) return;
     screen = next;
@@ -590,7 +592,6 @@ export function createController(root = document, { repository = null, deviceTra
     button('measurement-reconnect').textContent = connecting ? copy.common.connecting : copy.measurement.reconnect;
     $('connect').textContent=canReconnect?copy.common.chooseDevice:mock?copy.common.mockConnect:copy.common.connect;
     button('disconnect').disabled = (!connected && !connecting) || !!programmerState.busy;
-    button('add-note').disabled = !session || !['recording','paused'].includes(current?.state) || busy;
     button('export-json').disabled = !saved; button('export-csv').disabled = !saved?.sampleCount;
     $('export-csv').textContent = `연속 기록 CSV 저장 (${saved?.sampleCount ?? 0}행)`;
     $('export-points-csv').hidden = !saved || !(saved.pointCount + saved.withdrawnPointCount);
@@ -620,23 +621,13 @@ export function createController(root = document, { repository = null, deviceTra
     if (renderedContext !== context) {
       renderedContext = context;
       $('preparation-notes').replaceChildren(...(context?.preparation ?? []).map(text => { const li=document.createElement('li'); li.textContent=text; return li; }));
-      $('activity-actions').replaceChildren(...getActivityEvents(context).map(event => {
-        const button=document.createElement('button'); button.textContent=event.label; button.dataset.activityEvent=event.type;
-        button.addEventListener('click',()=>act(async()=>{
-          const save=payload=>{if(!session?.markEvent(event.type,payload))throw new Error(session?.getState().problem || '기록 중 조작을 남길 수 있습니다.');};
-          if(event.kinds)await dialogs.activity(event,save);else save({});
-        }),{signal});return button;
-      }));
     }
-    for (const button of $('activity-actions').querySelectorAll('button')) {
-      const action=getActivityEvents(context).find(item=>item.type===button.dataset.activityEvent);
-      button.disabled=busy || (!recording && !(current?.state==='paused' && action?.allowPaused));
-    }
+    memoView.render({context,store,busy,canAdd:!!session && ['recording','paused'].includes(current?.state) && !!saved?.writable});
     livePreview.freeze(current?.state === 'paused');
     if (screen === 'measure' && context) {
       const display = livePreview.snapshot();
       const latest = display.latest ?? (current?.state === 'paused' ? store?.getLatestSample() : null);
-      if (measurementTab === 'continuous') measurement.render({context,store,latest,previewPoints:display.points,device:deviceState,recording,previewOnly:pointMode,displayNow:display.now,displayMono:display.mono,previewOrigin:display.origin,paused:current?.state === 'paused'});
+      if (measurementTab === 'continuous') measurement.render({context,store,latest,previewPoints:display.points,device:deviceState,recording,previewOnly:pointMode,displayNow:display.now,displayMono:display.mono,previewOrigin:display.origin,paused:current?.state === 'paused',selectedMemoId:memoView.getSelectedId()});
       pointView.render({context,store,latest,device:deviceState,busy,recordingMode:measurementTab,paused:current?.state === 'paused',captureVisible:!needsConnection && (['recording','paused','finishing'].includes(current?.state) || (!saved && pointMode)),
         captureState: !navigator.locks || (saved && !session) ? {ready:false,reason:'capture-read-only'} : session ? session.captureStatus(captureConnection()) : pointMode ? capture.status(captureConnection()) : {ready:false,reason:'capture-preview'} });
       if (root.querySelector('.luminous-overview') && focusedRecordControl && previousRecordingState !== measurementScreen.dataset.recordingState) {
@@ -649,7 +640,7 @@ export function createController(root = document, { repository = null, deviceTra
     if (saved?.eventsVersion !== renderedEvents) {
       renderedEvents = saved?.eventsVersion;
       const records = store?.getEvents(100) ?? [];
-      for (const id of root.querySelector('.luminous-overview') ? ['analysis-events'] : ['lab-events','analysis-events']) renderEventList($(id),records,context,saved?.writable?event=>act(()=>editEventNote(event)):null);
+      renderEventList($('analysis-events'),records,context,saved?.writable?event=>editEventNote(event):null);
     }
     analysis.updateStatus();
   }
@@ -662,17 +653,16 @@ export function createController(root = document, { repository = null, deviceTra
     await connect({preferPrevious:true,reconnecting:true});
   }); $('disconnect').addEventListener('click',()=>disconnect().catch(showError),{signal}); listen('start-recording',start);
   listen('pause-recording',()=>{const result=session.pause();livePreview.freeze(true);return result;}); listen('resume-recording',()=>{requireReady();session.resume();});
-  listen('finish-recording',async()=>{if (!pointView.flush()) return; await session.finish();await store.flush();});
+  listen('finish-recording',async()=>{if (!memoView.flush() || !pointView.flush()) return; await session.finish();analysis.updateStatus();await store.flush();});
   listen('prepare-new-experiment',prepareNewExperiment);
   listen('continuous-recording',()=>{if (!store) recordingMode = recordingMode === 'point' ? 'continuous' : 'point';});
   for (const control of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('button[data-recording-mode]'))) control.addEventListener('click', () => {
-    if (busy || measurementTab === control.dataset.recordingMode || !pointView.flush()) return;
+    if (busy || measurementTab === control.dataset.recordingMode || !memoView.flush() || !pointView.flush()) return;
     measurementTab = control.dataset.recordingMode;
     if (!store) recordingMode = measurementTab;
     render();
   }, { signal });
   listen('additional-recording',async()=>{requireReady();await dialogs.additional(policy(),confirmation=>{requireReady();session.startAdditional(confirmation);});});
-  listen('add-note',()=>{const note=input('event-note').value.trim();if(!note)throw new Error('메모를 입력하세요.');session.markEvent('note',{note});input('event-note').value='';});
   listen('new-experiment',()=>exitToHome());
   listen('activate-experiment',()=>activateExperiment()); listen('activate-prepared',()=>activateExperiment(true)); listen('prepare-device',()=>navigate('prepare'));
   listen('show-experiment-guide',()=>experimentGuide.show(context,{anchor:$('show-experiment-guide')}));
@@ -690,14 +680,14 @@ export function createController(root = document, { repository = null, deviceTra
   });
   listen('retry-save',()=>store.flush());
   listen('download-program', downloadProgram);
-  listen('analyze-points',()=>{if (!pointView.flush()) return; navigate('analysis'); analysis.open(store, context, 'points');});
+  listen('analyze-points',()=>{if (!memoView.flush() || !pointView.flush()) return; navigate('analysis'); analysis.open(store, context, 'points');});
   listen('export-points-csv',()=>exportFile('points-csv'));
   listen('export-json',()=>exportFile('json'));listen('export-csv',()=>exportFile('csv'));
   $('open-file').addEventListener('click',()=>input('file-input').click(),{signal});
   input('file-input').addEventListener('change',()=>{const file=input('file-input').files[0];input('file-input').value='';act(()=>readFile(file));},{signal});
   $('mock-link').addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) location.assign(routeUrl(context,'prepare',{mock:true}).href);});},{signal});
-  window.addEventListener('beforeunload',event=>{const draftsSaved=analysis.flush() && pointView.flush(),saved=store?.getState();if(!draftsSaved || session?.getState().recording || (saved?.writable && saved.status!=='clean') || (saved?.temporary && exportedRevision!==saved.runRevision)) {event.preventDefault();event.returnValue='';}},{signal});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden && store?.getState().writable){analysis.flush();pointView.flush();store.flush().catch(showError);}},{signal});
+  window.addEventListener('beforeunload',event=>{const draftsSaved=memoView.flush() && analysis.flush() && pointView.flush(),saved=store?.getState();if(!draftsSaved || session?.getState().recording || (saved?.writable && saved.status!=='clean') || (saved?.temporary && exportedRevision!==saved.runRevision)) {event.preventDefault();event.returnValue='';}},{signal});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden && store?.getState().writable){memoView.flush();analysis.flush();pointView.flush();store.flush().catch(showError);}},{signal});
   const interval = setInterval(()=>{
     try{session?.tick();}catch(error){showError(error);}
     if (connected || session?.getState().recording) renderRequested = true;
@@ -724,6 +714,6 @@ export function createController(root = document, { repository = null, deviceTra
   }); render();
   return { ready, async dispose(){
     await persistCurrent(); await disconnect(); await store?.close();
-    clearInterval(interval);abort.abort();dialogs.dispose();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();measurement.dispose();pointView.dispose();experimentGuide.dispose();share.dispose();repo.close();
+    clearInterval(interval);abort.abort();dialogs.dispose();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();memoView.dispose();measurement.dispose();pointView.dispose();experimentGuide.dispose();share.dispose();repo.close();
   }, getState:()=>({screen,context,targetContext,busy:busy || !!programmerState.busy,storage:store?.getState(),session:session?.getState()}) };
 }

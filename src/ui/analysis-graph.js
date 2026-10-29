@@ -11,7 +11,8 @@ export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal,
   const $ = id => root.querySelector('#' + id), x = $('graph-x'), y = $('graph-y'), rightY = $('graph-y-right'), gaps = $('graph-gaps');
   const shapeButtons = [...root.querySelectorAll('[data-graph-type]')];
   let chart = null, columnsKey = null;
-  let settingsExpanded = true;
+  const compactScreen = window.matchMedia('(max-width: 720px)');
+  let settingsExpanded = !compactScreen.matches, settingsChosen = false;
   const settingsToggle = $('toggle-axis-settings'), settingsPanel = $('axis-settings-panel');
   function showSettings(expanded) {
     settingsExpanded = expanded;
@@ -24,7 +25,9 @@ export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal,
     $('axis-summary').hidden = expanded;
     $('axis-settings-title').hidden = !expanded;
   }
-  settingsToggle.addEventListener('click', () => showSettings(!settingsExpanded), {signal});
+  settingsToggle.addEventListener('click', () => { settingsChosen = true; showSettings(!settingsExpanded); }, {signal});
+  compactScreen.addEventListener('change', () => { if (!settingsChosen) showSettings(!compactScreen.matches); }, {signal});
+  showSettings(settingsExpanded);
   const currentGraph = () => { const state = getWorkspace().getState(); return state.graph ?? state.defaultGraph; };
   const changeRight = patch => getWorkspace().setRightAxis({ ...currentGraph().right, ...patch });
   const trend = createTrendControls(root, { act, signal, getCopy, onEnabled: enabled => getWorkspace().setTrendEnabled(enabled), onView: view => getWorkspace().setGraphView(view) });
@@ -103,7 +106,7 @@ export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal,
         $('analysis-chart').setAttribute('aria-label', model.xLabel + ' 대 ' + series.map(item => item.yLabel + ', 그래프 ' + item.points.length + '개').join(' 및 ') + '. 제외 ' + model.excludedCount + '개. 점의 정보는 표에서도 확인할 수 있습니다.');
       }
     },
-    reset() { chart?.dispose(); chart = null; columnsKey = null; showSettings(true); },
+    reset() { chart?.dispose(); chart = null; columnsKey = null; settingsChosen = false; showSettings(!compactScreen.matches); },
     dispose() { chart?.dispose(); },
   };
 }

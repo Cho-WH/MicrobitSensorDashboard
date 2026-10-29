@@ -38,6 +38,12 @@ test('axis settings collapse without hidden focus targets across screen sizes an
   const toggle=page.locator('#toggle-axis-settings'), panel=page.locator('#axis-settings-panel');
   for (const width of [320, 1366]) {
     await page.setViewportSize({width,height:844});
+    if (width === 320) {
+      await expect(toggle).toHaveAttribute('aria-expanded','false');
+      await toggle.click();
+    }
+    // A deliberate expansion stays open when resizing to desktop.
+    await expect(toggle).toHaveAttribute('aria-expanded','true');
     await toggle.focus(); await toggle.press('Enter');
     await expect(toggle).toHaveAttribute('aria-expanded','false');
     await expect(page.locator('#axis-summary')).toBeVisible();

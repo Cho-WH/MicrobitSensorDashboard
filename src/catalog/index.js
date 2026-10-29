@@ -37,8 +37,7 @@ export function getMeasurementReadout(context, modules = registry) {
 export function getActivityPolicy(context, modules = registry) {
   return modules.getActivity(context?.activity, context?.sensor)?.policy;
 }
-// Old saved contexts keep their data/labels; available actions come from the registered activity.
-export const getActivityEvents = context => registry.getActivity(context?.activity, context?.sensor)?.definition.events ?? context?.activity?.events ?? [];
+export const getActivityMemoPresets = context => registry.getActivity(context?.activity, context?.sensor)?.definition.memoPresets ?? [];
 
 export const genericQuestions = [
   { id: 'observation', title: '관찰한 관계', question: '자료에서 어떤 관계를 발견했나요? 수치나 그래프를 근거로 설명하세요.' },

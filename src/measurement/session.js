@@ -31,7 +31,6 @@ export function createSession({ store, monitor = undefined, activityPolicy = und
   let state = initial.run.status === 'complete' ? 'ended'
     : !newlyCreated && (initial.run.status === 'paused' || initial.samples.length) ? 'paused' : 'preview';
   let sampleId = store.getState().lastSampleId, finishRequest = null, endEventRecorded = false, lastInput = null, reception = 'waiting', problem = '';
-  let activityState = activityPolicy?.restore?.(initial.events) ?? structuredClone(activityPolicy?.initialState ?? {});
   const stamp = () => ({ receivedAt: clock.utc(), monotonicAt: clock.mono() });
   const event = (type, payload = {}, source = 'system', at = stamp()) =>
     store.appendEvent({ receivedAt: at.receivedAt, type, payload, source });
@@ -108,17 +107,10 @@ export function createSession({ store, monitor = undefined, activityPolicy = und
       throw error;
     }
   }
-  function markEvent(type, payload = {}) {
+  function addMemo(note, receivedAt = clock.utc()) {
     if (!['recording', 'paused'].includes(state)) return false;
-    if (type === 'note') { event(type, payload, 'user'); return true; }
-    if (!activityPolicy) return false;
-    const result = activityPolicy.reduceActivity(activityState, { type, payload }, {
-      recording: state === 'recording', state, reception: monitor.getSnapshot(clock.mono()).reception,
-      placed: activityState.placed === true,
-    });
-    if (result.error) { problem = typeof result.error === 'string' ? result.error : result.error.message; return false; }
-    for (const entry of result.events ?? []) event(entry.type, entry.payload, entry.source ?? 'user');
-    activityState = structuredClone(result.nextState); problem = ''; return true;
+    if (typeof note !== 'string' || note.length > 500 || !note.trim() || !Number.isFinite(receivedAt)) throw fail('invalid-note', '메모는 1~500자로 입력하세요.');
+    event('note', { note: note.trim() }, 'user', { ...stamp(), receivedAt }); return true;
   }
   function pause() {
     if (state !== 'recording') return Promise.resolve();
@@ -150,14 +142,14 @@ export function createSession({ store, monitor = undefined, activityPolicy = und
     if (store.getState().status !== 'clean') throw fail('pending-save', '기존 자료를 저장한 뒤 추가 측정을 시작해 주세요.');
     if (confirmation?.sameContext !== true) throw fail('additional-confirmation', '같은 센서·프로그램·활동인지 확인해 주세요.');
     const checked = activityPolicy?.validateAdditional?.(confirmation) ?? structuredClone(confirmation);
-    resetContinuity(); activityState = structuredClone(activityPolicy?.initialState ?? {}); endEventRecorded = false;
+    resetContinuity(); endEventRecorded = false;
     event('additional-measurement', { ...checked, previousLastSampleId: sampleId }, 'user');
     store.updateRun({ status: 'open' }); state = 'recording'; problem = '';
   }
-  return { start, acceptInput, capturePoint, captureStatus, markEvent, pause, resume, finish, startAdditional, monitor,
+  return { start, acceptInput, capturePoint, captureStatus, addMemo, pause, resume, finish, startAdditional, monitor,
     tick() { if (state === 'recording' && store.getState().status === 'error') autoPause('storage-error'); observe(); },
     disconnected() { capture.disconnected(); monitor.disconnected(); observe(); lastInput = null; },
     useTemporary() { if (state === 'finishing') state = 'ended'; },
-    getState: () => ({ state, recording: state === 'recording', sampleCount: sampleId, reception, problem, activity: structuredClone(activityState) }),
+    getState: () => ({ state, recording: state === 'recording', sampleCount: sampleId, reception, problem }),
   };
 }

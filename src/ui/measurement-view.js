@@ -29,7 +29,8 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
   let theme = null;
   let painted = null;
   let inG = false;
-  const eventView = root.querySelector('.luminous-overview') ? createMeasurementEvents(root.querySelector('#lab-events'), root.querySelector('.lab-chart'),onEditNote) : null;
+  const eventView = root.querySelector('.luminous-overview') ? createMeasurementEvents(root.querySelector('.lab-chart'),onEditNote,
+    () => range.querySelector('summary').focus({preventScroll:true})) : null;
   const plot = findElement(root,'div','.lab-chart'), pointMarkers = createMeasurementPoints(plot, onSelectPoint);
   let pointRevision = -1, pointRecords = [], manualColumns = [], markerOffset = 0, markerHeight = 48;
   const markerMetrics = () => {
@@ -89,7 +90,7 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
     }));
   }
   return {
-    render({context:next,store,latest,previewPoints,device,recording,previewOnly=false,displayNow=Date.now(),displayMono=performance.now(),previewOrigin=null,paused=false}) {
+    render({context:next,store,latest,previewPoints,device,recording,previewOnly=false,displayNow=Date.now(),displayMono=performance.now(),previewOrigin=null,paused=false,selectedMemoId=null}) {
       configure(next);
       unitToggle.textContent='m/s² | g';
       unitToggle.setAttribute('aria-label',inG?'현재 g 단위, m/s²로 보기':'현재 m/s² 단위, g로 보기');
@@ -122,7 +123,7 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
       const source=stored?rows:previewPoints, end=paused?displayNow:recording||!stored?displayNow:source.at(-1)?.receivedAt??displayNow;
       const points=rangeValue==='all'?source:source.filter(point=>!Number.isFinite(point.receivedAt)||point.receivedAt>=end-60000);
       const channels=displayChannels.filter(channel=>selected.has(channel.id)), key=channels.map(channel=>channel.id).join('|')+':'+inG;
-      eventView?.render(events,next,saved?.writable===true);
+      eventView?.render(events,next,saved?.writable===true,selectedMemoId);
       if(chartKey!==key||!chart){chart?.dispose();chart=createChartView(findElement(root,'canvas','#live-chart'),{context:next,channels,displayValue,legendToggle:false,theme,eventMarkers:!eventView,onLayout:layoutMarkers});chartKey=key;painted=null;}
       // Frozen stored data need no redraw while fresh device readings still update
       // the cards. Recording/preview retain their moving time axis.

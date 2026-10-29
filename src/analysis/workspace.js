@@ -337,6 +337,16 @@ export function createWorkspace({ store, context: suppliedContext, sourceId = st
   return {
     getState: () => ({ ...copy(state), sourceId, sourceColumns: copy(sourceColumns), channels: copy(context?.channels ?? []), context: copy(context), calculationTemplates: copy(calculationTemplates), questions: copy(questions), defaultGraph: copy(defaultGraph) }), isWritable: () => writable, getLoadedCount: () => loadedCount,
     pendingChanges, revealSample,
+    syncExplicitChanges() {
+      const saved = store.getState();
+      if (!writable || !saved.writable) return false;
+      // Point revisions represent confirmed edits/captures. Streaming samples
+      // remain pending until explicitly applied or recording is finished.
+      const ready = sourceId === 'points'
+        ? saved.pointDataRevision !== state.inputSnapshot.sourceRevision
+        : saved.runStatus === 'complete' && saved.sampleCount > state.appliedThroughSampleId;
+      return ready ? showNewData() : false;
+    },
     getRows: () => copy(rowsFor()),
     getImportedColumns: () => copy(imported), getSourceColumns: () => copy(sourceColumns),
     getSamples: () => copy(projected().filter(s => s.sampleId <= state.tableLastSampleId)),

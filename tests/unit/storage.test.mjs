@@ -112,8 +112,8 @@ test('admission failure leaves samples, workspace and revision intact and export
   await store.close();
 });
 
-test('event note edits cannot change source data, automatic events or their timestamps', async () => {
-  const { store } = await fixture(); store.appendSample(sample(1));
+test('memo edit, withdrawal and restore preserve source data and timestamps through saving', async () => {
+  const { store, repository, lockManager } = await fixture(); store.appendSample(sample(1));
   const eventId = store.appendEvent({ type: 'note', receivedAt: utc, payload: {}, source: 'user' });
   const systemId = store.appendEvent({ type: 'discontinuity', receivedAt: utc, payload: {}, source: 'system' });
   const before = store.getSnapshot();
@@ -122,8 +122,17 @@ test('event note edits cannot change source data, automatic events or their time
   store.updateEventNote(eventId, '  note\nnext line  ');
   assert.equal(store.getEvents()[0].payload.note, 'note\nnext line');
   assert.equal(store.getEvents()[0].receivedAt, utc);
+  assert.throws(() => store.setEventWithdrawn(systemId,true));
+  store.setEventWithdrawn(eventId,true);
+  assert.equal(store.getEvents()[0].payload.withdrawn,true);
+  await store.flush();
+  assert.equal((await repository.readSnapshot('test')).events[0].payload.withdrawn,true);
+  store.setEventWithdrawn(eventId,false);
   assert.deepEqual(store.getSamples(), before.samples);
   await store.close();
+  const reopened=await openRunStore({repository,id:'test',locks:lockManager,timers});
+  assert.deepEqual(reopened.getEvents()[0],{...before.events[0],payload:{note:'note\nnext line',withdrawn:false}});
+  await reopened.close();
 });
 
 test('imports create a separately locked run atomically and leave the original intact on failure', async () => {

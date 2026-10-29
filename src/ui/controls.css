@@ -37,7 +37,7 @@ select, input { font:inherit; color:var(--sl-navy); background:white; border:1px
 /* Panel headings retain the shared shape and focus, without a hover/press wash. */
 [data-visual-theme="luminous"] :is(button, :where(.ui-button))[data-ui-action="disclosure"] { --sl-button-hover:var(--sl-button-bg,var(--sl-surface)); --sl-button-hover-line:var(--sl-button-line,var(--sl-input-border)); --sl-button-pressed:var(--sl-button-bg,var(--sl-surface)); }
 [data-visual-theme="luminous"] :is(button, :where(.ui-button))[data-ui-action="finish"] { --sl-button-text:var(--sl-finish-text); --sl-button-line:var(--sl-finish-line); --sl-button-bg:var(--sl-finish-bg); --sl-button-hover:var(--sl-recording-bg); }
-[data-visual-theme="luminous"] :is(.guide .guide-progress button, .measurement-event-row, .measurement-event-marker button), [data-visual-theme="luminous"] #add-note { border-radius:var(--sl-radius-flat); box-shadow:none; }
+[data-visual-theme="luminous"] :is(.guide .guide-progress button, .measurement-event-row, .measurement-event-marker button) { border-radius:var(--sl-radius-flat); box-shadow:none; }
 
 [data-visual-theme="luminous"] :is(.analysis-screen, .experiment-preview, [data-screen="saved"], dialog) button { box-shadow:none; }
 [data-visual-theme="luminous"] :is(button, :where(.ui-button)),

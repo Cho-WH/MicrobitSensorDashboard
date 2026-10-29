@@ -1,7 +1,6 @@
 import { element } from './dom.js';
 import { analysisExportInfo } from '../data/files/csv.js';
 import { LIMITS } from '../domain/limits.js';
-import { eventTitle, eventDetail } from './event-content.js';
 import { parseCondition } from './condition-input.js';
 import { createPointPopover, clearablePointInput } from './point-input-popover.js';
 
@@ -59,7 +58,6 @@ export function createRecordDialogs(host) {
       const anchor = document.activeElement, panel = element('div','point-input-popover');
       panel.id='point-condition-dialog'; panel.setAttribute('role','dialog'); panel.setAttribute('aria-label',`${point.pointRecordId}번 변인값`); host.append(panel);
       const input=field(panel,'condition',column.name+(column.unit?` (${column.unit})`:''),{value:String(point.manualValues[column.id]??'')}); input.inputMode='decimal';
-      panel.append(element('p','lab-note','입력창을 떠나면 저장됩니다. 변경 반영을 누르면 그래프와 계산에 적용됩니다.'));
       const error=element('p','point-error');error.setAttribute('role','alert');panel.append(error);
       const abort=new AbortController();clearablePointInput(input,'변인값 비우기',abort.signal);
       return new Promise(resolve=>{
@@ -80,20 +78,6 @@ export function createRecordDialogs(host) {
     remove(run, save) { return formDialog({id:'delete-run-dialog', title:'저장된 실험 삭제', submit:'실험 삭제',
       description:'이 브라우저에 저장된 원자료·조작 기록·분석·해석을 삭제합니다. 내려받은 파일은 유지됩니다.', save,
       build(body) { body.append(element('strong','',run.name)); return () => undefined; } }); },
-    note(event, context, save) { return formDialog({id:'event-note-dialog', title:'조작 메모 편집',
-      description:eventTitle(event,context) + ' · ' + new Date(event.receivedAt).toLocaleString('ko-KR'), save,
-      build(body) {
-        const detail = eventDetail(event,context); if (detail) body.append(element('p','',detail));
-        const note = field(body,'note','메모 (500자 이내)',{value:event.payload.note ?? '',multiline:true});
-        body.append(element('small','','비우고 저장하면 메모만 지웁니다. 조작 종류와 시각은 유지됩니다.'));
-        return () => note.value;
-      } }); },
-    activity(definition, save) { return formDialog({id:'activity-event-dialog', title:definition.label, submit:'조작 기록', save,
-      build(body) {
-        const kind = field(body,'kind','변화 종류',{required:true,options:[['','선택하세요'],...definition.kinds.map(item=>[item.id,item.label])]});
-        const note = field(body,'note','메모 (선택)',{multiline:true});
-        return () => ({kind:kind.value,note:note.value.trim()});
-      } }); },
     additional(policy, save) { return formDialog({id:'additional-dialog',title:'추가 측정 조건 확인',submit:'조건을 기록하고 추가 측정',
       description:'같은 센서·프로그램·활동으로 기존 기록 뒤에 이어 측정합니다. 달라진 조건은 구분해 남기세요.', save,
       build(body) {

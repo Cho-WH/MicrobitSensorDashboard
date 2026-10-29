@@ -37,11 +37,14 @@ export async function runRecordTests(report=()=>{}) {
 
     const event=before.events.find(e=>e.source==='user');
     await click(`#analysis-events [data-event-id="${event.eventId}"]`);
-    await until(()=>$('#event-note-dialog')?.open,'메모 편집 없음');
-    $('#event-note-dialog textarea').value='원본 조작을 다시 확인함';failSave=true;submit('#event-note-dialog');
-    await until(()=>$('#event-note-dialog .record-dialog-error').textContent.includes('저장 실패'),'저장 실패가 표시되지 않음');
-    check($('#event-note-dialog textarea').value==='원본 조작을 다시 확인함','실패 시 초안 손실');
-    failSave=false;submit('#event-note-dialog');await idle();
+    await until(()=>$('#memo-editor').matches(':popover-open'),'메모 편집 없음');
+    $('#event-note').value='원본 조작을 다시 확인함';failSave=true;
+    $('#event-note').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    await until(()=>app.getState().storage.status==='error','저장 실패가 표시되지 않음');
+    await click(`#analysis-events [data-event-id="${event.eventId}"]`);
+    check($('#event-note').value==='원본 조작을 다시 확인함','실패 시 메모 손실');
+    $('#event-note').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    failSave=false;await click('#retry-save');await idle();
     const noted=await repo.readSnapshot(id);
     equal(noted.samples,before.samples,'메모 수정이 원자료 변경');
     equal(noted.workspace,before.workspace,'메모 수정이 분석 변경');
@@ -54,13 +57,17 @@ export async function runRecordTests(report=()=>{}) {
     check(count===before.samples.length,'미리보기가 원본 뒤에 기록됨');
     await click('#resume-recording');await until(()=>app.getState().storage.sampleCount>count,'이어 측정 실패');
     await click('#pause-recording');await idle();
-    await click('[data-activity-event="water-added"]');await idle();
-    await click('[data-activity-event="device-change"]');await until(()=>$('#activity-event-dialog')?.open,'장치 변화 폼 없음');
-    $('#activity-event-dialog [name=kind]').value='opened';$('#activity-event-dialog textarea').value='센서 위치 확인';submit('#activity-event-dialog');await idle();
+    await click('[data-memo-preset="water-added"]');$('#event-note').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await idle();
+    await click('[data-memo-preset="lid-opened"]');
+    $('#event-note').value+=' · 센서 위치 확인';$('#event-note').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await idle();
     await click('#finish-recording');await idle();
     const completed=await repo.readSnapshot(id);equal(completed.samples.slice(0,count),before.samples,'이어 측정이 원본 값 변경');
-    equal(completed.workspace,before.workspace,'이어 측정이 기존 분석/근거 변경');
-    check(completed.events.some(e=>e.type==='device-change'&&e.payload.kind==='opened'),'일시정지 중 장치 변화 누락');
+    const prior=before.workspace.bySource.recorded, current=completed.workspace.bySource.recorded;
+    for(const key of ['appliedScope','exclusions','calculatedColumns','graph','reflection'])
+      equal(current[key],prior[key],'기록 마치기 자동 반영이 기존 분석 설정/근거 변경: '+key);
+    equal(current.appliedIds,prior.appliedScope==='all'?completed.samples.map(sample=>sample.sampleId):prior.appliedIds,'자동 반영 범위가 전체/지정 선택을 따르지 않음');
+    check(current.appliedThroughSampleId===completed.samples.at(-1).sampleId,'기록 마치기의 최신 분석 입력이 저장되지 않음');
+    check(completed.events.some(e=>e.type==='note'&&e.payload.note.includes('센서 위치 확인')),'일시정지 중 장치 변화 누락');
     report('원본 JSON 이어 측정 · 수신 미리보기 분리·기존 분석 보존·일시정지 중 물/장치 변화');
 
     await click('#additional-recording');await until(()=>$('#additional-dialog')?.open,'추가 조건 폼 없음');
@@ -72,10 +79,11 @@ export async function runRecordTests(report=()=>{}) {
     const added=await repo.readSnapshot(id), additional=added.events.findLast(e=>e.type==='additional-measurement');
     check(additional.payload.conditions.seal==='changed'&&additional.payload.conditions.sensor==='unsure','조건의 변경/불확실 구분 손실');
     // Luminous marker/list details must use edited notes even when the event count is unchanged.
-    const noteButton=$('#lab-events button');clickVisible(noteButton);await until(()=>$('.measurement-event-dialog')?.open,'사건 상세 없음');
-    const edit=$('.measurement-event-dialog [data-event-id]');check(edit,'측정 종료 뒤 메모 편집 없음');clickVisible(edit);
-    await until(()=>$('#event-note-dialog')?.open,'측정 메모 편집 연결 실패');$('#event-note-dialog textarea').value='';submit('#event-note-dialog');await idle();
-    check((await repo.readSnapshot(id)).events.find(e=>e.eventId===Number(edit.dataset.eventId)).payload.note==='','메모 비우기 실패');
+    const noteButton=$('#lab-events [data-memo-action="edit"]'), noteId=Number(noteButton.closest('[data-memo-id]').dataset.memoId);
+    clickVisible(noteButton);await until(()=>$('#memo-editor').matches(':popover-open'),'측정 메모 편집 연결 실패');
+    $('#event-note').value='';$('#event-note').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    await until(()=>app.getState().storage.status==='clean','메모 저장 미완료');
+    check((await repo.readSnapshot(id)).events.find(e=>e.eventId===noteId).payload.note==='','메모 비우기 실패');
     report('추가 조건별 변경·불확실/필수 메모 보존, 측정 완료 후 메모 비우기');
 
     await click('[data-view="saved"]');await until(()=>$('[data-rename-run]'),'저장된 목록 없음');

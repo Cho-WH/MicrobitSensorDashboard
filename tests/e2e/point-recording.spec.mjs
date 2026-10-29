@@ -379,6 +379,21 @@ test.describe('continuous point capture', () => {
     await page.locator('#analysis-source').selectOption('recorded');
     await expect(page.locator('#tab-overview')).toHaveAttribute('aria-current','page');
     await expect(page.locator('#point-origin-banner')).toBeHidden();
+    // Finish from measurement while the recorded Workspace is cached behind
+    // the point source; both sources must be current when returning.
+    await page.locator('#analysis-source').selectOption('points');
+    await page.locator('[data-view="measure"]').click();
+    await receive(page,70); await page.locator('#capture-continuous-point').click();
+    await editCondition(page,3,'6');
+    const finished=await finishSnapshot(page);
+    await page.locator('[data-view="analysis"]').click();
+    await expect(page.locator('#raw-rows [data-sample-id]')).toHaveCount(3);
+    await expect(page.locator('#apply-new-data')).toBeHidden();
+    await page.locator('#analysis-source').selectOption('recorded');
+    await expect(page.locator('#apply-new-data')).toBeHidden();
+    await page.clock.runFor(1200);
+    const after=(await page.evaluate(()=>window.pointTest.snapshot())).workspace.bySource.recorded;
+    expect(after.appliedIds).toHaveLength(finished.samples.length);
   });
 
   test('collapsed capture and table edits preserve the continuous stream, sample origins and recording gates', async ({ page }) => {
@@ -454,7 +469,7 @@ test.describe('continuous point capture', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     const button = page.locator('#capture-continuous-point');
     await page.locator('#start-recording').click(); await receive(page, 50); await button.click();
-    await page.locator('#event-note').fill('같은 위치에서 관찰'); await page.locator('#add-note').click();
+    await page.locator('#add-note').click(); await page.locator('#event-note').fill('같은 위치에서 관찰'); await page.locator('#event-note').press('Escape');
     await receive(page, 60); await button.click(); await page.clock.runFor(250);
     await expect(page.locator('[data-point-marker="1"]')).toBeVisible();
     await expect(page.locator('.measurement-event-marker button')).toBeVisible();
@@ -488,7 +503,35 @@ test.describe('continuous point capture', () => {
 });
 
 
-test('point analysis edits wait for apply, preserve evidence and export an independent CSV', async ({page}) => {
+test('point analysis selects records in the table and keeps mobile axis controls available', async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  await defineCondition(page);
+  for (let id=1;id<=3;id++) { await receive(page,40+id); await capture(page); await editCondition(page,id,String(id)); }
+  await page.locator('#analyze-points').click();
+  await expect(page.locator('#toggle-axis-settings')).toHaveAttribute('aria-expanded','false');
+  await page.locator('#toggle-axis-settings').click();
+  await page.locator('#graph-x').selectOption('sampleId');
+  await page.locator('#toggle-axis-settings').click();
+  await page.locator('#tab-overview').click();
+  await page.locator('#choose-range').click();
+  await expect(page.locator('#time-range-start')).not.toBeVisible();
+  await expect(page.locator('#raw-rows [data-select="1"]')).toBeFocused();
+  await page.locator('#raw-rows [data-select="1"]').check();
+  await page.locator('#raw-rows [data-select="3"]').check();
+  await page.locator('#analyze-selection').click();
+  await expect(page.locator('#analysis-chart')).toBeVisible();
+  await expect(page.locator('#toggle-axis-settings')).toHaveAttribute('aria-expanded','false');
+  await page.clock.runFor(1200);
+  const selected=(await page.evaluate(()=>window.pointTest.snapshot())).workspace.bySource.points;
+  expect(selected.appliedIds).toEqual([1,3]); expect(selected.graph.xColumnId).toBe('sampleId');
+  await page.locator('#edit-analysis-range').click();
+  await page.locator('#use-all-points').click();
+  await page.clock.runFor(1200);
+  const all=(await page.evaluate(()=>window.pointTest.snapshot())).workspace.bySource.points;
+  expect(all.appliedIds).toEqual([1,2,3]); expect(all.appliedScope).toBe('all');
+});
+
+test('point analysis edits apply automatically, preserve evidence and export the latest values', async ({page}) => {
   await page.setViewportSize({width:390,height:844});
   await defineCondition(page); await capture(page); await editCondition(page, 1, '0');
   await receive(page,60); await capture(page); await editCondition(page, 2, '3');
@@ -505,17 +548,11 @@ test('point analysis edits wait for apply, preserve evidence and export an indep
   await expect(page.locator('#point-condition-dialog')).toHaveCount(0);
   await expect(page.locator('[data-edit-condition="1"]')).toHaveText('7');
   await expect(page.locator('[data-edit-condition="1"]')).toBeFocused();
-  await expect(page.locator('#condition-pending-1')).toContainText('0');
-  await expect(page.locator('#point-input-notice')).toBeVisible();
-  await expect(page.locator('#apply-new-data')).toBeVisible();
+  await expect(page.locator('#apply-new-data')).toBeHidden();
   await page.locator('[data-export="analysis-csv"]:visible').click();
   const appliedCsv = await downloadCsv(page, () => page.locator('#analysis-export-dialog [data-confirm]').click());
   const applied = await page.evaluate(async csv => {const {parseExperimentCsv}=await import('/src/data/files/csv.js');return parseExperimentCsv(csv);},appliedCsv);
-  expect(applied.samples[0].importedValues['data-manual-condition'].value).toBe(0);
-  await page.locator('#apply-new-data').click();
-  await expect(page.locator('[data-edit-condition="1"]')).toHaveText('7');
-  await expect(page.locator('#condition-pending-1')).toHaveCount(0);
-  await expect(page.locator('#point-input-notice')).toBeHidden();
+  expect(applied.samples[0].importedValues['data-manual-condition'].value).toBe(7);
   await page.locator('#raw-rows [data-sample-id]').first().press('Enter');
   await expect(page.locator('#point-origin')).toBeHidden();
   await page.locator('#tab-interpretation').click();
@@ -579,6 +616,60 @@ for (const tab of ['point','continuous']) for (const continuous of [false,true])
     await expect(page.locator('#prepare-new-experiment')).toBeEnabled();
   });
 }
+
+test('memos share one editable timeline across views and preserve time, drafts and withdrawn records', async ({page}) => {
+  await capture(page);
+  await page.locator('#add-note').click();
+  const opened=await page.evaluate(()=>Date.now());
+  await page.locator('#event-note').fill('관찰 내용');
+  await receive(page,55);
+  await expect(page.locator('#event-note')).toHaveValue('관찰 내용');
+  await page.locator('#event-note').press('Escape');
+  await page.locator('#finish-recording').click();
+  const snapshot=await page.evaluate(()=>window.pointTest.snapshot());
+  const memo=snapshot.events.find(event=>event.type==='note');
+  expect(memo.receivedAt).toBeLessThanOrEqual(opened);
+  expect(memo.payload.note).toBe('관찰 내용');
+  const row=page.locator('[data-memo-id="'+memo.eventId+'"]');
+  await page.locator('button[data-recording-mode="continuous"]').click();
+  await row.locator('[data-memo-action="edit"]').click();
+  await page.locator('#event-note').fill('수정한 관찰');
+  // Reopening the anchor first commits its draft, then reads the latest memo.
+  await row.locator('[data-memo-action="edit"]').click();
+  await expect(page.locator('#event-note')).toHaveValue('수정한 관찰');
+  await page.locator('#event-note').press('Escape');
+  await row.locator('[data-memo-action="options"]').click();
+  await page.locator('[data-memo-action="withdraw"]').click();
+  await expect(page.locator('.measurement-event-marker button')).toHaveCount(0);
+  await row.locator('[data-memo-action="options"]').click();
+  await page.locator('[data-memo-action="withdraw"]').click();
+  await expect(page.locator('.measurement-event-marker button')).toHaveCount(1);
+  await page.locator('.measurement-event-marker button').click();
+  await expect(page.locator('#event-note')).toBeFocused();
+  await expect(page.locator('#event-note')).toHaveValue('수정한 관찰');
+  await page.locator('#event-note').press('Escape');
+  await page.locator('.luminous-settings').click();
+  await page.locator('.measurement-system-events > summary').click();
+  await expect(page.locator('#measurement-system-list')).toBeVisible();
+  await page.locator('.luminous-close').click();
+  await page.locator('[data-view="analysis"]').click();
+  await page.locator('[data-screen="analysis"] > .event-log > summary').click();
+  const analysisMemo=page.locator('#analysis-events [data-event-id="'+memo.eventId+'"]');
+  await analysisMemo.click();
+  await expect(page.locator('#event-note')).toBeVisible();
+  await expect(page.locator('#event-note')).toBeFocused();
+  await page.locator('#event-note').fill('분석에서 수정한 관찰');
+  await page.locator('#event-note').press('Escape');
+  await expect(analysisMemo).toBeFocused();
+  await expect(page.locator('#analysis-events')).toContainText('분석에서 수정한 관찰');
+  await page.locator('[data-view="saved"]').click();
+  await expect.poll(async()=>{await page.clock.runFor(1100);return (await readState(page)).storage.status;}).toBe('clean');
+  const saved=await page.evaluate(()=>window.pointTest.snapshot());
+  const updated=saved.events.find(event=>event.eventId===memo.eventId);
+  expect(updated.receivedAt).toBe(memo.receivedAt);
+  expect(updated.payload).toEqual({note:'분석에서 수정한 관찰',withdrawn:false});
+  expect(saved.samples).toEqual(snapshot.samples);
+});
 
 for (const paused of [false,true]) {
   test('finishing preserves disabled controls until saving completes: paused '+paused, async ({page}) => {

@@ -5,7 +5,7 @@ const recordingPreviewNote = '지금 보이는 값은 미리보기입니다. 기
 export const labDefaults = {
   common: {
     appName: '센서 실험실', skip: '본문으로 이동', cancel: '취소', undo: '되돌리기', redo: '다시 실행',
-    connection: '연결', recording: '기록', storage: '저장', events: '조작·수신 기록',
+    connection: '연결', recording: '기록', storage: '저장', events: '메모·기록 이력',
     connect: 'micro:bit 연결', reconnect: '이전 장치에 다시 연결', disconnect: '연결 해제',
     connectionHelp: '연결에 문제가 있나요?',
     cancelConnection: '연결 취소', mockConnect: '모의 장치 연결', chooseDevice: '다른 장치 선택',
@@ -60,7 +60,6 @@ export const labDefaults = {
     mockNotice: '모의 측정값입니다.',
     previewNote: recordingPreviewNote, count: '원자료 {count}개', stored: '보관한 자료', storedValues: '보관한 측정값', waiting: '수신 대기',
     chartTitle: '시간에 따른 변화', range: '표시 구간', recent: '최근 60초', all: '전체', allRecords: '전체 기록', allPreview: '전체 미리보기', chartSummary: '{range} · {count}개 표시',
-    note: '조작 메모', notePlaceholder: '실험 조건이나 관찰을 적으세요', addNote: '메모 기록',
   },
   saved: { title: '저장된 실험 이어하기', description: '이 브라우저에 저장된 기록입니다. 전체 실험 JSON을 따로 보관하면 다른 기기에서도 이어서 분석할 수 있습니다.', empty: '저장된 실험이 없습니다.', open: '실험 열기' },
   analysis: {

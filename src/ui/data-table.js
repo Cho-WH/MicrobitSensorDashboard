@@ -20,7 +20,7 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
   const events = new AbortController(), { signal } = events;
   let rows = [], selected = new Set(), exclusions = new Map(), writable = false, columns = [], compact = false;
   let frame = null, renderedStart = -1, renderedEnd = -1, viewKey = null;
-  let applied = null, focusedId = null, context = null, pendingConditions = new Map();
+  let applied = null, focusedId = null, context = null;
   const header = createTableHeader({ table, onSort, signal });
   function spacer(fragment, count) {
     if (!count) return;
@@ -30,13 +30,13 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
     frame = null;
     // Match virtual spacers to enlarged text, preserving the current row when
     // the user changes font size. Samples and table selection are untouched.
-    const nextHeight = tableRowHeight(table, pendingConditions.size ? 4.4 : context?.analysisSource === 'points' ? 3.2 : 2.4);
+    const nextHeight = tableRowHeight(table, context?.analysisSource === 'points' ? 3.2 : 2.4);
     if (nextHeight !== rowHeight) {
       const first = scroller.scrollTop / rowHeight;
       rowHeight = nextHeight; table.style.setProperty('--table-row-height', `${rowHeight}px`);
       scroller.scrollTop = first * rowHeight; renderedStart = renderedEnd = -1;
     }
-    // Recompute after the row metric changes (pending values or text zoom), so
+    // Recompute after the row metric changes (point source or text zoom), so
     // short tables do not clip their last row using the previous height.
     scroller.style.setProperty('--table-content-height', `${Math.max(112, (rows.length + 1) * rowHeight + 16)}px`);
     const { first, visibleCount, start, end } = visibleTableRows(rows.length, scroller.scrollTop, scroller.clientHeight, rowHeight);
@@ -80,20 +80,10 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
         else if (c.id === 'receivedAt') cellText(time(sample.receivedAt));
         else if (c.manual && sample.pointRecordId) {
           const td = row.insertCell(), button = document.createElement('button');
-          const pending = pendingConditions.get(sample.pointRecordId), appliedValue = readCell(sample, c.id).value;
-          const value = pending ? pending.value : appliedValue;
+          const value = readCell(sample, c.id).value;
           button.type = 'button'; button.className = 'table-cell-action table-cell-input'; button.dataset.editCondition = sample.pointRecordId;
           button.textContent = value === null ? '입력하기' : formatCalculated(value);
           button.setAttribute('aria-label', `${sample.pointRecordId}번 ${c.name} 편집`); button.disabled = !writable; td.append(button);
-          if (pending) {
-            if (pending.unit !== c.unit) button.textContent += pending.unit ? ` ${pending.unit}` : '';
-            button.title = `${pending.name}: ${value ?? '미입력'} ${pending.unit ?? ''} · 입력 완료, 분석 반영 대기`;
-            const note = document.createElement('small'); note.className = 'condition-pending';
-            note.id = `condition-pending-${sample.pointRecordId}`;
-            note.textContent = `분석: ${appliedValue === null ? '미입력' : formatCalculated(appliedValue)}${pending.unit !== c.unit && c.unit ? ' ' + c.unit : ''}`;
-            note.title = note.textContent + ' · 변경 반영 대기';
-            button.setAttribute('aria-describedby', note.id + ' point-input-notice'); td.append(note);
-          }
         } else cellText(['sampleId', 'pointRecordId'].includes(c.id) ? readCell(sample, c.id).value : number(readCell(sample, c.id).value));
       }
       if (!compact) row.insertCell(); // Header-only action column.
@@ -130,9 +120,8 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
   }, { signal });
   const observer = new ResizeObserver(schedule); observer.observe(scroller); observer.observe(table.tHead);
   return {
-    render({ samples, selectedIds, excluded, appliedIds = null, focusedSampleId = null, sort, filter = {}, calculatedColumns = [], importedColumns = [], axisIds = null, canEdit, resetScroll = false, context: nextContext, pendingConditions: nextPending = new Map() }) {
+    render({ samples, selectedIds, excluded, appliedIds = null, focusedSampleId = null, sort, filter = {}, calculatedColumns = [], importedColumns = [], axisIds = null, canEdit, resetScroll = false, context: nextContext }) {
       context = nextContext;
-      pendingConditions = nextPending;
       applied = appliedIds ? new Set(appliedIds) : null; focusedId = focusedSampleId;
       compact = axisIds !== null; columns = tableColumns(calculatedColumns, axisIds, importedColumns, context);
       header.render({ columns, compact, sort, filter, canEdit });

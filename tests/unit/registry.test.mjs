@@ -93,7 +93,7 @@ test('one additional module supplies catalog, route, decoder and preparation wit
 test('activity module registration supplies its route, preparation and policy without controller branches', () => {
   const extra = extraSensor(), activity = { definition: { ...gas.definition, id: 'test-activity', sensorIds: [extra.definition.id], requiredChannels: ['value'], policyId: 'test-policy', defaultGraph: extra.definition.defaultGraph, readout: {primaryChannelId:'value',componentChannelIds:[]} },
     guide: { equipment: [], afterReception: [{ id: 'position', group: 'position', groupLabel: '위치', title: '위치를 확인해요', description: '실험 위치를 유지하세요.', kind: 'manual', scope: 'activity', required: true }] },
-    policy: { initialState: {}, reduceActivity: () => ({ nextState: {}, events: [], error: null }) } };
+    policy: { additionalConditions: [] } };
   const modules = createRegistry({ sensors: [extra], activities: [activity] });
   const { context } = parseRoute(new URL('activities/test-activity/', base), base, modules);
   assert.equal(composeGuideSteps(context, modules).at(-1).id, 'position');
