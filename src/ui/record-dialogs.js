@@ -3,6 +3,7 @@ import { analysisExportInfo } from '../data/files/csv.js';
 import { LIMITS } from '../domain/limits.js';
 import { eventTitle, eventDetail } from './event-content.js';
 import { parseCondition } from './condition-input.js';
+import { createPointPopover, clearablePointInput } from './point-input-popover.js';
 
 // Native dialogs share focus, draft and failed-save handling. They never own stored records.
 export function createRecordDialogs(host) {
@@ -54,13 +55,22 @@ export function createRecordDialogs(host) {
     input.value = value; row.append(element('span', '', label), input); body.append(row); return input;
   }
   return {
-    condition(point, column, save) { return formDialog({id:'point-condition-dialog', title:`${point.pointRecordId}번 조건 편집`,
-      description:'저장한 뒤 변경 반영을 누르면 그래프와 계산에 적용됩니다. 빈칸은 조건 미입력으로 남습니다.', save,
-      build(body) {
-        const input = field(body, 'condition', column.name + (column.unit ? ` (${column.unit})` : ''), {value: String(point.manualValues[column.id] ?? '')});
-        input.inputMode = 'decimal';
-        return () => { try { return parseCondition(input.value); } catch { throw new Error('숫자 또는 빈칸을 입력하세요.'); } };
-      } }); },
+    condition(point, column, save) {
+      const anchor = document.activeElement, panel = element('div','point-input-popover');
+      panel.id='point-condition-dialog'; panel.setAttribute('role','dialog'); panel.setAttribute('aria-label',`${point.pointRecordId}번 변인값`); host.append(panel);
+      const input=field(panel,'condition',column.name+(column.unit?` (${column.unit})`:''),{value:String(point.manualValues[column.id]??'')}); input.inputMode='decimal';
+      panel.append(element('p','lab-note','입력창을 떠나면 저장됩니다. 변경 반영을 누르면 그래프와 계산에 적용됩니다.'));
+      const error=element('p','point-error');error.setAttribute('role','alert');panel.append(error);
+      const abort=new AbortController();clearablePointInput(input,'변인값 비우기',abort.signal);
+      return new Promise(resolve=>{
+        const handle={close:()=>popover.close({discard:true})}; dialogs.add(handle);
+        const popover=createPointPopover(panel,{signal:abort.signal,save(){
+          try { save(parseCondition(input.value)); return true; }
+          catch(failure) { error.textContent=failure.message==='numberInvalid'?'숫자 또는 빈칸을 입력하세요.':failure.message;return false; }
+        },onClose(){abort.abort();dialogs.delete(handle);panel.remove();resolve(true);}});
+        popover.open(anchor);
+      });
+    },
     restoreCsvTime(save) { return formDialog({id:'csv-time-dialog',title:'시간 정보가 서로 맞지 않아요',
       submit:'원본 시각 기준으로 복원',
       description:'원본 수신 시각을 기준으로 경과 시간을 다시 계산합니다. 파일의 첫 수신이 0초가 됩니다.',

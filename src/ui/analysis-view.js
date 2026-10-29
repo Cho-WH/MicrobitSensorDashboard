@@ -114,7 +114,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
         if (header) $('raw-scroll').scrollLeft = header.offsetLeft - 32;
       }
     }, signal });
-  const graph = createAnalysisGraph(root, { getWorkspace: () => workspace, act, signal, onSelect: inspect, getTheme:() => theme });
+  const graph = createAnalysisGraph(root, { getWorkspace: () => workspace, act, signal, onSelect: inspect, getTheme:() => theme, getCopy:() => copy });
   let layoutTimer = null;
   function finishLayoutTransition() {
     clearTimeout(layoutTimer); layoutTimer = null; graph.endLayoutTransition();
@@ -125,7 +125,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   }, { signal });
   const reflection = createReflectionView(root, { getWorkspace: () => workspace, getStoreState: () => store?.getState(), act,
     getContext: () => copyContext, getTheme:() => theme, onBack: () => changeTask('relationship'), signal });
-  range = createRangeSelector(root, { getChart: () => overview, signal,
+  range = createRangeSelector(root, { getChart: () => overview, signal, getCopy:() => copy,
     onApply(draft) { if (act(() => workspace.applyTimeRange(draft))) { range.close(); changeTask('relationship'); } },
     onClose() { $('choose-range').focus({ preventScroll: true }); } });
   function click(id, action) { $(id).addEventListener('click', action, { signal }); }

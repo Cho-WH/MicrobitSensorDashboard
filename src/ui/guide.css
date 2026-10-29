@@ -114,9 +114,9 @@
 .guide-device-image { margin:12px 0px 0px; }
 .guide-device-image img { width:100%; height:auto; object-fit:contain; }
 .guide-device-image figcaption { color:var(--sl-stage-muted); font-size:0.8125rem; line-height:1.8; }
-.guide-placement { margin:0px; }
-.guide-placement img { display:block; width:100%; object-fit:contain; }
-.guide-placement figcaption { font-size:0.75rem; line-height:1.7; text-align:center; margin-top:10px; color:var(--sl-stage-muted); }
+.guide-step-image { margin:0px; }
+.guide-step-image img { display:block; width:100%; object-fit:contain; }
+.guide-step-image figcaption { font-size:0.75rem; line-height:1.7; text-align:center; margin-top:10px; color:var(--sl-stage-muted); }
 .guide-values { display:grid; grid-template-columns:repeat(2, minmax(0px, 1fr)); gap:12px; }
 .guide-value { min-width:0px; container-type:inline-size; border:1px solid var(--sl-stage-line); border-radius:10px; }
 .guide-value span { display:block; font-size:0.8125rem; color:var(--sl-stage-muted); }
@@ -215,8 +215,8 @@
 :root[data-visual-theme="luminous"] .guide .guide-power { padding:14px 20px; }
 :root[data-visual-theme="luminous"] .guide .guide-power summary { min-height:var(--sl-target-compact); align-content:center; }
 :root[data-visual-theme="luminous"] .guide .guide-device-image img { max-height:190px; }
-:root[data-visual-theme="luminous"] .guide .guide-placement { padding:16px; }
-:root[data-visual-theme="luminous"] .guide .guide-placement img { height:clamp(250px, 100dvh - 380px, 420px); background:var(--sl-surface-soft); border-radius:var(--sl-radius-control); }
+:root[data-visual-theme="luminous"] .guide .guide-step-image { padding:16px; }
+:root[data-visual-theme="luminous"] .guide .guide-step-image img { height:clamp(250px, 100dvh - 380px, 420px); background:var(--sl-surface-soft); border-radius:var(--sl-radius-control); }
 :root[data-visual-theme="luminous"] .guide .guide-summary li { padding:10px 0px; line-height:1.6; }
 :root[data-visual-theme="luminous"] .guide .guide-summary button { min-height:var(--sl-target-compact); }
 :root[data-visual-theme="luminous"] .guide .step-instructions li::marker { color:var(--sl-stage-attention); font-weight:650; }
@@ -239,7 +239,7 @@
   :root[data-visual-theme="luminous"] .guide .guide-value { padding:10px; }
   :root[data-visual-theme="luminous"] .guide .guide-value strong { font-size:clamp(1.125rem, 15cqi, 1.75rem); }
   :root[data-visual-theme="luminous"] .guide .guide-values { gap:8px; }
-  :root[data-visual-theme="luminous"] .guide .guide-placement { padding:8px; }
+  :root[data-visual-theme="luminous"] .guide .guide-step-image { padding:8px; }
 }
 @media (max-width: 850px) {
   :root[data-visual-theme="luminous"] .guide .guide-top [data-guide-action="quick"], :root[data-visual-theme="luminous"] .guide :is(.guide-substeps button, .guide-summary button, .guide-power summary) { min-height:var(--sl-target); }

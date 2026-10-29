@@ -50,6 +50,7 @@
   --sl-space-4:16px; --sl-space-6:24px; --sl-space-8:32px;
   --sl-font:'Pretendard Variable',system-ui,'Malgun Gothic',sans-serif;
   --sl-type-control:0.875rem; --sl-type-label:0.8125rem; --sl-type-small:0.75rem; --sl-type-caption:0.6875rem;
+  --sl-table-row-min-height:32px; --sl-table-control-height:28px; --sl-table-cell-padding:6px;
   --sl-shadow-panel:0 8px 28px #0b1f3b06;
   --sl-shadow-menu:0 12px 36px #0b1f3b22; --sl-shadow-dialog:0 24px 80px #0b1f3b30;
   --sl-backdrop:#0b1f3b50;

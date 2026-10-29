@@ -19,7 +19,7 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
   const unitToggle=findElement(root,'button','#acceleration-unit-toggle');
   const reception=findElement(root,'p','#measurement-reception'), abort=new AbortController();
   createViewportLayout(findElement(root,'section','[data-screen="measure"]'), {
-    regions:[findElement(root,'div','.luminous-graph')], signal:abort.signal,
+    regions:[findElement(root,'div','.measurement-workspace')], signal:abort.signal,
   });
   const receptionState=element('span'), receptionTime=element('span');
   reception.replaceChildren(receptionState,receptionTime);
@@ -89,12 +89,12 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
     }));
   }
   return {
-    render({context:next,store,latest,previewPoints,device,recording}) {
+    render({context:next,store,latest,previewPoints,device,recording,previewOnly=false,displayNow=Date.now(),displayMono=performance.now(),previewOrigin=null,paused=false}) {
       configure(next);
       unitToggle.textContent='m/s² | g';
       unitToggle.setAttribute('aria-label',inG?'현재 g 단위, m/s²로 보기':'현재 m/s² 단위, g로 보기');
       const displayChannels=inG?next.channels.map(channel=>({...channel,unit:'g',digits:3})):next.channels;
-      const saved=store?.getState(), stored=Boolean(saved?.sampleCount), reading=latest??store?.getLatestSample();
+      const saved=store?.getState(), stored=!previewOnly&&Boolean(saved?.sampleCount), reading=latest??store?.getLatestSample();
       for(const channel of displayChannels){
         const card=cards.querySelector(`[data-channel="${channel.id}"]`), value=card.querySelector('strong');
         const cell=reading?readCell(reading,channel.id):{value:null,reason:'값 없음'};
@@ -105,7 +105,7 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
       const fresh=device.status==='connected'&&device.confirmed;
       reception.dataset.fresh=String(fresh);
       const received=latest?.receivedAt??store?.getLatestSample()?.receivedAt;
-      setText(receptionState,fresh?copy.common.fresh:device.status==='connecting'?copy.common.connecting:device.status==='connected'?copy.common.checkReception:stored?copy.measurement.storedValues:copy.measurement.waiting);
+      setText(receptionState,paused?copy.common.paused:fresh?copy.common.fresh:device.status==='connecting'?copy.common.connecting:device.status==='connected'?copy.common.checkReception:stored?copy.measurement.storedValues:copy.measurement.waiting);
       setText(receptionTime,received?formatCopy(copy.common.lastReceived,{time:new Date(received).toLocaleTimeString('ko-KR',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})}):'');
       const id=saved?.id??null;
       if(id!==runId){runId=id;rows=[];events=[];eventCount=-1;pointRevision=-1;pointMarkers.reset();}
@@ -117,7 +117,9 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
           receivedAt:store.readSamples({afterId:point.capturedSampleId-1,throughId:point.capturedSampleId})[0].receivedAt}));
         pointMarkers.render(pointRecords,next,manualColumns);
       }
-      const source=stored?rows:previewPoints, end=recording||!stored?Date.now():source.at(-1)?.receivedAt??Date.now();
+      findElement(range,'button','[data-live-range="all"]').disabled=previewOnly;
+      if(previewOnly) rangeValue='recent';
+      const source=stored?rows:previewPoints, end=paused?displayNow:recording||!stored?displayNow:source.at(-1)?.receivedAt??displayNow;
       const points=rangeValue==='all'?source:source.filter(point=>!Number.isFinite(point.receivedAt)||point.receivedAt>=end-60000);
       const channels=displayChannels.filter(channel=>selected.has(channel.id)), key=channels.map(channel=>channel.id).join('|')+':'+inG;
       eventView?.render(events,next,saved?.writable===true);
@@ -132,11 +134,11 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
         markerHeight=markerMetrics().laneHeight;
         markerOffset=eventView?.hasVisibleMarkers(from,end)?markerHeight:0;
         const bottomPadding=markerOffset+(pointMarkers.hasVisibleMarkers(from,end)?markerHeight:0);
-        chart.render(points,performance.now(),{range:rangeValue,events,origin:timeOrigin(source,saved??{}),nowUtc:end,bottomPadding});
+        chart.render(points,displayMono,{range:rangeValue,events,origin:stored?timeOrigin(source,saved??{}):previewOrigin??timeOrigin(source),nowUtc:end,bottomPadding});
         painted={source,count:source.length,last:source.at(-1),events,range:rangeValue,recording,pointRevision,markerHeight};
       }
       layoutMarkers();
-      chartSummary.textContent=formatCopy(copy.measurement.chartSummary,{range:rangeValue==='all'?copy.measurement.all:copy.measurement.recent,count:points.length.toLocaleString('ko-KR')});
+      chartSummary.textContent=(previewOnly?copy.point.previewChart+' · ':'')+formatCopy(copy.measurement.chartSummary,{range:rangeValue==='all'?copy.measurement.all:copy.measurement.recent,count:points.length.toLocaleString('ko-KR')});
       range.querySelector('[data-live-range="all"]').textContent=stored?copy.measurement.allRecords:copy.measurement.allPreview;
       for(const button of range.querySelectorAll('[data-live-range]'))button.setAttribute('aria-pressed',String(button.getAttribute('data-live-range')===rangeValue));
       setText(root.querySelector('#live-range-label'),range.querySelector('[data-live-range="'+rangeValue+'"]').textContent);

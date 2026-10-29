@@ -27,7 +27,7 @@ export async function runRecordTests(report=()=>{}) {
   const submit=selector=>clickVisible($(selector+' [type=submit]'));
   try {
     app=await startApp(host,{repository:repo,historyEnabled:false,initialUrl:new URL('../../lab.html?mock=1',import.meta.url).href});await idle();
-    const text=await(await fetch('../fixtures/gay-lussac-v2.json')).text(),original=parseExperimentJson(text);
+    const text=await(await fetch(new URL('../fixtures/gay-lussac-v2.json',import.meta.url))).text(),original=parseExperimentJson(text);
     const files=new DataTransfer();files.items.add(new File([text],'legacy.json',{type:'application/json'}));
     $('#file-input').files=files.files;$('#file-input').dispatchEvent(new Event('change'));
     await until(()=>app.getState().storage?.source==='import','가져오기 실패');await idle();

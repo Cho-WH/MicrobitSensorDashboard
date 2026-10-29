@@ -156,7 +156,8 @@ export async function runLuminousTests(report=()=>{}) {
           const advance=[...doc.querySelectorAll('footer button')].find(button=>button.textContent==='10초 수신');advance.click();await until(()=>$('#sample-count').textContent.includes('700'),'모의 자료 추가 시간 초과');await settle();
           check($('#sample-count').textContent.includes('700'),'재개 후 새 자료가 기존 기록에 이어지지 않았습니다.');
           $('[data-view="analysis"]').click();await settle();$('[data-view="measure"]').click();await settle();
-          check($('#sample-count').textContent.includes('700')&&$('#recording-status').textContent==='기록 중','분석 화면 이동으로 기록 상태가 바뀌었습니다.');
+          check(!$('#pause-recording').hidden&&!$('#pause-recording').disabled&&$('#resume-recording').hidden,'분석 화면 이동으로 기록 조작 상태가 바뀌었습니다.');
+          advance.click();await until(()=>$('#sample-count').textContent.includes('800'),'분석 화면 왕복 뒤 새 자료가 기존 기록에 이어지지 않았습니다.');
           report('새 화면 · 기록 제어·키보드 초점·설정/준비/분석 이동·채널 선택에서 기록 보존');
           const reviewButton=label=>[...doc.querySelectorAll('body > footer button')].find(button=>button.textContent===label);
           reviewButton('저장 실패 시험').click();

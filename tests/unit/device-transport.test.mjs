@@ -83,7 +83,7 @@ test('magnetic handshake handles silence, old numeric firmware and write failure
     oldNotify('@mag,2,choice');oldNotify('1,2,3,4');
     assert.equal(f.transport.getState().status,'disconnected');assert.equal(f.inputs.length,0);
     f.ble.sendStartCommand=originalSend;
-    await f.connect({reuseDevice:true});oldNotify('@mag,2,choice');
+    await f.connect({reuseDevice:true,reconnecting:false});oldNotify('@mag,2,choice');
     assert.equal(f.transport.getState().devicePreparation.phase,'handshake');
     f.ble.handlers[1]('@mag,2,choice');await f.timers.advance(180000);
     assert.equal(f.transport.getState().devicePreparation.phase,'choice');assert.equal(f.timers.tasks.size,0);
@@ -270,4 +270,41 @@ test('mock preparation cancels pending completion on disconnect and never stream
   mock.command('prepare');mock.command('calibrate');mock.command('skip');assert.equal(streaming,false);
   await timers.advance(1799);assert.equal(streaming,false);mock.dispose();await timers.advance(10000);
   assert.deepEqual(lines,['@mag,2,choice','@mag,2,calibrating']);assert.equal(streaming,false);assert.equal(timers.tasks.size,0);
+});
+
+
+test('device reuse or installation handoff alone does not skip first-preparation calibration', async () => {
+  for (const handoff of [false, true]) {
+    const f = fixture('magnetometer');
+    if (!handoff) { await f.connect(); await f.transport.disconnect(); f.ble.commands.length = 0; }
+    await f.connect(handoff ? {device:{name:'installed board',gatt:{connected:true}},reuseConnection:true} : {reuseDevice:true});
+    f.ble.handlers.at(-1)('@mag,2,choice');
+    assert.deepEqual(f.ble.commands, ['prepare']);
+    assert.equal(f.transport.getState().devicePreparation.requiredStep, 'calibration');
+    assert.equal(f.transport.getState().confirmed, false);
+    await f.transport.disconnect();
+  }
+});
+
+test('magnetic reconnect through the chooser skips only a requested choice and gates readings on acknowledgment; missing acknowledgment fails', async () => {
+  for(const acknowledge of [true,false]) {
+    const f=fixture('magnetometer');
+    await f.connect({reconnecting:true});const notify=f.ble.handlers[0];
+    assert.equal(f.transport.getState().devicePreparation.requiredStep,null);
+    notify('@mag,2,choice');
+    assert.deepEqual(f.ble.commands,['prepare','skip']);
+    assert.equal(f.transport.getState().devicePreparation.requiredStep,null);
+    notify('1,2,3,4');assert.equal(f.inputs.length,0);
+    if(acknowledge) {
+      notify('@mag,2,skipped');assert.equal(f.transport.getState().calibration,'skipped');
+      assert.equal(f.transport.getState().confirmed,false);
+      for(let i=0;i<3;i++){notify('1,2,3,4');await f.timers.advance(500);}
+      assert.equal(f.transport.getState().confirmed,true);
+    } else {
+      await f.timers.advance(5000);await Promise.resolve();
+      assert.equal(f.transport.getState().status,'disconnected');
+      assert.equal(f.transport.getState().confirmed,false);
+    }
+    await f.transport.disconnect();
+  }
 });

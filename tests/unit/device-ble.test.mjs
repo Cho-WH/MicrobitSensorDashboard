@@ -210,3 +210,21 @@ test('late connection completion after timeout releases the orphan but preserves
     await ble.disconnect();
   }
 });
+
+
+test('remembered permission restores only the selected board, with silent chooser fallback', async () => {
+  const values = new Map(), getStorage = () => ({getItem:key=>values.get(key),setItem:(key,value)=>values.set(key,value)});
+  const selected = {id:'selected'}, other = {id:'other'};
+  const initial = createBleClient({bluetooth:{},getStorage});
+  initial.rememberDevice(selected);
+  for (const [bluetooth, expected] of [
+    [{getDevices:async()=>[other,selected]},selected],
+    [{getDevices:async()=>[other]},null],
+    [{},null],
+    [{getDevices:async()=>{throw new Error('permission revoked');}},null],
+  ]) {
+    const client=createBleClient({bluetooth:{...bluetooth,requestDevice(){assert.fail('startup must not open chooser');}},getStorage});
+    assert.equal(await client.restoreDevice(), expected);
+  }
+  assert.equal(await createBleClient({getStorage:()=>{throw new Error('storage denied');}}).restoreDevice(),null);
+});

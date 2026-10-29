@@ -35,6 +35,6 @@ export function getGuideContent(context, modules = registry) {
   const guide = sensor?.guide, activityGuide = activity?.guide;
   return structuredClone({ equipment: guide?.equipment ?? [], activityEquipment: activityGuide?.equipment ?? [],
     wiring: guide?.wiring ?? [], cableHelp: guide?.cableHelp ?? '', viewer: guide?.viewer ?? null, illustrations: guide?.illustrations ?? null,
-    calibrationInstructions: guide?.calibrationInstructions ?? [], setupImage: activityGuide?.setupImage ?? null,
+    calibrationInstructions: guide?.calibrationInstructions ?? [],
     experimentGuide: activityGuide?.experimentGuide ?? guide?.experimentGuide ?? null });
 }

@@ -30,7 +30,7 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
   const clearTimers = () => { clearStartup(); timers.clearTimeout(freshness); freshness = null; };
   const current = id => id === attemptId;
 
-  function connect(context, onInput, stateHandler = (_state) => {}, { reuseDevice = false, device: installedDevice = null, reuseConnection = false } = {}) {
+  function connect(context, onInput, stateHandler = (_state) => {}, { reuseDevice = false, device: installedDevice = null, reuseConnection = false, reconnecting = false } = {}) {
     if (pending || closing || state.status !== 'disconnected') return pending ?? closing ?? Promise.resolve();
     const { definition, decode, preparation: extension } = getSensorRuntime(context), policy = definition.connectionPolicy;
     onState = stateHandler;
@@ -53,7 +53,7 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
     clearTimers();
     emit({ status: 'connecting', busy: true, message: '', deviceName: '', firstReading: false,
       confirmed: false, readingsCompatible: false, calibration: 'unknown', devicePreparation: null, lastReceivedAt: null });
-    preparation = extension?.createSession({ timers,
+    preparation = extension?.createSession({ timers, reconnecting,
       send: command => current(id) ? ble.sendStartCommand(command) : Promise.reject(new Error('연결이 바뀌었습니다.')),
       onChange: value => { if (current(id)) { emit({devicePreparation:value,calibration:value.calibration}); if (value.allowReadings) waitForReading(); } },
       onError: message => { if (current(id)) void disconnect(message); },
@@ -114,6 +114,7 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
         setupReady = true;
         if (!current(id)) return;
         previousDevice = device;
+        ble.rememberDevice?.(device);
         emit({ status: 'connected', busy: false, deviceName: device.name || 'micro:bit', message: hasReading ? state.message : policy.waitingMessage });
         if (hasReading) return;
         if (preparation) preparation.start(); else waitForReading();
@@ -158,7 +159,10 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
     })();
     return closing;
   }
-  return { connect, disconnect, performAction: action => state.status === 'connected' && !closing && preparation ? preparation.act(action) : Promise.resolve(false), forgetDevice: () => { previousDevice = null; },
+  return { connect, disconnect, async restoreDevice() {
+    const token = attemptId, device = await ble.restoreDevice?.();
+    if (token === attemptId && !previousDevice && state.status === 'disconnected') previousDevice = device ?? null;
+  }, performAction: action => state.status === 'connected' && !closing && preparation ? preparation.act(action) : Promise.resolve(false), forgetDevice: () => { previousDevice = null; },
     isSupported: () => ble.isSupported(),
     getSupport: () => ble.getSupport?.() ?? (ble.isSupported() ? 'supported' : 'unsupported'), getState: snapshot };
 }

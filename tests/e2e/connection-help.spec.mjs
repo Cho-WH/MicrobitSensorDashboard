@@ -3,15 +3,19 @@ import { test, expect } from '@playwright/test';
 for (const width of [1366, 390]) test(`shared connection help layout at ${width}px${width===390?" and recording flow":""}`, async ({ page }) => {
   await page.clock.install();
   await page.setViewportSize({ width, height: 844 });
-  await page.goto('/sensors/temperature/?mock=1');
+  if (width === 1366) {
+    // A home-to-sensor history change must not redirect lazy image requests.
+    await page.goto('/lab.html?mock=1');
+    await page.locator('#sensor-cards a[href*="/sensors/temperature/"]').click();
+    await page.locator('#activate-experiment').click();
+  } else await page.goto('/sensors/temperature/?mock=1');
   await page.locator('[data-guide-group="connection"]').click();
   const dialog=page.locator('#connection-troubleshooting');
   const guideHelp=page.locator('.guide-device-actions [data-connection-help]');
   await guideHelp.click();
   await expect(dialog).toBeVisible();
   await expect(page.locator('#connection-troubleshooting-title')).toBeFocused();
-  await expect(dialog.locator('img')).toHaveJSProperty('complete',true);
-  expect(await dialog.locator('img').evaluate(img=>img.naturalWidth)).toBeGreaterThan(0);
+  await expect.poll(() => dialog.locator('img').evaluate(img=>img.naturalWidth)).toBeGreaterThan(0);
   const box=await dialog.boundingBox();
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width);
   // The close action remains reachable even in a short viewport.
@@ -23,7 +27,12 @@ for (const width of [1366, 390]) test(`shared connection help layout at ${width}
   // Merely opening help must not connect a device.
   await expect(page.locator('[data-guide-action="connect"]')).toBeVisible();
   // Shared recording behavior is covered once; both sizes retain layout/focus checks.
-  if(width!==390)return;
+  if(width!==390) {
+    await page.locator('#to-measure').click();
+    await page.locator('.experiment-guide [data-guide-next]').click();
+    await expect.poll(() => page.locator('.luminous-device img').evaluate(img=>img.naturalWidth)).toBeGreaterThan(0);
+    return;
+  }
   await page.locator('[data-guide-action="connect"]').click();
   await page.clock.runFor(3100);
   await expect(page.locator('[data-guide-step="reception"]')).toHaveAttribute('data-complete','true');
@@ -31,12 +40,7 @@ for (const width of [1366, 390]) test(`shared connection help layout at ${width}
   await page.locator('.experiment-guide [data-guide-next]').click();
   await page.locator('#start-recording').click();
   const screen=page.locator('[data-screen="measure"]');
-  const measureHelp=page.locator('.luminous-device [data-connection-help]');
-  await measureHelp.click();await expect(dialog).toBeVisible();
-  await dialog.getByRole('button',{name:'연결 도움말 닫기',exact:true}).click();
-  await expect(measureHelp).toBeFocused();
-  await expect(screen).toHaveAttribute('data-recording-state','recording');
-  await expect(page.locator('#connection-status')).toHaveText('모의 연결');
+  // Measurement help is reached through the existing device settings dialog.
   await page.locator('.luminous-settings').click();
   const settings=page.locator('#measurement-settings');
   const settingsHelp=settings.locator('[data-connection-help]');

@@ -6,11 +6,23 @@ import bmp from '../../src/catalog/sensors/bmp280/index.js';
 import magnetic from '../../src/catalog/sensors/magnetometer/index.js';
 import temperature from '../../src/catalog/sensors/temperature/index.js';
 import gas from '../../src/catalog/activities/gay-lussac/index.js';
-import { getExperiment, getSensorRuntime, getActivityPolicy, resolveExperiment } from '../../src/catalog/index.js';
+import { getExperiment, getSensorRuntime, getActivityPolicy, getMeasurementReadout, resolveExperiment } from '../../src/catalog/index.js';
 import { composeGuideSteps, getGuideContent } from '../../src/guide/steps.js';
 import { createGuideProgress } from '../../src/guide/progress.js';
 import { parseRoute, routeUrl } from '../../src/app/routes.js';
 import { getPreviewCopy, previewDefaults, getLabCopy, labDefaults } from '../../src/ui/lab-copy.js';
+
+test('historical readouts resolve exact registered definitions and reject untrusted or invalid relationships', () => {
+  const context = getExperiment('magnetometer');
+  delete context.sensor.readout; // Previously saved definitions have no display relationship.
+  assert.deepEqual(getMeasurementReadout(context), { primaryChannelId: 'magneticStrength', componentChannelIds: ['magneticX','magneticY','magneticZ'] });
+  assert.equal(getMeasurementReadout(getExperiment('bmp280','gay-lussac')).primaryChannelId, 'pressureHpa');
+  context.sensor.version = 999;
+  context.sensor.readout = {primaryChannelId:'magneticStrength',componentChannelIds:['magneticX']};
+  assert.deepEqual(getMeasurementReadout(context), {primaryChannelId:'magneticX',componentChannelIds:[]});
+  const invalid = {...magnetic, definition:{...magnetic.definition,readout:{primaryChannelId:'magneticStrength',componentChannelIds:['missing']}}};
+  assert.throws(() => createRegistry({sensors:[invalid],activities:[]}));
+});
 
 // A test-only module reuses an approved single-value firmware/codec identity.
 // Its definition versions are independent of firmware versions.
@@ -79,7 +91,7 @@ test('one additional module supplies catalog, route, decoder and preparation wit
 });
 
 test('activity module registration supplies its route, preparation and policy without controller branches', () => {
-  const extra = extraSensor(), activity = { definition: { ...gas.definition, id: 'test-activity', sensorIds: [extra.definition.id], requiredChannels: ['value'], policyId: 'test-policy', defaultGraph: extra.definition.defaultGraph },
+  const extra = extraSensor(), activity = { definition: { ...gas.definition, id: 'test-activity', sensorIds: [extra.definition.id], requiredChannels: ['value'], policyId: 'test-policy', defaultGraph: extra.definition.defaultGraph, readout: {primaryChannelId:'value',componentChannelIds:[]} },
     guide: { equipment: [], afterReception: [{ id: 'position', group: 'position', groupLabel: '위치', title: '위치를 확인해요', description: '실험 위치를 유지하세요.', kind: 'manual', scope: 'activity', required: true }] },
     policy: { initialState: {}, reduceActivity: () => ({ nextState: {}, events: [], error: null }) } };
   const modules = createRegistry({ sensors: [extra], activities: [activity] });
@@ -106,9 +118,9 @@ test('general entry selects newest definition while explicit old versions retain
 test('saved metadata cannot inject resources or substitute an unregistered activity version', () => {
   const context = getExperiment('bmp280', 'gay-lussac');
   context.sensor.guide = { viewer: { url: 'https://foreign.invalid/viewer' } };
-  context.activity.guide = { setupImage: { src: 'https://foreign.invalid/image' } };
+  context.activity.guide = { afterReception: [{id:'placement', image: { src: 'https://foreign.invalid/image' }}] };
   assert.equal(getGuideContent(context).viewer.url, bmp.guide.viewer.url);
-  assert.equal(getGuideContent(context).setupImage.src, gas.guide.setupImage.src);
+  assert.equal(composeGuideSteps(context).find(step=>step.image).image.src, gas.guide.afterReception.find(step=>step.image).image.src);
   context.activity.version++;
   assert.equal(getGuideContent(context).experimentGuide, null);
   assert.equal(getActivityPolicy(context), undefined);

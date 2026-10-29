@@ -41,8 +41,20 @@ export function createLineFramer({ onLine, onError = (_error) => {}, maxFrameByt
   } };
 }
 
-/** @param {{bluetooth?:any}} options */
-export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.navigator)?.bluetooth } = {}) {
+/** @param {{bluetooth?:any,getStorage?:()=>any}} options */
+export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.navigator)?.bluetooth, getStorage = () => globalThis.sessionStorage } = {}) {
+  const deviceKey = 'sensor-lab:last-device';
+  async function restoreDevice() {
+    try {
+      const id = getStorage()?.getItem(deviceKey);
+      if (!id || typeof bluetooth?.getDevices !== 'function') return null;
+      const devices = await waitForConnection(bluetooth.getDevices(), {timeoutMs:1500});
+      return devices.find(device => device.id === id) ?? null;
+    } catch { return null; } // Missing permission/API/storage falls back to the chooser.
+  }
+  function rememberDevice(selected) {
+    try { if (selected?.id) getStorage()?.setItem(deviceKey, selected.id); } catch { /* Optional tab preference. */ }
+  }
   let device = null, service = null, writer = null, notifier = null, epoch = 0;
   let inputHandler = null, disconnectListener = null, notificationListener = null, gattListener = null;
   const encoder = new TextEncoder();
@@ -152,7 +164,7 @@ export function createBleClient({ bluetooth = /** @type {any} */ (globalThis.nav
       throw new DOMException('측정 연결의 제어권을 넘기기 전에 연결이 끝났습니다.', 'AbortError');
     return previousDevice;
   }
-  return { requestDevice, connect, startNotifications, sendStartCommand, disconnect, releaseConnection, isSupported, getSupport,
+  return { requestDevice, restoreDevice, rememberDevice, connect, startNotifications, sendStartCommand, disconnect, releaseConnection, isSupported, getSupport,
     setDisconnectedListener(listener) { disconnectListener = listener; },
     getContext: () => ({ device, service, txCharacteristic: writer, rxCharacteristic: notifier }),
   };

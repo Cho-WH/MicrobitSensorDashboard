@@ -44,7 +44,7 @@ button.delete-run:hover { color:rgb(161, 61, 54); background:rgba(161, 61, 54, 0
 .home-related-link:hover { text-decoration:underline; }
 .home-related-link::after { content:" ↗"; }
 .home-activities-menu { z-index:2; width:100%; }
-.home-activities-menu > summary { width:fit-content; min-height:24px; padding:0; border:0; background:transparent; color:var(--sl-selection-text); }
+.home-activities-menu > summary { width:fit-content; --sl-button-min-height:24px; padding:0; --sl-button-border-width:0; --sl-button-bg:transparent; --sl-button-text:var(--sl-selection-text); }
 .home-activities-panel { left:0; right:auto; width:100%; min-width:min(280px,calc(100vw - 64px)); }
 .home-activity-option { display:block; padding:10px; border-radius:var(--sl-radius-control); color:var(--sl-navy); text-decoration:none; }
 .home-activity-option:hover, .home-activity-option:focus-visible { background:var(--sl-surface-soft); }

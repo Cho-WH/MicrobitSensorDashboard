@@ -35,7 +35,7 @@ export function renderHomeCards(root, { sensors, activities, linkTo, onSelect, s
         for (const activity of related) footer.append(link(activity, 'home-related-link', activity.context.activity.name));
       } else {
         const menu = element('details', 'disclosure-menu home-activities-menu');
-        menu.append(element('summary', '', `${item.copy.relatedActivities} ${related.length}`));
+        menu.append(element('summary', 'ui-button', `${item.copy.relatedActivities} ${related.length}`));
         const panel = element('div', 'disclosure-menu-panel home-activities-panel');
         for (const activity of related) {
           const anchor = link(activity, 'home-activity-option');

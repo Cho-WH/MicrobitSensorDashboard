@@ -3,6 +3,7 @@ const artifact = getFirmwareArtifact('sensor-lab-accelerometer');
 export const accelerometer = {
   id: 'accelerometer', version: 1, name: '내장 가속도 센서', boards: ['micro:bit-v2'], codecId: 'accelerometer-csv-v1',
   defaultVisibleChannelIds: ['accelerationStrength'],
+  readout: { primaryChannelId: 'accelerationStrength', componentChannelIds: ['accelerationX', 'accelerationY', 'accelerationZ'] },
   channels: [
     { id: 'accelerationX', name: '가속도 X 성분', unit: 'mg', quantity: 'acceleration', quantityLabel: '가속도', digits: 0, supported: true, calculable: true, color: '#c46046' },
     { id: 'accelerationY', name: '가속도 Y 성분', unit: 'mg', quantity: 'acceleration', quantityLabel: '가속도', digits: 0, supported: true, calculable: true, color: '#4e8764' },

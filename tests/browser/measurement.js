@@ -1,5 +1,6 @@
 import { mountLabFixture, clickVisible } from './lab-fixture.js';
 import {createMeasurementView} from '../../src/ui/measurement-view.js';
+import {createPointRecordingView} from '../../src/ui/point-recording-view.js';
 import {createRepository} from '../../src/data/repository.js';
 import {openRunStore} from '../../src/data/run-store.js';
 import {getExperiment,getSensorRuntime,resolveExperiment} from '../../src/catalog/index.js';
@@ -12,6 +13,7 @@ import {clockTime,formatClockTime} from '../../src/analysis/clock-time.js';
 
 const check=(value,message)=>{if(!value)throw new Error(message);};
 export async function runMeasurementTests(report=()=>{}) {
+  await checkPointReadouts();
   for(const sensor of ['magnetometer','accelerometer']) {
     const context=getExperiment(sensor), box=document.createElement('div'),canvas=document.createElement('canvas');
     box.style.cssText='width:600px;height:300px';box.append(canvas);document.body.append(box);
@@ -77,6 +79,35 @@ export async function runMeasurementTests(report=()=>{}) {
     report('실제 측정 그래프 · 최근/전체 1,010개·UTC 시각·짧은 기록 공백·채널 선택과 원자료 보존');
   }finally{view?.dispose();await store.close();repository.close();fixture.dispose();await globalThis.idb.deleteDB(databaseName);}
   await checkAccelerationUnits(report);
+}
+
+async function checkPointReadouts() {
+  const fixture = await mountLabFixture({component:true}), {host} = fixture;
+  fixture.showScreen('measure');
+  let facts;
+  const view = createPointRecordingView(host, {onCapture:()=>{},onChange:()=>view.render(facts),onError:error=>{throw error;}});
+  const render = context => {
+    facts = {context,store:null,latest:{values:Object.fromEntries(context.channels.map(channel=>[channel.id,20])),validity:Object.fromEntries(context.channels.map(channel=>[channel.id,'valid']))},
+      device:{status:'connected',confirmed:true},captureState:{ready:true},busy:false,recordingMode:'point'};
+    view.render(facts);
+  };
+  try {
+    const magnetic = getExperiment('magnetometer'); magnetic.defaultGraph.yColumnId = 'magneticX';
+    render(magnetic);
+    const main = host.querySelector('.point-live-cards');
+    check(main.querySelector('meter').getAttribute('aria-label')===magnetic.channels.find(channel=>channel.id==='magneticStrength').name,'분석 축이 대표 측정값을 바꿨습니다.');
+    clickVisible(main.querySelector('summary'));
+    main.querySelector('[data-point-field="minimum"]').value='0';
+    const maximum=main.querySelector('[data-point-field="maximum"]');maximum.value='100';
+    maximum.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+    check([...host.querySelectorAll('#point-component-cards meter')].every(meter=>meter.min===-100&&meter.max===100),'명시된 성분의 대칭 눈금이 유지되지 않았습니다.');
+    const unknown = {sensor:{id:'test-probes',version:1},activity:null,defaultGraph:{yColumnId:'second'},channels:[
+      {id:'first',name:'검사용 첫 센서',quantity:'temperature',unit:'℃',min:0,max:100},
+      {id:'second',name:'검사용 둘째 센서',quantity:'temperature',unit:'℃',min:10,max:50}]};
+    render(unknown);
+    const other = host.querySelector('#point-component-cards meter');
+    check(other.min===10&&other.max===50,'동일한 물리량의 독립 채널을 방향 성분으로 처리했습니다.');
+  } finally {view.dispose();fixture.dispose();}
 }
 
 async function checkAccelerationUnits(report) {

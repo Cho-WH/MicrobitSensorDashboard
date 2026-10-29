@@ -4,6 +4,7 @@ import { clockTime, formatClockTime } from '../analysis/clock-time.js';
 import { formatCalculated } from '../analysis/calculations.js';
 import { createTableHeader } from './table-header.js';
 import { tableColumns } from './table-columns.js';
+import { tableRowHeight, visibleTableRows, tableSpacer, bindTableScrollKeys } from './table-viewport.js';
 import { statusLabels } from '../analysis/scope.js';
 
 import { readCell } from '../domain/columns.js';
@@ -13,9 +14,9 @@ const number = value => Number.isFinite(value) ? value.toFixed(2) : '—';
 
 // Reuses the M2 virtual table: full scroll range, only nearby rows in the DOM.
 export function createDataTable({ body, scroller, status, onToggle, onSort, onInspect = (_sampleId) => {}, onEditCondition = (_pointId) => {} }) {
-  let rowHeight = 32;
-  const overscan = 8, table = body.closest('table');
-  table.style.setProperty('--raw-row-height', `${rowHeight}px`);
+  const table = body.closest('table');
+  let rowHeight = tableRowHeight(table);
+  table.style.setProperty('--table-row-height', `${rowHeight}px`);
   const events = new AbortController(), { signal } = events;
   let rows = [], selected = new Set(), exclusions = new Map(), writable = false, columns = [], compact = false;
   let frame = null, renderedStart = -1, renderedEnd = -1, viewKey = null;
@@ -23,26 +24,22 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
   const header = createTableHeader({ table, onSort, signal });
   function spacer(fragment, count) {
     if (!count) return;
-    const row = document.createElement('tr'); row.className = 'table-spacer'; row.setAttribute('aria-hidden', 'true');
-    const cell = row.insertCell(); cell.colSpan = header.columnCount; cell.style.height = `${count * rowHeight}px`;
-    fragment.append(row);
+    fragment.append(tableSpacer(count, rowHeight, header.columnCount));
   }
   function paint() {
     frame = null;
     // Match virtual spacers to enlarged text, preserving the current row when
     // the user changes font size. Samples and table selection are untouched.
-    const nextHeight = Math.max(32, Math.ceil(parseFloat(getComputedStyle(table).fontSize) * (pendingConditions.size ? 4.4 : context?.analysisSource === 'points' ? 3.2 : 2.4)));
+    const nextHeight = tableRowHeight(table, pendingConditions.size ? 4.4 : context?.analysisSource === 'points' ? 3.2 : 2.4);
     if (nextHeight !== rowHeight) {
       const first = scroller.scrollTop / rowHeight;
-      rowHeight = nextHeight; table.style.setProperty('--raw-row-height', `${rowHeight}px`);
+      rowHeight = nextHeight; table.style.setProperty('--table-row-height', `${rowHeight}px`);
       scroller.scrollTop = first * rowHeight; renderedStart = renderedEnd = -1;
     }
     // Recompute after the row metric changes (pending values or text zoom), so
     // short tables do not clip their last row using the previous height.
     scroller.style.setProperty('--table-content-height', `${Math.max(112, (rows.length + 1) * rowHeight + 16)}px`);
-    const first = Math.min(Math.floor(scroller.scrollTop / rowHeight), Math.max(0, rows.length - 1));
-    const visibleCount = Math.max(1, Math.ceil(((scroller.clientHeight || 520) - rowHeight) / rowHeight));
-    const start = Math.max(0, first - overscan), end = Math.min(rows.length, first + visibleCount + overscan + 1);
+    const { first, visibleCount, start, end } = visibleTableRows(rows.length, scroller.scrollTop, scroller.clientHeight, rowHeight);
     status.textContent = rows.length ? `표시 ${rows.length.toLocaleString()}개 · ${first + 1}–${Math.min(rows.length, first + visibleCount)}번째 행` : '조건에 해당하는 자료가 없어요.';
     if (start === renderedStart && end === renderedEnd) return;
     renderedStart = start; renderedEnd = end;
@@ -54,7 +51,7 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
     spacer(fragment, start);
     for (let index = start; index < end; index++) {
       const sample = rows[index], id = sample.sampleId, excluded = exclusions.has(id);
-      const row = document.createElement('tr'); row.className = 'sample-row'; row.dataset.sampleId = id;
+      const row = document.createElement('tr'); row.className = 'sample-row data-row'; row.dataset.sampleId = id;
       row.dataset.selected = String(selected.has(id));
       const usageState = sample.withdrawn ? 'withdrawn' : applied && !applied.has(id) ? 'outside' : excluded ? 'excluded' : 'included';
       row.dataset.usage = usageState; row.dataset.focused = String(id === focusedId);
@@ -85,7 +82,7 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
           const td = row.insertCell(), button = document.createElement('button');
           const pending = pendingConditions.get(sample.pointRecordId), appliedValue = readCell(sample, c.id).value;
           const value = pending ? pending.value : appliedValue;
-          button.type = 'button'; button.dataset.editCondition = sample.pointRecordId;
+          button.type = 'button'; button.className = 'table-cell-action table-cell-input'; button.dataset.editCondition = sample.pointRecordId;
           button.textContent = value === null ? '입력하기' : formatCalculated(value);
           button.setAttribute('aria-label', `${sample.pointRecordId}번 ${c.name} 편집`); button.disabled = !writable; td.append(button);
           if (pending) {
@@ -120,13 +117,7 @@ export function createDataTable({ body, scroller, status, onToggle, onSort, onIn
   }
   function schedule() { frame ??= requestAnimationFrame(paint); }
   scroller.addEventListener('scroll', schedule, { passive: true, signal });
-  scroller.addEventListener('keydown', event => {
-    // Keep Home/End inside the focused virtual table, rather than scrolling the whole page.
-    if (event.target !== scroller || event.altKey || event.metaKey || !['Home', 'End'].includes(event.key)) return;
-    event.preventDefault();
-    scroller.scrollTop = event.key === 'Home' ? 0 : scroller.scrollHeight;
-    schedule();
-  }, { signal });
+  bindTableScrollKeys(scroller, schedule, signal);
   body.addEventListener('click', event => {
     const edit = event.target.closest('[data-edit-condition]');
     if (edit) { onEditCondition(Number(edit.dataset.editCondition)); return; }

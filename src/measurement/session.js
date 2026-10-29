@@ -65,7 +65,7 @@ export function createSession({ store, monitor = undefined, activityPolicy = und
       || !Number.isFinite(input.monotonicAt)) throw fail('invalid-input', '수신값의 형식과 시각을 확인해 주세요.');
     // Preparation and paused reception are bounded previews, never retroactive samples.
     monitor.accept(input);
-    capture.accept(input);
+    if (state !== 'paused') capture.accept(input);
     if (state !== 'recording') { observe(input); return false; }
     if (store.getState().status === 'error') { autoPause('storage-error'); return false; }
     const reason = discontinuityReason(lastInput, input, settings.staleMs ?? Number.MAX_SAFE_INTEGER);

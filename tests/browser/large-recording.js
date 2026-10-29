@@ -6,6 +6,7 @@ import { buildExperimentJson, parseExperimentJson } from '../../src/data/files/j
 import { buildCsv, buildPointCsv, parseExperimentCsv } from '../../src/data/files/csv.js';
 import { createAnalysisView } from '../../src/ui/analysis-view.js';
 import { createMeasurementView } from '../../src/ui/measurement-view.js';
+import { createPointRecordingView } from '../../src/ui/point-recording-view.js';
 import { mountLabFixture, clickLabControl } from './lab-fixture.js';
 import { assertJsonEqual as equal } from '../helpers/json-equality.js';
 
@@ -25,7 +26,7 @@ export async function runLargeRecordingTests(report = () => {}) {
   const databaseName = `microbit.sensor-lab.large-tests.${crypto.randomUUID()}`;
   const repository = createRepository({ databaseName }), stores = new Set();
   const context = getExperiment('accelerometer'); context.setup.simulated = true;
-  let clock = 1700000000000, view, measurement, fixture;
+  let clock = 1700000000000, view, measurement, pointsView, fixture;
   const costs = {}, chartCount = Object.keys(globalThis.Chart.instances).length;
   const timed = async (name, action) => {
     const start = performance.now(), result = await action();
@@ -82,6 +83,15 @@ export async function runLargeRecordingTests(report = () => {}) {
     }
     equal(markerIds.sort((a,b)=>a-b), Array.from({length:600},(_,index)=>index+1), '대용량 표식 묶음에서 점 기록 누락·중복');
     report('36,000행 위의 600개 한 점 기록 · 표식 묶음 상세에서 모든 번호 접근');
+    pointsView = createPointRecordingView(fixture.host, {onCapture:()=>{}, onChange:()=>{}, onError:error=>{throw error;}});
+    pointsView.render({...liveOptions, captureState:{ready:false,reason:'capture-ended'}, busy:false, recordingMode:'continuous'});
+    clickLabControl(fixture.host, '#point-panel > summary'); await settle();
+    const pointScroll = fixture.host.querySelector('.point-table-scroll');
+    pointScroll.scrollTop = pointScroll.scrollHeight; pointScroll.dispatchEvent(new Event('scroll')); await settle();
+    check(fixture.host.querySelector('[data-point-id="600"]') && fixture.host.querySelectorAll('[data-point-id]').length < 100,
+      '600점 기록표의 마지막 행 접근·가상 표시 제한 실패');
+    pointsView.dispose(); pointsView = null;
+    report('600점 기록표 · 페이지 전환 없이 마지막 행 접근·가상 스크롤');
     measurement.dispose(); measurement = null;
     fixture.showScreen('analysis');
     const root = fixture.host.querySelector('[data-screen="analysis"]'), errors = [];
@@ -129,7 +139,7 @@ export async function runLargeRecordingTests(report = () => {}) {
     report(`JSON ${(new Blob([json]).size / 1048576).toFixed(1)}MiB·CSV ${(new Blob([csv]).size / 1048576).toFixed(1)}MiB 왕복 · 전체 원자료·조작·분석 상태 보존`);
     report(`소요 시간(ms): ${JSON.stringify(costs)}`);
   } finally {
-    view?.dispose(); measurement?.dispose(); fixture?.dispose();
+    view?.dispose(); measurement?.dispose(); pointsView?.dispose(); fixture?.dispose();
     for (const store of stores) store.dispose();
     repository.close(); await globalThis.idb.deleteDB(databaseName);
   }

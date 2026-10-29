@@ -1,0 +1,33 @@
+/* Shared data-table surface and compact cell controls. Screen modules own
+   scrolling, column widths and selection semantics; DataTable owns spacers. */
+.data-table {
+  --table-row-height:max(var(--sl-table-row-min-height), 2.4em);
+  width:100%; min-width:0; border-collapse:collapse; text-align:left;
+  color:var(--sl-text); background:var(--sl-surface);
+  font-size:var(--sl-type-small); font-variant-numeric:tabular-nums;
+}
+.data-table thead th, .data-table .data-row > :is(th,td) {
+  height:var(--table-row-height); padding:0 var(--sl-table-cell-padding);
+  vertical-align:middle; line-height:1.5; white-space:nowrap;
+  border-bottom:1px solid var(--sl-line); overflow:hidden; text-overflow:ellipsis;
+}
+.data-table thead th { font-size:inherit; color:var(--sl-muted); background:var(--sl-surface-soft); font-weight:600; }
+.data-table thead th { position:sticky; top:0; z-index:1; }
+.data-table .table-spacer { height:0; }
+.data-table .table-spacer td { padding:0; border:0; line-height:0; }
+.data-table .data-row > th { font:inherit; background:inherit; color:inherit; }
+:root[data-visual-theme] .data-table .table-cell-action {
+  min-height:var(--sl-table-control-height); padding:2px 6px; border:0;
+  border-radius:var(--sl-radius-compact); font:inherit;
+}
+:root[data-visual-theme] .data-table .table-icon-action { width:var(--sl-table-control-height); padding:4px; }
+:root[data-visual-theme] .data-table .table-cell-input {
+  min-height:var(--sl-table-control-height); width:100%; padding:2px 6px; text-align:left; justify-content:flex-start;
+  font:inherit; line-height:1.5; border-radius:var(--sl-radius-compact);
+  border:1px solid var(--sl-input-border); background:var(--sl-surface);
+}
+:root[data-visual-theme] .data-table .table-input-wrap > .table-cell-input { padding-inline-end:var(--sl-table-row-min-height); }
+:root[data-visual-theme] .data-table .table-cell-input:hover { border-color:var(--sl-selection); }
+:root[data-visual-theme] .data-table .table-cell-input:focus { border-color:var(--sl-selection); outline-offset:0; }
+:root[data-visual-theme] .data-table .table-input-wrap > .table-cell-action { top:0; min-height:var(--sl-table-control-height); width:var(--sl-table-control-height); padding:4px; }
+.data-table .data-row:focus-visible { outline:2px solid var(--sl-focus); outline-offset:-2px; }

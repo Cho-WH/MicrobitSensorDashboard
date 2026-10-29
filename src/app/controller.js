@@ -1,3 +1,4 @@
+import { createLivePreview } from '../measurement/live-preview.js';
 import { catalog, getExperiment, getSensorRuntime, getActivityPolicy, getActivityEvents } from '../catalog/index.js';
 import { canResumeImportedRun } from '../data/files/recording-source.js';
 import { createTransport } from '../device/transport.js';
@@ -11,6 +12,8 @@ import { openRunStore, openTemporaryRunStore } from '../data/run-store.js';
 import { createSession, restoreSession } from '../measurement/session.js';
 import { createPointCapture } from '../measurement/point-capture.js';
 import { createPointRecordingView } from '../ui/point-recording-view.js';
+import { getRecordingActions } from '../ui/recording-actions.js';
+import { setText } from '../ui/text.js';
 import { parseExperimentJson, buildExperimentJson } from '../data/files/json.js';
 import { parseExperimentCsv, buildCsv, buildPointCsv, buildAnalysisCsv } from '../data/files/csv.js';
 import { createAnalysisView } from '../ui/analysis-view.js';
@@ -39,9 +42,12 @@ export function createController(root = document, { repository = null, deviceTra
   const button = id => findElement(root, 'button', '#' + id);
   const dialogElement = id => findElement(root, 'dialog', '#' + id);
   let context = null, store = null, session = null, screen = 'home';
+  let measurementTab = 'continuous';
+  let finishingFrom = 'recording';
+  const livePreview = createLivePreview();
   let recordingMode = 'continuous', capture = createPointCapture();
   let copy = getLabCopy(null), copyContext;
-  let preview = null, previewPoints = [], previewSequence = 0, attempt = 0, connected = false, connecting = false, busy = false;
+  let preview = null, attempt = 0, connected = false, connecting = false, busy = false;
   let leaving = false, navigatingDocument = false;
   let connectionRequest = 0, handingOff = false;
   let renderRequested = true, renderedEvents = -1, renderedContext = null, exportedRevision = -1;
@@ -51,6 +57,18 @@ export function createController(root = document, { repository = null, deviceTra
   const connectionNotice = createConnectionNotice(root, { signal });
   let targetContext = null, runtime = null, programmer = null, programmerState = {}, installed = false, recordingSourceAllowed = false;
   let deviceState = transport.getState();
+  const resumeKey = 'sensor-lab:active-run';
+  let bootstrapped = false, restoring = false, rememberedRun;
+  function rememberRun() {
+    if (!historyEnabled || !bootstrapped) return;
+    try {
+      const saved = store?.getState();
+      const value = saved && !saved.temporary ? JSON.stringify({id:saved.id, url:routeUrl(context, screen, {mock}).href, measurementTab}) : '';
+      if (value === rememberedRun) return;
+      if (value) sessionStorage.setItem(resumeKey, value); else sessionStorage.removeItem(resumeKey);
+      rememberedRun = value;
+    } catch { /* Optional tab navigation state; records remain in Repository. */ }
+  }
   const guide = createGuideView($('guide-host'), { onInstall: () => act(install),
     onInstallMode: mode => act(async () => { if (canInstall()) { installed = false; await programmer?.setMode(mode); } }),
     onCancelInstall: () => programmer?.cancel(), onConnect: options => act(()=>connect(options)),
@@ -62,13 +80,18 @@ export function createController(root = document, { repository = null, deviceTra
   const experimentGuide = createExperimentGuide(root.querySelector('.lab-shell'));
   const share = createShareView(findElement(root, 'section', '[data-screen="preview"]'));
   const analysis = createAnalysisView(root.querySelector('[data-screen="analysis"]'), { onError: showError, onExport: kind => act(() => exportFile(kind)) });
-  const help = createActionHelp(root, { messages: { tableSelection: {label:'표 선택과 분석 대상',text:'체크한 행과 분석에 쓰는 자료는 별개입니다. 선택 자료로 분석을 누르면 분석 대상을 바꿀 수 있고, 분석에서 제외를 누르면 원자료를 보존하면서 계산에서 뺍니다.'} } });
+  const help = createActionHelp(root, { messages: { continuousRecording: {label:'연속 기록',text:'켜면 시간에 따른 값을 계속 저장합니다. 꺼도 현재값과 최근 60초 그래프를 볼 수 있으며, 한 점 기록을 누른 값만 저장합니다. 기록을 시작한 뒤에는 추가 측정에서도 이 설정이 유지됩니다.'}, tableSelection: {label:'표 선택과 분석 대상',text:'체크한 행과 분석에 쓰는 자료는 별개입니다. 선택 자료로 분석을 누르면 분석 대상을 바꿀 수 있고, 분석에서 제외를 누르면 원자료를 보존하면서 계산에서 뺍니다.'} } });
   const policy = () => getActivityPolicy(context);
   const onChange = () => { renderRequested = true; };
   const canUseDevice = () => !!runtime && (!store || (!store.getState().temporary && store.getState().writable
     && recordingSourceAllowed));
-  function showError(error) { $('lab-error').textContent = copy.point[error?.code] ?? error?.message ?? String(error); $('lab-error').hidden = false; }
+  function showError(error) { $('lab-error').textContent = copy.point[error?.code] ?? error?.message ?? String(error); $('lab-error').hidden = false; renderRequested = true; }
   function clearError() { $('lab-error').hidden = true; $('lab-error').textContent = ''; }
+  function focusRecordingAction() {
+    const next = root.querySelector('.recording-controls button:not([hidden]):not(:disabled)');
+    if (next instanceof HTMLButtonElement) next.focus({preventScroll:true});
+    else { $('recording-status').tabIndex=-1; $('recording-status').focus({preventScroll:true}); }
+  }
   async function act(work) {
     if (busy || programmerState.busy) return;
     // Async saving can disable (and blur) the pressed record control before the
@@ -82,26 +105,23 @@ export function createController(root = document, { repository = null, deviceTra
       busy = false; renderRequested = false; render();
       if (recordFocus && screen === 'measure' && !recordFocus.getClientRects().length
         && [recordFocus, document.body, $('recording-status')].some(element => element === document.activeElement)) {
-        const next = ({recording:'pause-recording',paused:'resume-recording',ended:'additional-recording'})[session?.getState().state];
-        if (next && !button(next).disabled) button(next).focus({preventScroll:true});
-        else { $('recording-status').tabIndex=-1; $('recording-status').focus({preventScroll:true}); }
+        focusRecordingAction();
       }
     }
   }
   function listen(id, work) { $(id).addEventListener('click', () => act(work), { signal }); }
   function accept(input) {
     if (!context || !runtime || input.attemptId !== attempt) return;
-    if (input.type === 'reading') {
-      preview = input; previewPoints.push({ ...input, sampleId: ++previewSequence });
-      if (previewPoints.length > 600) previewPoints = previewPoints.slice(-600);
-    }
+    if (input.type === 'reading') preview = input;
     try { if (session) session.acceptInput(input); else capture.accept(input); } catch(error) { showError(error); }
+    livePreview.freeze(session?.getState().state === 'paused');
+    livePreview.accept(input);
     renderRequested = true;
   }
   async function disconnect() {
     ++connectionRequest;
     if (handingOff) programmer?.cancel();
-    connected = false; connecting = false; preview = null; previewPoints = [];
+    connected = false; connecting = false; preview = null; livePreview.reset();
     session?.disconnected();
     capture.disconnected();
     await transport.disconnect(); deviceState=transport.getState(); attempt=deviceState.attemptId;
@@ -143,7 +163,8 @@ export function createController(root = document, { repository = null, deviceTra
     if (!programmer?.getState().canInstall) { await programmer?.prepare(); return; }
     installed = false; await programmer.install();
   }
-  async function connect({reuseDevice=false}={}) {
+  async function connect({reuseDevice=false, preferPrevious=false, reconnecting=false}={}) {
+    if (preferPrevious) reuseDevice = !!transport.getState().canReconnect;
     if (!context || !canUseDevice() || !['prepare','measure'].includes(screen)) throw new Error('이 자료에는 장치를 연결할 수 없습니다. 새 실험을 준비하세요.');
     if (session?.getState().recording && store?.getRun().recordingMode !== 'point') throw new Error('기록을 일시정지한 뒤 장비를 다시 연결하세요.');
     if (connected || connecting) return;
@@ -161,10 +182,13 @@ export function createController(root = document, { repository = null, deviceTra
         const wasConnected = connected;
         deviceState = state; attempt = state.attemptId;
         connected = state.status === 'connected'; connecting = state.status === 'connecting';
-        if (screen==='measure' && state.devicePreparation && !state.devicePreparation.allowReadings) navigate('prepare');
-        if (wasConnected && !connected) { preview = null; previewPoints = []; session?.disconnected(); capture.disconnected(); }
+        if (screen === 'measure' && state.devicePreparation?.requiredStep) {
+          guide.showDevicePreparation(state.devicePreparation.requiredStep); navigate('prepare');
+        }
+        if (wasConnected && !connected) { preview = null; livePreview.reset(); session?.disconnected(); capture.disconnected(); }
         renderRequested = true;
-      },{reuseDevice, device: installedDevice, reuseConnection: !!installedDevice?.gatt?.connected});
+      },{reuseDevice, reconnecting, device: installedDevice, reuseConnection: !!installedDevice?.gatt?.connected});
+      if (preferPrevious && transport.getState().status === 'disconnected') transport.forgetDevice?.();
     } catch(error) { if (request === connectionRequest) { await disconnect(); throw error; } }
     finally { handingOff = false; if (request === connectionRequest) connecting = false; renderRequested = true; }
   }
@@ -212,15 +236,16 @@ export function createController(root = document, { repository = null, deviceTra
       renderedEvents = -1; pointView.recorded(1);
     } catch (error) { request.cancel(); throw new Error(copy.point[error.code] ?? error.message); }
   }
-  async function changeRecordingMode() {
+  async function prepareNewExperiment() {
     if (!await confirmTransition()) return;
-    const nextMode = (store?.getRun().recordingMode ?? recordingMode) === 'point' ? 'continuous' : 'point';
-    // Only the recording mode changes: retain this device's preparation and
+    const nextMode = store?.getRun().recordingMode ?? recordingMode;
+    const nextTab = measurementTab;
+    // Retain the recording policy, selected view and this device's preparation and
     // connection after the old Run is safely closed. A new capture owns no old
     // observations, so the next Run must receive a new reading.
     const keepConnection = canUseDevice() && connected && deviceState.devicePreparation?.allowReadings !== false;
     await releaseCurrent();
-    recordingMode = nextMode; preview = null; previewPoints = []; input('run-name').value = '';
+    recordingMode = nextMode; measurementTab = nextTab; preview = null; livePreview.reset(); input('run-name').value = '';
     measurement.reset();
     if (keepConnection && connected && deviceState.devicePreparation?.allowReadings !== false) {
       capture = createPointCapture({ config: context.connectionPolicy });
@@ -257,7 +282,7 @@ export function createController(root = document, { repository = null, deviceTra
   async function releaseCurrent() {
     await store?.close();
     analysis.reset(); session = null; store = null; exportedRevision = -1; renderedEvents = -1;
-    pointView.reset(); recordingMode = 'continuous';
+    pointView.reset(); recordingMode = 'continuous'; measurementTab = 'continuous';
   }
   // Save before replacing the document. The browser releases the old page's
   // connections; do not start another device teardown before this navigation.
@@ -277,7 +302,7 @@ export function createController(root = document, { repository = null, deviceTra
       transport.forgetDevice?.(); deviceState = transport.getState();
       programmer = null; programmerState = {}; runtime = null; installed = false;
       context = null; targetContext = null; renderedContext = null;
-      preview = null; previewPoints = []; previewSequence = 0;
+      preview = null; livePreview.reset();
       input('run-name').value = ''; input('event-note').value = '';
       guide.close(); experimentGuide.close(); measurement.reset();
       return 'left';
@@ -336,7 +361,7 @@ export function createController(root = document, { repository = null, deviceTra
       navigate(route.screen === 'analysis' && !store ? 'saved' : route.screen, false);
     } catch(error) { restoreLocation(); showError(error); }
   }
-  async function openRun(id) {
+  async function openRun(id, destination = 'analysis', push = true) {
     if (store?.getState().id === id) return navigate('analysis');
     if (!await confirmTransition()) return;
     // Opening failure leaves the current Run in place.
@@ -347,8 +372,8 @@ export function createController(root = document, { repository = null, deviceTra
     // A saved run is opened for analysis; recording only resumes through an explicit action.
     session = store.getState().writable && (store.getState().source !== 'import' || canResumeImportedRun(store.getRun())) ? createSession({ store, activityPolicy: policy() }) : null;
     renderedEvents = -1;
-    renderedContext = null; resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous';
-    analysis.open(store); navigate('analysis');
+    renderedContext = null; resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous'; measurementTab = recordingMode;
+    analysis.open(store); navigate(destination, push);
   }
   async function importSnapshot(snapshot) {
     if (!await confirmTransition()) return;
@@ -365,7 +390,7 @@ export function createController(root = document, { repository = null, deviceTra
     store = next; context = store.getRun().context;
     session = !store.getState().temporary && canResumeImportedRun(store.getRun()) ? createSession({ store, activityPolicy: policy() }) : null;
     renderedEvents = -1;
-    renderedContext = null; resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous';
+    renderedContext = null; resetPreparation(); recordingMode = store.getRun().recordingMode ?? 'continuous'; measurementTab = recordingMode;
     analysis.open(store); navigate('analysis');
   }
   async function readFile(file) {
@@ -486,10 +511,11 @@ export function createController(root = document, { repository = null, deviceTra
     for (const button of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('[data-view]'))) { if(button.dataset.view === next) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); }
     if (next === 'analysis') analysis.open(store, context);
     if (next === 'saved') listRuns().catch(showError);
-    if (next === 'measure' && store?.getState().source !== 'import') experimentGuide.show(context,{automatic:true,anchor:$('show-experiment-guide')});
+    if (next === 'measure' && !restoring && store?.getState().source !== 'import') experimentGuide.show(context,{automatic:true,anchor:$('show-experiment-guide')});
     renderRequested = true;
   }
   function render() {
+    rememberRun();
     button('download-program').disabled = busy || !!programmerState.busy || !canInstall();
     $('installation-download-blocked').hidden = canInstall();
     $('installation-program-name').textContent = context ? `선택한 센서: ${context.sensor.name}` : '';
@@ -513,14 +539,19 @@ export function createController(root = document, { repository = null, deviceTra
     const previousRecordingState = measurementScreen.dataset.recordingState;
     const focusedRecordControl = measurementScreen.contains(document.activeElement) && ['start-recording','pause-recording','resume-recording','finish-recording'].includes(document.activeElement.id);
     measurementScreen.dataset.recordingState = current?.state ?? (saved ? 'ended' : 'preview');
+    // Keep the last record-control layout while Session waits for saving.
+    if (current?.state === 'recording' || current?.state === 'paused') finishingFrom = current.state;
     measurementScreen.dataset.storageState = saved?.status ?? 'none';
     measurementScreen.dataset.connectionState = deviceState.status;
     const pointMode = (saved?.recordingMode ?? recordingMode) === 'point';
-    measurementScreen.dataset.recordingMode = pointMode ? 'point' : 'continuous';
+    const needsConnection = canUseDevice() && !connected;
+    measurementScreen.dataset.recordingMode = measurementTab;
+    button('continuous-recording').disabled = !!saved || busy;
+    button('continuous-recording').setAttribute('aria-checked', String(!pointMode));
     for (const control of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('button[data-recording-mode]'))) {
-      control.disabled = !!saved || busy; control.setAttribute('aria-pressed', String(control.dataset.recordingMode === (pointMode ? 'point' : 'continuous')));
+      control.disabled = busy; control.setAttribute('aria-pressed', String(control.dataset.recordingMode === measurementTab));
     }
-    $('change-recording-mode').hidden = !saved; button('change-recording-mode').disabled = busy;
+
     if (context) guide.render({attemptId:attempt,connected,connecting,deviceMessage:deviceState.message,deviceName:deviceState.deviceName,receptionReady:hasFreshReading(),receivedAt:deviceState.lastReceivedAt,latest:preview,
       firmwareInstalled:installed ? context.firmware : false,calibration:deviceState.calibration ?? 'unknown',devicePreparation:deviceState.devicePreparation,
       busy:busy || programmerState.busy,recording:recording || current?.state === 'finishing',programmerState,mock,
@@ -534,7 +565,7 @@ export function createController(root = document, { repository = null, deviceTra
     button('activate-prepared').disabled = busy || !!programmerState.busy;
     $('disconnect').textContent = connecting ? copy.common.cancelConnection : copy.common.disconnect;
     $('connection-status').textContent = connecting ? copy.common.connecting : connected ? mock ? copy.common.mockConnected : copy.common.connected : copy.common.disconnected;
-    $('recording-status').textContent = ({recording:copy.common.recordingActive,paused:copy.common.paused,finishing:copy.common.finishing,ended:copy.common.ended,preview:copy.common.prepare})[current?.state] ?? (saved ? copy.common.stored : copy.common.prepare);
+    $('recording-status').textContent = ({recording:pointMode ? copy.point.recordingActive : copy.point.continuousActive,paused:copy.common.paused,finishing:copy.common.finishing,ended:copy.common.ended,preview:copy.common.prepare})[current?.state] ?? (saved ? copy.common.stored : copy.common.prepare);
     $('storage-status').textContent = !saved ? copy.common.beforeRecording : saved.temporary ? copy.common.temporary : !saved.writable ? copy.common.readOnly : copy.common[saved.status];
     $('experiment-title').textContent = displayContext ? displayContext.activity?.name ?? displayContext.sensor.name ?? copy.common.imported : '';
     findElement(root,'div','.lab-status').hidden = !context;
@@ -542,20 +573,23 @@ export function createController(root = document, { repository = null, deviceTra
       item.disabled = busy || !!programmerState.busy || (!context && ['prepare','measure','analysis'].includes(item.dataset.view));
     }
     input('run-name').disabled = !!store || busy;
-    const connectionDisabled = (recording && !pointMode) || connected || connecting || busy || !canUseDevice() || (!mock && !transport.isSupported()) || !!programmerState.busy;
+    const connectionUnavailable = connected || connecting || busy || !canUseDevice() || (!mock && !transport.isSupported()) || !!programmerState.busy;
+    const connectionDisabled = (recording && !pointMode) || connectionUnavailable;
     const reconnectHidden = !canReconnect || connected || connecting;
     button('connect').disabled = connectionDisabled;
-    for (const id of ['reconnect', 'measurement-reconnect']) {
-      button(id).hidden = reconnectHidden;
-      button(id).disabled = connectionDisabled;
+    button('reconnect').hidden = reconnectHidden;
+    button('reconnect').disabled = connectionDisabled;
+    const recordingActions = getRecordingActions({ state: measurementScreen.dataset.recordingState,
+      pointMode, hasRun: !!saved, hasSession: !!session, recording: !!recording, busy,
+      ready: readyToRecord(), saveFailed: saved?.status === 'error', recordingSupported: !!navigator.locks,
+      needsConnection, connectionDisabled: connectionUnavailable, finishingFrom });
+    for (const [id, action] of Object.entries(recordingActions)) {
+      button(id).hidden = !action.visible; button(id).disabled = action.disabled;
     }
+    button('prepare-new-experiment').dataset.uiAction = current?.state === 'ended' ? 'secondary' : 'quiet';
+    button('measurement-reconnect').textContent = connecting ? copy.common.connecting : copy.measurement.reconnect;
     $('connect').textContent=canReconnect?copy.common.chooseDevice:mock?copy.common.mockConnect:copy.common.connect;
     button('disconnect').disabled = (!connected && !connecting) || !!programmerState.busy;
-    button('start-recording').disabled = !!store || busy || !readyToRecord() || !navigator.locks;
-    button('pause-recording').disabled = !recording || busy;
-    button('resume-recording').disabled = current?.state !== 'paused' || busy || !readyToRecord() || saved?.status === 'error';
-    button('finish-recording').disabled = !session || ['ended','preview'].includes(current?.state) || busy;
-    $('additional-recording').hidden = !session || current?.state !== 'ended'; button('additional-recording').disabled = busy || !readyToRecord();
     button('add-note').disabled = !session || !['recording','paused'].includes(current?.state) || busy;
     button('export-json').disabled = !saved; button('export-csv').disabled = !saved?.sampleCount;
     $('export-csv').textContent = `연속 기록 CSV 저장 (${saved?.sampleCount ?? 0}행)`;
@@ -566,21 +600,23 @@ export function createController(root = document, { repository = null, deviceTra
     $('export-json').hidden=!saved; $('export-csv').hidden=!saved || pointMode;
     const exportMenu = root.querySelector('.luminous-export');
     if (exportMenu instanceof HTMLDetailsElement) { exportMenu.hidden=!saved; if (!saved) exportMenu.open=false; }
-    if (root.querySelector('.luminous-overview') && focusedRecordControl && previousRecordingState !== measurementScreen.dataset.recordingState) {
-      const nextControl = ({recording:'pause-recording',paused:'resume-recording',ended:'additional-recording'})[measurementScreen.dataset.recordingState];
-      if (nextControl && !button(nextControl).disabled && !button(nextControl).hidden) button(nextControl).focus({preventScroll:true});
-      else { $('recording-status').tabIndex=-1; $('recording-status').focus({preventScroll:true}); }
-    }
     const measurementGuide=getGuideContent(context).experimentGuide;
+    const guideInTabs = measurementGuide?.placement === 'measurement-tabs';
+    const guideHost = guideInTabs ? $('measurement-guide-action') : root.querySelector('.luminous-activity');
+    if ($('show-experiment-guide').parentElement !== guideHost) guideHost.append($('show-experiment-guide'));
+    $('measurement-guide-action').hidden = !guideInTabs;
+    // The resolved guide owns this action's name. Do not bind it to generic
+    // data-copy: MeasurementView also applies that copy during initialization.
     $('show-experiment-guide').hidden=!measurementGuide;
     $('show-experiment-guide').textContent=measurementGuide?.buttonLabel??getLabCopy(context).measurement.guide;
     experimentGuide.setRecording(Boolean(recording));
-    $('sample-count').textContent = pointMode ? saved ? formatCopy(copy.point.count, {count:saved.pointCount,withdrawn:saved.withdrawnPointCount}) : copy.point.preview : saved ? formatCopy(copy.measurement.count, {count:saved.sampleCount.toLocaleString('ko-KR')}) : copy.measurement.previewNote;
-    $('sample-count').dataset.preview=String(!saved);
-    $('lab-notice').textContent = saved?.temporary ? '이 환경에서는 브라우저에 저장할 수 없습니다. 분석 결과는 전체 실험 JSON으로 보관하세요.' : saved?.error ? saved.error + ' 메모리의 자료는 유지됩니다. 다시 저장하거나 전체 실험 JSON을 보관하세요.'
+    setText($('sample-count'), saved ? pointMode ? formatCopy(copy.point.count, {count:saved.pointCount,withdrawn:saved.withdrawnPointCount}) : formatCopy(copy.measurement.count, {count:saved.sampleCount.toLocaleString('ko-KR')}) : '');
+    $('lab-notice').hidden = screen === 'measure';
+    const storageNotice = saved?.temporary ? '이 환경에서는 브라우저에 저장할 수 없습니다. 분석 결과는 전체 실험 JSON으로 보관하세요.' : saved?.error ? saved.error + ' 메모리의 자료는 유지됩니다. 다시 저장하거나 전체 실험 JSON을 보관하세요.'
       : saved?.nearLimit ? '보관 한도에 가까워졌습니다. 전체 실험 JSON으로 보관하고 새 실험을 준비하세요.'
-      : current?.problem ? current.problem : !navigator.locks ? '이 브라우저에서는 새 실험을 기록할 수 없습니다. 저장된 자료를 열어 분석할 수 있어요.'
-      : mock && connected ? '모의 장치를 사용하고 있어요. 실제 센서 측정값이 아닙니다.' : '';
+      : saved && !saved.writable ? copy.common.readOnly : '';
+    $('lab-notice').textContent = storageNotice || (current?.problem ? current.problem : !navigator.locks ? '이 브라우저에서는 새 실험을 기록할 수 없습니다. 저장된 자료를 열어 분석할 수 있어요.'
+      : mock && connected ? copy.measurement.mockNotice : '');
     if (renderedContext !== context) {
       renderedContext = context;
       $('preparation-notes').replaceChildren(...(context?.preparation ?? []).map(text => { const li=document.createElement('li'); li.textContent=text; return li; }));
@@ -596,10 +632,19 @@ export function createController(root = document, { repository = null, deviceTra
       const action=getActivityEvents(context).find(item=>item.type===button.dataset.activityEvent);
       button.disabled=busy || (!recording && !(current?.state==='paused' && action?.allowPaused));
     }
+    livePreview.freeze(current?.state === 'paused');
     if (screen === 'measure' && context) {
-      if (!pointMode) measurement.render({context,store,latest:preview,previewPoints,device:deviceState,recording});
-      pointView.render({context,store,latest:preview,device:deviceState,busy,recordingMode:pointMode?'point':'continuous',
+      const display = livePreview.snapshot();
+      const latest = display.latest ?? (current?.state === 'paused' ? store?.getLatestSample() : null);
+      if (measurementTab === 'continuous') measurement.render({context,store,latest,previewPoints:display.points,device:deviceState,recording,previewOnly:pointMode,displayNow:display.now,displayMono:display.mono,previewOrigin:display.origin,paused:current?.state === 'paused'});
+      pointView.render({context,store,latest,device:deviceState,busy,recordingMode:measurementTab,paused:current?.state === 'paused',captureVisible:!needsConnection && (['recording','paused','finishing'].includes(current?.state) || (!saved && pointMode)),
         captureState: !navigator.locks || (saved && !session) ? {ready:false,reason:'capture-read-only'} : session ? session.captureStatus(captureConnection()) : pointMode ? capture.status(captureConnection()) : {ready:false,reason:'capture-preview'} });
+      if (root.querySelector('.luminous-overview') && focusedRecordControl && previousRecordingState !== measurementScreen.dataset.recordingState) {
+        focusRecordingAction();
+      }
+      const noticeMessage = storageNotice || (!navigator.locks ? '이 브라우저에서는 새 실험을 기록할 수 없습니다.' : mock && connected ? copy.measurement.mockNotice : '');
+      setText($('measurement-action-message'), noticeMessage);
+      findElement(root, 'div', '.measurement-notice').hidden = !noticeMessage;
     }
     if (saved?.eventsVersion !== renderedEvents) {
       renderedEvents = saved?.eventsVersion;
@@ -612,13 +657,19 @@ export function createController(root = document, { repository = null, deviceTra
     if (button.disabled || busy || programmerState.busy) return;
     if (button.dataset.view === 'home') void act(()=>exitToHome()); else navigate(button.dataset.view);
   },{signal});
-  listen('connect',()=>connect()); listen('reconnect',()=>connect({reuseDevice:true})); listen('measurement-reconnect',()=>connect({reuseDevice:true})); $('disconnect').addEventListener('click',()=>disconnect().catch(showError),{signal}); listen('start-recording',start);
-  listen('pause-recording',()=>session.pause()); listen('resume-recording',()=>{requireReady();session.resume();});
+  listen('connect',()=>connect()); listen('reconnect',()=>connect({reuseDevice:true,reconnecting:true})); listen('measurement-reconnect',async()=>{
+    if (session?.getState().recording) { session.pause(); livePreview.freeze(true); }
+    await connect({preferPrevious:true,reconnecting:true});
+  }); $('disconnect').addEventListener('click',()=>disconnect().catch(showError),{signal}); listen('start-recording',start);
+  listen('pause-recording',()=>{const result=session.pause();livePreview.freeze(true);return result;}); listen('resume-recording',()=>{requireReady();session.resume();});
   listen('finish-recording',async()=>{if (!pointView.flush()) return; await session.finish();await store.flush();});
-  listen('change-recording-mode',changeRecordingMode);
+  listen('prepare-new-experiment',prepareNewExperiment);
+  listen('continuous-recording',()=>{if (!store) recordingMode = recordingMode === 'point' ? 'continuous' : 'point';});
   for (const control of /** @type {NodeListOf<HTMLButtonElement>} */ (root.querySelectorAll('button[data-recording-mode]'))) control.addEventListener('click', () => {
-    if (store || busy || !pointView.flush()) return;
-    recordingMode = control.dataset.recordingMode; renderRequested = true;
+    if (busy || measurementTab === control.dataset.recordingMode || !pointView.flush()) return;
+    measurementTab = control.dataset.recordingMode;
+    if (!store) recordingMode = measurementTab;
+    render();
   }, { signal });
   listen('additional-recording',async()=>{requireReady();await dialogs.additional(policy(),confirmation=>{requireReady();session.startAdditional(confirmation);});});
   listen('add-note',()=>{const note=input('event-note').value.trim();if(!note)throw new Error('메모를 입력하세요.');session.markEvent('note',{note});input('event-note').value='';});
@@ -652,7 +703,25 @@ export function createController(root = document, { repository = null, deviceTra
     if (connected || session?.getState().recording) renderRequested = true;
     if(renderRequested){renderRequested=false;render();}
   },200);
-  const ready = act(()=>applyLocation(initialUrl)); render();
+  const ready = act(async () => {
+    let bookmark;
+    try { if (historyEnabled) bookmark = JSON.parse(sessionStorage.getItem(resumeKey)); } catch { /* No restorable tab. */ }
+    let route;
+    try { route = parseRoute(initialUrl); } catch { await applyLocation(initialUrl); bootstrapped = true; return; }
+    if (bookmark?.id && bookmark.url === routeUrl(route.context, route.screen, {mock}).href) {
+      // Deleted records simply return to the requested route. Never select a
+      // different Run by recency, including one currently edited in another tab.
+      const exists = (await repo.listRuns()).some(run => run.id === bookmark.id);
+      if (exists) {
+        restoring = true;
+        try { await openRun(bookmark.id, route.screen, false); if (['point','continuous'].includes(bookmark.measurementTab)) measurementTab = bookmark.measurementTab; }
+        catch (error) { await applyLocation(initialUrl); showError(error); }
+        finally { restoring = false; }
+      } else await applyLocation(initialUrl);
+    } else await applyLocation(initialUrl);
+    await transport.restoreDevice?.();
+    bootstrapped = true;
+  }); render();
   return { ready, async dispose(){
     await persistCurrent(); await disconnect(); await store?.close();
     clearInterval(interval);abort.abort();dialogs.dispose();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();measurement.dispose();pointView.dispose();experimentGuide.dispose();share.dispose();repo.close();

@@ -38,7 +38,7 @@ export function createGuideView(host, callbacks = {}) {
           <iframe class="guide-frame viewer-pending" title="배선 3D 안내" hidden></iframe>
           <div class="guide-table-panel" hidden><table class="guide-wiring"><caption></caption><thead><tr><th scope="col" data-copy="guide.wireRole"></th><th scope="col" data-wiring-board></th><th scope="col" data-wiring-sensor></th></tr></thead><tbody></tbody></table><p data-copy="guide.wiringNote"></p></div>
         </div>
-        <figure class="guide-placement" hidden><img alt=""><figcaption></figcaption></figure>
+        <figure class="guide-step-image" hidden><img alt=""><figcaption></figcaption></figure>
         <div class="guide-device-visual" hidden></div>
         <div class="guide-sensor-preparation" hidden></div>
         <div class="guide-reception" hidden><div class="guide-reception-state" role="status"><strong></strong><p></p></div><p class="eyebrow" data-copy="guide.incoming"></p><div class="guide-values"></div><p class="guide-last-received"></p><p class="guide-reading-note" data-copy="guide.receptionNote"></p><ol class="guide-checks"></ol><ol class="calibration-instructions" hidden></ol></div>
@@ -68,7 +68,7 @@ export function createGuideView(host, callbacks = {}) {
   const activityEquipment = findElement(shell,'div','.guide-activity-equipment');
   const modelStatus = findElement(shell,'p','.guide-model-status'), frame = findElement(shell,'iframe','iframe');
   const tablePanel = findElement(shell,'div','.guide-table-panel'), tableBody = findElement(shell,'tbody','.guide-wiring tbody');
-  const placement = findElement(shell,'figure','.guide-placement'), deviceVisual = findElement(shell,'div','.guide-device-visual');
+  const stepFigure = findElement(shell,'figure','.guide-step-image'), deviceVisual = findElement(shell,'div','.guide-device-visual');
   const preparationHost = findElement(shell,'div','.guide-sensor-preparation');
   const reception = findElement(shell,'div','.guide-reception'), values = findElement(shell,'div','.guide-values');
   const power = findElement(shell,'details','.guide-power');
@@ -127,7 +127,7 @@ export function createGuideView(host, callbacks = {}) {
     if (!locked() && progress.confirm('program')) {callbacks.onChange?.(progress.getState()); next();}
   },programActions,'quiet-button');
   button('connect',labels.common.connect,()=>callbacks.onConnect?.({reuseDevice:false}),deviceActions,'primary');
-  button('reconnect',labels.common.reconnect,()=>callbacks.onConnect?.({reuseDevice:true}),deviceActions,'primary');
+  button('reconnect',labels.common.reconnect,()=>callbacks.onConnect?.({reuseDevice:true,reconnecting:true}),deviceActions,'primary');
   button('disconnect',labels.common.disconnect,()=>callbacks.onDisconnect?.(),deviceActions);
   const connectionHelp=element('button','connection-help-trigger',labels.common.connectionHelp);
   connectionHelp.type='button'; connectionHelp.dataset.connectionHelp='';
@@ -240,10 +240,6 @@ export function createGuideView(host, callbacks = {}) {
       const heading=element('th','',wire.role); heading.scope='row'; heading.append(element('small','',labels.guide.currentStep));
       row.append(heading,element('td','',wire.board),element('td','',wire.sensor)); tableBody.append(row);
     }
-    if (content.setupImage) {
-      const img=findElement(placement,'img','img'); img.src=content.setupImage.src; img.alt=content.setupImage.alt;
-      findElement(placement,'figcaption','figcaption').textContent=content.setupImage.caption;
-    } else findElement(placement,'img','img').removeAttribute('src');
     values.replaceChildren(...context.channels.map(channel=>{
       const card=element('div','guide-value'), value=element('strong','','—'); value.dataset.channel=channel.id;
       card.append(element('span','',channel.name),value,element('small','',channel.unit??'')); return card;
@@ -323,7 +319,14 @@ export function createGuideView(host, callbacks = {}) {
     equipment.hidden=!quick&&step?.id!=='equipment';
     activityEquipment.hidden=equipment.hidden||!content.activityEquipment.length;
     model.hidden=quick||isSummary||!content.viewer||!content.wiring.length||step?.group!=='wiring';
-    placement.hidden=quick||step?.id!=='placement'||!content.setupImage;
+    const stepImage = quick || isSummary ? null : step?.image;
+    stepFigure.hidden = !stepImage;
+    const img = findElement(stepFigure,'img','img');
+    if (stepImage) {
+      if (img.getAttribute('src') !== stepImage.src) img.src = stepImage.src;
+      img.alt = stepImage.alt;
+      setText(findElement(stepFigure,'figcaption','figcaption'), stepImage.caption);
+    } else img.removeAttribute('src');
     const connectionStep=!quick&&!isSummary&&['connection','calibration','reception','battery'].includes(step?.kind);
     reception.hidden=!connectionStep||Boolean(managed&&presentation.hideValues);
     power.hidden=!content.illustrations||quick||isSummary||!['connection','reception','battery'].includes(step?.kind);
@@ -492,6 +495,9 @@ export function createGuideView(host, callbacks = {}) {
     /** @param {import('../guide/types.js').GuideFacts} nextFacts */
     render(nextFacts) {if (!progress||disposed) return; facts={...nextFacts}; progress.setAttempt(facts.attemptId); progress.observe(facts); paint();},
     showPrepared() {if (!locked()) {quick=true; selectedId='quick'; paint();}},
+    // App-directed preparation is painted with the next live facts, even when
+    // the connection action is still busy. Never reset to the equipment page.
+    showDevicePreparation(stepId) {if (progress?.getState().steps.some(step => step.id === stepId)) {quick=false; selectedId=stepId; suggestion='';}},
     close() {
       preparationView?.dispose(); preparationView=null; viewer?.dispose(); viewer=null;
       layout?.dispose(); layout=null; help?.dispose(); help=null; contentAbort.abort();

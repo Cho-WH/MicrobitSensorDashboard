@@ -23,6 +23,17 @@ export function getSensorRuntime(context, modules = registry) {
     sampleIntervalMs: firmware.sampleIntervalMs, stale: firmware.stale } }), decode: module.decode, mockLine: module.mockLine, preparation: module.preparation };
 }
 export const getSensorPreparation = context => registry.getSensor(context?.sensor)?.preparation;
+// Display relationships come from exact registered definitions, not graph axes
+// or matching quantity names. Historical/unknown channels remain usable as numbers.
+export function getMeasurementReadout(context, modules = registry) {
+  const channels = context?.channels ?? [];
+  const definition = modules.getActivity(context?.activity, context?.sensor)?.definition.readout
+    ?? modules.getSensor(context?.sensor)?.definition.readout;
+  const primary = channels.find(channel => channel.id === definition?.primaryChannelId) ?? channels[0];
+  return { primaryChannelId: primary?.id,
+    componentChannelIds: (definition?.componentChannelIds ?? []).filter(id => id !== primary?.id
+      && channels.some(channel => channel.id === id && channel.quantity === primary?.quantity && channel.unit === primary?.unit)) };
+}
 export function getActivityPolicy(context, modules = registry) {
   return modules.getActivity(context?.activity, context?.sensor)?.policy;
 }

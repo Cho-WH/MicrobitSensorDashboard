@@ -5,8 +5,9 @@ import { createAnalysisChart } from './chart-view.js';
 import { createTrendControls } from './trend-controls.js';
 import { analysisSeriesColors } from './visual-theme.js';
 import { bindDisclosureMenu } from './disclosure-menu.js';
+import { labDefaults } from './lab-copy.js';
 
-export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal, getTheme = () => null }) {
+export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal, getTheme = () => null, getCopy = () => labDefaults }) {
   const $ = id => root.querySelector('#' + id), x = $('graph-x'), y = $('graph-y'), rightY = $('graph-y-right'), gaps = $('graph-gaps');
   const shapeButtons = [...root.querySelectorAll('[data-graph-type]')];
   let chart = null, columnsKey = null;
@@ -26,8 +27,8 @@ export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal,
   settingsToggle.addEventListener('click', () => showSettings(!settingsExpanded), {signal});
   const currentGraph = () => { const state = getWorkspace().getState(); return state.graph ?? state.defaultGraph; };
   const changeRight = patch => getWorkspace().setRightAxis({ ...currentGraph().right, ...patch });
-  const trend = createTrendControls(root, { act, signal, onEnabled: enabled => getWorkspace().setTrendEnabled(enabled), onView: view => getWorkspace().setGraphView(view) });
-  const rightTrend = createTrendControls(root, { act, signal, prefix:'right-', onEnabled: enabled => changeRight({trendEnabled:enabled, view:'measured'}), onView: view => changeRight({view}) });
+  const trend = createTrendControls(root, { act, signal, getCopy, onEnabled: enabled => getWorkspace().setTrendEnabled(enabled), onView: view => getWorkspace().setGraphView(view) });
+  const rightTrend = createTrendControls(root, { act, signal, getCopy, prefix:'right-', onEnabled: enabled => changeRight({trendEnabled:enabled, view:'measured'}), onView: view => changeRight({view}) });
   bindDisclosureMenu($('graph-shape-menu'), {signal});
   function change(type = currentGraph().type) {
     act(() => getWorkspace().setGraph({ ...currentGraph(), xColumnId:x.value, yColumnId:y.value, type:x.value === 'receivedAt' ? type : 'scatter', connectGaps:gaps.checked }));
@@ -62,7 +63,7 @@ export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal,
       for (const option of rightY.options) option.disabled = option.value === y.value;
       $('right-axis-controls').hidden = !dual; $('right-trend-result').hidden = !dual;
       $('graph-form').dataset.dual = String(dual);
-      $('left-axis-label').textContent = dual ? '왼쪽 축' : '세로축';
+      $('left-axis-label').textContent = dual ? '왼쪽 축' : getCopy().analysis.y;
       $('add-right-axis').hidden = dual;
       $('add-right-axis').disabled = !canEdit || ![...rightY.options].some(option => !option.disabled);
       $('add-right-axis').title = $('add-right-axis').disabled ? '추가할 다른 자료 열이 없습니다.' : '오른쪽 세로축 추가';
@@ -72,7 +73,7 @@ export function createAnalysisGraph(root, { getWorkspace, act, onSelect, signal,
         button.title = button.dataset.graphType === 'line' && x.value !== 'receivedAt' ? '가로축을 경과 시간으로 선택해 주세요.' : '';
         button.setAttribute('aria-pressed', String(button.dataset.graphType === current.type));
       }
-      $('graph-type-label').textContent = current.type === 'line' ? '꺾은선 그래프' : '산점도';
+      $('graph-type-label').textContent = current.type === 'line' ? getCopy().analysis.line : getCopy().analysis.scatter;
       $('graph-gap-control').hidden = x.value !== 'receivedAt' || current.type !== 'line';
       const series = model ? [model, ...(model.right ? [model.right] : [])] : [];
       const colors = model ? analysisSeriesColors(getTheme(), model) : [];

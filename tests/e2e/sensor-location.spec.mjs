@@ -5,6 +5,7 @@ for(const sensor of ['magnetometer','accelerometer','temperature','light-level']
   test(`${sensor}: first-entry sensor guide${sensor==='light-level'?' and shared recording flow':''}`,async({page})=>{
     const sharedFlow=sensor==='light-level';
     await page.clock.install();
+    if(sensor==='magnetometer') await page.setViewportSize({width:390,height:844});
     await page.goto(`/sensors/${sensor}/?mock=1${sharedFlow?'':'&view=measure'}`);
     if(sharedFlow) {
       await page.locator('[data-guide-group="connection"]').click();
@@ -22,6 +23,22 @@ for(const sensor of ['magnetometer','accelerometer','temperature','light-level']
     }
     await dialog.locator('[data-guide-next]').click();
     await expect(page.locator('#show-experiment-guide')).toBeFocused();
+    if(sensor==='magnetometer') {
+      // A disconnected initial screen must already identify the same action
+      // as later renders; opening the guide must not correct its button name.
+      const trigger=page.locator('#show-experiment-guide');
+      const expectedName=await page.evaluate(async()=>{
+        const {getGuideContent}=await import('/src/guide/steps.js');
+        const {getExperiment}=await import('/src/catalog/index.js');
+        return getGuideContent(getExperiment('magnetometer')).experimentGuide.buttonLabel;
+      });
+      await expect(trigger).toHaveText(expectedName);
+      await trigger.click(); await expect(dialog).toBeVisible();
+      await expect(trigger).toHaveText(expectedName);
+      await page.keyboard.press('Escape');
+      await page.setViewportSize({width:1366,height:768});
+      await expect(trigger).toHaveText(expectedName);
+    }
     // Common reopen/focus/recording behavior needs one representative sensor.
     if(!sharedFlow)return;
     await page.locator('#start-recording').click();

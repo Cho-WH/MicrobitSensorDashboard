@@ -1,16 +1,25 @@
 import { validateChannels } from '../domain/contracts.js';
 /**
- * @typedef {{definition:Omit<typeof import('./sensors/bmp280/definition.js').bmp280|typeof import('./sensors/magnetometer/definition.js').magnetometer,'channels'> & {channels:import('../domain/columns.js').Channel[]},
+ * @typedef {{primaryChannelId:string,componentChannelIds:string[]}} ReadoutDefinition
+ * @typedef {{definition:Omit<typeof import('./sensors/bmp280/definition.js').bmp280|typeof import('./sensors/magnetometer/definition.js').magnetometer,'channels'|'readout'> & {channels:import('../domain/columns.js').Channel[],readout?:ReadoutDefinition},
  * decode:typeof import('./sensors/bmp280/codec.js').decodeBmp280|typeof import('./sensors/magnetometer/codec.js').decodeMagnetometer,
  * mockLine:(time:number)=>string,guide:import('../guide/types.js').SensorGuide,
  * preparation?:import('../device/preparation-types.js').SensorPreparation,recording?:boolean,
  * uiCopy?:import('./ui-copy.js').LabCopy}} SensorModule
- * @typedef {{definition:typeof import('./activities/gay-lussac/definition.js').gayLussac,
+ * @typedef {{definition:Omit<typeof import('./activities/gay-lussac/definition.js').gayLussac,'readout'> & {readout?:ReadoutDefinition},
  * policy?:typeof import('./activities/gay-lussac/policy.js').activityPolicy,guide:import('../guide/types.js').ActivityGuide,
  * uiCopy?:import('./ui-copy.js').LabCopy}} ActivityModule
  */
 // Keep the former USB step ID reserved so historical setup entries cannot acquire a new meaning.
 const commonIds = ['equipment', 'usb', 'program', 'connection', 'reception', 'summary', 'quick'];
+function validateReadout(readout, channels) {
+  if (!readout) return;
+  const primary = channels.find(channel => channel.id === readout.primaryChannelId);
+  if (!primary || !Array.isArray(readout.componentChannelIds)
+    || new Set(readout.componentChannelIds).size !== readout.componentChannelIds.length
+    || readout.componentChannelIds.some(id => id === primary.id || !channels.some(channel => channel.id === id
+      && channel.quantity === primary.quantity && channel.unit === primary.unit))) throw new Error('현재값 표시의 대표 항목과 성분 관계를 확인하세요.');
+}
 function validateSteps(steps, ids = new Set(commonIds)) {
   for (const step of steps) {
     if (!step.id || ids.has(step.id) || !step.group || !step.groupLabel
@@ -37,6 +46,7 @@ export function createRegistry({ sensors, activities }) {
   checkDefinitions(sensors); checkDefinitions(activities);
   for (const module of sensors) {
     validateChannels(module.definition.channels);
+    validateReadout(module.definition.readout, module.definition.channels);
     if (typeof module.decode !== 'function' || typeof module.mockLine !== 'function' || !module.guide?.equipmentDescription) throw new Error(`센서 실행·안내 누락: ${module.definition.id}`);
     validateSteps([...(module.guide.beforeProgram ?? []), ...(module.guide.afterConnect ?? [])]);
   }
@@ -46,6 +56,7 @@ export function createRegistry({ sensors, activities }) {
       const compatible = sensors.filter(module => module.definition.id === sensorId);
       if (!compatible.length) throw new Error(`활동 센서 누락: ${sensorId}`);
       for (const sensor of compatible) {
+        validateReadout(activity.definition.readout, sensor.definition.channels);
         if (activity.definition.requiredChannels.some(id => !sensor.definition.channels.some(channel => channel.id === id && channel.supported !== false))) throw new Error(`활동 채널 누락: ${sensorId}`);
         const ids = validateSteps([...(sensor.guide.beforeProgram ?? []), ...(sensor.guide.afterConnect ?? [])]);
         validateSteps(activity.guide.afterReception, ids);

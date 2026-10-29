@@ -97,10 +97,6 @@
 .analysis-screen[data-task="overview"] .table-scroll { height:350px; }
 .raw-table { table-layout:fixed; width:100%; min-width:var(--table-columns-width, 772px); }
 .raw-table th.table-fill, .raw-table .sample-row td.table-fill { padding:0px; }
-.raw-table th { position:sticky; top:0px; z-index:1; }
-.raw-table th, .raw-table .sample-row td { height:var(--raw-row-height, 32px); padding:0px 6px; line-height:18px; overflow:hidden; text-overflow:ellipsis; }
-.raw-table .table-spacer { height:0px; }
-.raw-table .table-spacer td { padding:0px; border:0px; line-height:0; }
 .table-status { font-size:0.6875rem; color:var(--sl-muted); margin:0px; padding:10px 12px; border-top:1px solid rgb(229, 236, 232); }
 .hidden-column-filters { margin:0px; padding:9px 12px; font-weight:400; color:var(--sl-selection-text); background:rgb(237, 244, 241); font-size:0.6875rem; }
 .axis-settings-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:36px; margin-bottom:4px; }
@@ -186,7 +182,7 @@
 .analysis-screen .analysis-toast button { background:transparent; color:rgb(211, 238, 225); border:0px; padding:5px; font-size:0.75rem; }
 .raw-table th:first-child { position:sticky; left:0px; padding:0px; text-align:center; }
 .raw-table .sample-row td:first-child { position:sticky; left:0px; background:white; z-index:1; padding:0px; text-align:center; }
-.raw-table th:first-child { z-index:3; background:rgb(237, 242, 239); }
+.raw-table th:first-child { z-index:3; }
 .analysis-screen .raw-table th button { border:0px; padding:0px; font:inherit; border-radius:0px; }
 .analysis-screen .raw-table #add-calculation { padding:2px 6px; border:1px solid var(--sl-line); border-radius:4px; background:white; white-space:nowrap; }
 .raw-table th[aria-sort="ascending"] [data-sort]::after { content:" ↑"; }
@@ -231,7 +227,6 @@
 .calculation-editor-error { color:rgb(155, 68, 50); font-size:0.75rem; min-height:18px; margin:10px 0px; }
 
 .sr-only { position:absolute; width:1px; height:1px; padding:0px; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0px; }
-.raw-table .sample-row:focus-visible { outline:rgb(128, 187, 190) solid 2px; outline-offset:-2px; }
 @media (max-width: 1000px) {
   .analysis-layout, .analysis-layout[data-table-open="true"], .analysis-layout[data-table-only="true"] { grid-template-columns:minmax(0px, 1fr); }
   .analysis-layout[data-table-open="false"] .analysis-table-pane, .analysis-layout[data-table-only="true"] .analysis-graph-pane { display:none; }
@@ -337,16 +332,11 @@
 [data-visual-theme="luminous"] .analysis-screen .switch-row input { border-radius:20px; background:var(--sl-input-border); box-shadow:none; }
 [data-visual-theme="luminous"] .analysis-screen .switch-row input:checked { background:var(--sl-selection); }
 [data-visual-theme="luminous"] .analysis-screen .switch-row input:focus-visible { outline-color:var(--sl-focus); }
-[data-visual-theme="luminous"] .raw-table th { color:var(--sl-muted); background:var(--sl-surface-soft); border-color:var(--sl-line); }
-[data-visual-theme="luminous"] .raw-table .sample-row td { border-color:var(--sl-line); }
 [data-visual-theme="luminous"] .raw-table .sample-row[data-usage="outside"] td { color:var(--sl-muted); }
 [data-visual-theme="luminous"] .raw-table .sample-row[data-usage="excluded"] td { color:var(--sl-recording-text); }
 [data-visual-theme="luminous"] .raw-table .sample-row[data-selected="true"] td { background:var(--sl-selected-bg); }
 [data-visual-theme="luminous"] .raw-table .sample-row[data-focused="true"] td { background:var(--sl-inspected-bg); }
 [data-visual-theme="luminous"] .raw-table .sample-row[data-focused="true"] td:first-child { box-shadow:inset 3px 0 var(--sl-nav-marker); }
-[data-visual-theme="luminous"] .raw-table .sample-row:focus-visible { outline-color:var(--sl-focus); }
-[data-visual-theme="luminous"] .raw-table { font-size:var(--sl-type-small); }
-[data-visual-theme="luminous"] .raw-table :is(th, .sample-row td) { line-height:1.5; }
 [data-visual-theme="luminous"] .analysis-screen .raw-table th button { min-height:28px; background:transparent; color:inherit; }
 [data-visual-theme="luminous"] .analysis-screen .raw-table .column-filter-button[data-active="true"] { background:var(--sl-selection); color:var(--sl-surface); }
 [data-visual-theme="luminous"] .analysis-screen .input-unit { border-color:var(--sl-input-border); background:var(--sl-surface); }

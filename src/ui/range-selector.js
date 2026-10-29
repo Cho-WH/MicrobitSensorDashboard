@@ -1,8 +1,9 @@
 // Adapted from Cho-WH/bme280 gay-lussac/ui/range-selector.js at 59c5c149450f970bace2deaa183857c275595853.
 import { timeBounds, rangeSampleIds } from '../analysis/scope.js';
+import { labDefaults } from './lab-copy.js';
 
 // Only the draft and pointer interaction live here. Apply is a Workspace command.
-export function createRangeSelector(root, { getChart, onApply, onClose, signal }) {
+export function createRangeSelector(root, { getChart, onApply, onClose, signal, getCopy = () => labDefaults }) {
   const $ = id => root.querySelector('#' + id), form = $('range-form'), overlay = $('range-overlay');
   const inputs = [$('time-range-start'), $('time-range-end')], handles = [$('range-start-handle'), $('range-end-handle')];
   let samples = [], excluded = new Set(), bounds = null, draft = null, active = false, legacy = false, dragging = null;
@@ -35,7 +36,7 @@ export function createRangeSelector(root, { getChart, onApply, onClose, signal }
       $('range-error').textContent = ids.length ? '' : '선택한 구간에 자료가 없어요.';
     } catch (error) { $('range-error').textContent = error.message; $('apply-time-range').disabled = true; }
     const stamp = at => new Date(at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
-    $('range-hint').textContent = legacy ? '새 구간을 확정하면 이전 지정 자료를 대체합니다.' : '선택 중 · 아직 분석에 적용하지 않음';
+    $('range-hint').textContent = legacy ? '새 구간을 확정하면 이전 지정 자료를 대체합니다.' : getCopy().analysis.rangeHint;
     $('range-count').title = `${stamp(draft.startAt)} – ${stamp(draft.endAt)}`;
     layout();
   }

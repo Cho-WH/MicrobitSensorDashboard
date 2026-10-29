@@ -1,11 +1,19 @@
 // Only this sensor knows the compass commands, acknowledgements and timeouts.
-export function createPreparationSession({ send, onChange, onError, timers = globalThis }) {
+export function createPreparationSession({ send, onChange, onError, timers = globalThis, reconnecting = false }) {
   let phase = 'handshake', calibration = 'unknown', timeout = null, disposed = false;
-  const getState = () => ({ phase, calibration, allowReadings: phase === 'receiving' });
+  const getState = () => ({ phase, calibration, allowReadings: phase === 'receiving',
+    requiredStep: ['choice', 'starting', 'calibrating'].includes(phase) ? 'calibration' : null });
   function move(next, ms = 0, failure = '') {
     timers.clearTimeout(timeout); timeout = null; phase = next;
     if (ms) timeout = timers.setTimeout(() => { if (!disposed) onError(failure); }, ms);
     onChange(getState());
+  }
+  async function act(action) {
+    if (disposed || phase !== 'choice' || !['calibrate', 'skip'].includes(action)) return false;
+    move(action === 'calibrate' ? 'starting' : 'skipping', 5000, '장치가 선택에 응답하지 않았어요. 다시 연결하세요.');
+    try { await send(action); }
+    catch { if (!disposed) onError('보정 선택을 보내지 못했어요. 다시 연결하세요.'); }
+    return true;
   }
   return {
     getState,
@@ -15,18 +23,15 @@ export function createPreparationSession({ send, onChange, onError, timers = glo
     },
     accept(input) {
       if (disposed || input.type !== 'device-status') return;
-      if (input.status === 'choice' && phase === 'handshake') move('choice');
+      if (input.status === 'choice' && phase === 'handshake') {
+        if (reconnecting) { phase = 'choice'; void act('skip'); }
+        else move('choice');
+      }
       else if (input.status === 'calibrating' && phase === 'starting') move('calibrating', 120000, '보정이 끝나지 않았어요. 보드의 안내를 확인하고 다시 연결하세요.');
       else if (input.status === 'calibrated' && ['handshake', 'calibrating'].includes(phase)) { calibration = 'device-reported'; move('receiving'); }
       else if (input.status === 'skipped' && phase === 'skipping') { calibration = 'skipped'; move('receiving'); }
     },
-    async act(action) {
-      if (disposed || phase !== 'choice' || !['calibrate', 'skip'].includes(action)) return false;
-      move(action === 'calibrate' ? 'starting' : 'skipping', 5000, '장치가 선택에 응답하지 않았어요. 다시 연결하세요.');
-      try { await send(action); }
-      catch { if (!disposed) onError('보정 선택을 보내지 못했어요. 다시 연결하세요.'); }
-      return true;
-    },
+    act,
     dispose() { disposed = true; timers.clearTimeout(timeout); },
   };
 }

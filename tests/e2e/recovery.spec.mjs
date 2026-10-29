@@ -72,3 +72,76 @@ test('closed recording page restores saved samples and analysis without reconnec
   expect(imported.workspace.bySource.recorded.reflection).toEqual(restored.workspace.bySource.recorded.reflection);
   expect((await snapshot(reopened, before.run.id)).samples).toEqual(restored.samples);
 });
+
+
+test('reload restores this tab and reconnect replaces the record action without automatic recording', async ({page}) => {
+  await page.goto('/sensors/accelerometer/?mock=1&view=measure');
+  await page.locator('.experiment-guide [data-guide-next]').click();
+  await page.locator('#measurement-reconnect').click();
+  await expect(page.locator('#start-recording')).toBeEnabled();
+  // Recording actions must remain correct without the decorative theme.
+  await page.evaluate(()=>delete document.documentElement.dataset.visualTheme);
+  await expect(page.locator('#start-recording')).toBeVisible();
+  for (const id of ['pause-recording','resume-recording','finish-recording']) await expect(page.locator('#'+id)).toBeHidden();
+  await page.locator('#start-recording').click();
+  await expect(page.locator('#start-recording')).toBeHidden();
+  await expect(page.locator('#resume-recording')).toBeHidden();
+  await expect(page.locator('#pause-recording')).toBeVisible();
+  await expect(page.locator('#finish-recording')).toBeVisible();
+  await page.evaluate(()=>{document.documentElement.dataset.visualTheme='luminous';});
+  await expect.poll(async () => (await snapshot(page))?.samples.length ?? 0).toBeGreaterThanOrEqual(10);
+  const before = await snapshot(page);
+  await page.locator('[data-recording-mode="point"]').click();
+  await expect(page.locator('#continuous-recording')).toHaveAttribute('aria-checked','true');
+  page.on('dialog',dialog=>dialog.accept());
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-app-state','ready');
+  await expect(page.locator('[data-screen="measure"]')).toBeVisible();
+  await expect(page.locator('.experiment-guide[open]')).toHaveCount(0);
+  await expect(page.locator('[data-screen="measure"]')).toHaveAttribute('data-recording-mode','point');
+  await expect(page.locator('#continuous-recording')).toHaveAttribute('aria-checked','true');
+  await expect(page.locator('#measurement-reconnect')).toBeVisible();
+  await expect(page.locator('#resume-recording')).toBeHidden();
+  const restored=await snapshot(page,before.run.id);
+  expect(restored.samples.slice(0,before.samples.length)).toEqual(before.samples);
+  expect((await page.evaluate(async()=>{const {createRepository}=await import('/src/data/repository.js'); const repo=createRepository(); try{return await repo.listRuns();}finally{repo.close();}}))).toHaveLength(1);
+  await page.locator('#measurement-reconnect').click();
+  await expect(page.locator('#resume-recording')).toBeEnabled();
+  await expect(page.locator('#measurement-reconnect')).toBeHidden();
+  expect((await snapshot(page,before.run.id)).samples).toEqual(restored.samples);
+  await page.locator('#resume-recording').click();
+  await expect.poll(async () => (await snapshot(page,before.run.id)).samples.length).toBeGreaterThan(restored.samples.length);
+});
+
+
+for (const sensor of ['temperature','magnetometer']) for (const permitted of [true,false]) test(sensor+' connection action reaches fresh readings with '+(permitted?'a remembered permission':'the chooser fallback'), async ({page}) => {
+  await page.route('**/tests/fixtures/bluetooth-diagnostics.mjs', route=>route.fulfill({contentType:'application/javascript',path:'tests/fixtures/bluetooth-diagnostics.mjs'}));
+  await page.addInitScript(permitted => {
+    sessionStorage.setItem('sensor-lab:last-device','test-device-only');
+    const fixture=import('/tests/fixtures/bluetooth-diagnostics.mjs').then(({bluetoothFixture})=>window.connectionFixture=bluetoothFixture());
+    const bluetooth={requestDevice(){
+      if (permitted || !navigator.userActivation.isActive) return Promise.reject(new Error('unexpected chooser or lost click activation'));
+      return fixture.then(f=>f.device);
+    }};
+    if(permitted) bluetooth.getDevices=()=>fixture.then(f=>[f.device]);
+    Object.defineProperty(navigator,'bluetooth',{configurable:true,value:bluetooth});
+  },permitted);
+  await page.goto('/sensors/'+sensor+'/?view=measure');
+  await expect(page.locator('html')).toHaveAttribute('data-app-state','ready');
+  await page.locator('.experiment-guide .experiment-guide-close').click();
+  await expect(page.locator('#start-recording')).toBeHidden();
+  await page.locator('#measurement-reconnect').click();
+  await expect(page.locator('#measurement-reconnect')).toBeHidden();
+  await expect(page.locator('[data-screen="measure"]')).toBeVisible();
+  if(sensor==='magnetometer') {
+    await page.evaluate(()=>window.connectionFixture.line('@mag,2,choice\n'));
+    await expect(page.locator('[data-screen="measure"]')).toBeVisible();
+    expect(await page.evaluate(()=>window.connectionFixture.writes)).toContain('skip\n');
+    await page.evaluate(()=>window.connectionFixture.line('1,2,3,4\n'));
+    await expect(page.locator('#start-recording')).toBeDisabled();
+    await page.evaluate(()=>window.connectionFixture.line('@mag,2,skipped\n'));
+  }
+  for(let i=0;i<4;i++) {await page.evaluate(sensor=>window.connectionFixture.line(sensor==='magnetometer'?'1,2,3,4\n':'26\n'),sensor);await page.waitForTimeout(400);}
+  await expect(page.locator('[data-screen="measure"]')).toBeVisible();
+  await expect(page.locator('#start-recording')).toBeEnabled();
+});

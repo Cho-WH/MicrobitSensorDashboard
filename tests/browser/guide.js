@@ -2,6 +2,7 @@ import { rendered, until } from './render.js';
 import { mountLabFixture, clickVisible } from './lab-fixture.js';
 import { createGuideView } from '../../src/ui/guide-view.js';
 import { getExperiment } from '../../src/catalog/index.js';
+import gas from '../../src/catalog/activities/gay-lussac/index.js';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const waitFor = async predicate => {
@@ -74,7 +75,7 @@ export async function runGuideTests(report = (_message) => {}) {
       deviceMessage:'자기장 프로그램의 응답이 없어요. 최신 프로그램을 설치하고 다시 연결하세요.'});
     check(!$('.guide-connection-status').hidden&&$('.guide-connection-status').textContent.includes('응답이 없어요'),'응답 시간 초과의 복구 안내가 숨겨졌습니다.');
     check($('.guide-reception').hidden&&$('.magnetic-actions').hidden&&!view.getProgress().canMeasure,'응답 실패 뒤 수치·보정 선택·측정 허용이 남았습니다.');
-    click('reconnect');check(connections.at(-1).reuseDevice===true,'이전 장치 재연결이 새 선택으로 바뀌었습니다.');
+    click('reconnect');check(connections.at(-1).reuseDevice===true&&connections.at(-1).reconnecting===true,'이전 장치 재연결의 장치 선택 또는 사용자 목적이 누락되었습니다.');
     click('connect');check(connections.at(-1).reuseDevice===false,'다른 장치 선택이 이전 장치를 재사용했습니다.');
     report('실제 준비 UI · 자기장 보정 근거·새 연결 무효화·연결 취소·응답 시간 초과 안내와 재연결');
 
@@ -149,7 +150,7 @@ export async function runGuideTests(report = (_message) => {}) {
     check($('[data-guide-action="quick-confirm"]').disabled,'준비된 장치 확인을 생략했습니다.');
     for(const checkbox of host.querySelectorAll('[data-quick-confirm]')){checkbox.checked=true;checkbox.dispatchEvent(new Event('change'));}
     click('quick-confirm');check(!view.getProgress().ready,'빠른 준비만으로 수신/배터리/배치까지 통과했습니다.');
-    step('placement');check(!$('.guide-placement').hidden&&$('.guide-model').hidden,'용기 배치에 배선 모델이 표시되었습니다.');
+    step('placement');check(!$('.guide-step-image').hidden&&$('.guide-model').hidden,'용기 배치에 배선 모델이 표시되었습니다.');
     click('confirm');check($('[data-guide-action="measure"]').disabled,'새 수신 없이 준비 결과에서 측정 이동을 허용했습니다.');
     view.render({attemptId:'activity',connected:true,receptionReady:true});
     click('measure');check(measurements===2&&!view.getProgress().steps.find(item=>item.id==='battery').complete,'수신 후 측정 이동이 배터리 확인에 막히거나 확인 이력을 조작했습니다.');
@@ -158,6 +159,16 @@ export async function runGuideTests(report = (_message) => {}) {
     step('battery');view.render({attemptId:'activity',connected:false,canConnect:true,canReconnect:true});
     check(!$('[data-guide-action="reconnect"]').hidden,'배터리 검사 중 끊긴 장치의 복구 경로 누락');
     report('실제 준비 UI · 체크 이력과 측정 가능 분리·수신 중단 차단·활동 배치·배터리 복구');
+    const originalSteps = gas.guide.afterReception;
+    try {
+      gas.guide.afterReception = originalSteps.map(item => item.image ? {...item,id:'test-arrangement',image:{...item.image,caption:'검사용 단계 그림'}} : item);
+      view.open(getExperiment('bmp280','gay-lussac'),{reset:true});
+      step('test-arrangement');
+      const figure = $('.guide-step-image');
+      check(!figure.hidden && figure.querySelector('figcaption').textContent==='검사용 단계 그림','단계 이름이 바뀌면 지정한 그림이 사라집니다.');
+      check(figure.querySelector('img').getAttribute('src')===gas.guide.afterReception.find(item=>item.image).image.src,'단계가 지정한 그림 대신 다른 자원을 표시했습니다.');
+      step('battery');check(figure.hidden,'그림이 없는 단계에 이전 단계의 그림이 남았습니다.');
+    } finally { gas.guide.afterReception = originalSteps; }
     check(errors.length === 0, errors.join('\n'));
   } finally { view.dispose(); fixture.dispose(); }
 }

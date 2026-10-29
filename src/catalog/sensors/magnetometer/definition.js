@@ -4,6 +4,7 @@ const artifact = getFirmwareArtifact('sensor-lab-magnetometer');
 export const magnetometer = {
   id: 'magnetometer', version: 1, name: '내장 자기장 센서', boards: ['micro:bit-v2'], codecId: 'magnetometer-csv-v2',
   defaultVisibleChannelIds: ['magneticStrength'],
+  readout: { primaryChannelId: 'magneticStrength', componentChannelIds: ['magneticX', 'magneticY', 'magneticZ'] },
   channels: [
     { id: 'magneticX', name: '자기장 X 성분', unit: 'µT', quantity: 'magnetic-flux-density', quantityLabel: '자기장', digits: 1, supported: true, calculable: true, color: '#c46046' },
     { id: 'magneticY', name: '자기장 Y 성분', unit: 'µT', quantity: 'magnetic-flux-density', quantityLabel: '자기장', digits: 1, supported: true, calculable: true, color: '#4e8764' },

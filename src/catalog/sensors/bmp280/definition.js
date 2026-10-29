@@ -3,6 +3,7 @@ const artifact = getFirmwareArtifact('sensor-lab-bmp280');
 export const bmp280 = {
   id: 'bmp280', version: 1, name: 'BMP280 · 온도와 기압 측정', boards: ['micro:bit-v2'], codecId: 'bmp280-csv-v1',
   defaultVisibleChannelIds: ['temperatureC','pressureHpa'],
+  readout: { primaryChannelId: 'temperatureC', componentChannelIds: [] },
   channels: [
     { id: 'temperatureC', name: '온도', unit: '℃', quantity: 'temperature', min: -40, max: 85, digits: 2, supported: true, calculable: true, color: '#d67b40' },
     { id: 'pressureHpa', name: '기압', unit: 'hPa', quantity: 'pressure', min: 300, max: 1100, digits: 2, supported: true, calculable: true, color: '#197f88' },
