@@ -39,6 +39,11 @@
 .lab-status > span { white-space:nowrap; }
 .lab-error { color:rgb(139, 45, 39); border-left:4px solid rgb(177, 68, 55); padding:12px; background:rgb(255, 240, 237); white-space:pre-line; }
 .lab-note { color:var(--sl-muted); font-size:0.875rem; line-height:1.7; }
+.sensor-settings { display:grid; gap:var(--sl-space-2); margin-top:var(--sl-space-3); padding-top:var(--sl-space-3); border-top:1px solid var(--sl-line); }
+.sensor-setting-field { display:flex; align-items:center; gap:var(--sl-space-3); min-width:0; }
+.sensor-setting-label { font-size:var(--sl-type-label); font-weight:600; }
+.sensor-setting-field select { flex:1; min-width:0; max-width:11rem; }
+.sensor-settings .lab-note { margin:0; }
 .current-experiment { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:10px 16px; margin-bottom:16px; border:1px solid rgb(165, 205, 190); border-radius:10px; background:rgb(234, 245, 238); }
 .current-experiment button { flex-shrink:0; }
 .eyebrow { color:var(--sl-selection-text); font-size:0.75rem; font-weight:700; letter-spacing:0.08em; }

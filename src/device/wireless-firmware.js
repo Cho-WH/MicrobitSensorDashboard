@@ -215,5 +215,41 @@ export const wirelessFirmware = {
       "target": "pxt-microbit@9.1.1",
       "compiler": "pxt-core@13.0.1"
     }
+  },
+  "sensor-lab-mlx90393": {
+    "id": "sensor-lab-mlx90393",
+    "sensorId": "mlx90393",
+    "version": 1,
+    "name": "MLX90393 센서 프로그램",
+    "boards": [
+      "micro:bit-v2"
+    ],
+    "digestMode": "utf8-crlf-to-lf",
+    "codecId": "mlx90393-v1",
+    "startCommand": "prepare",
+    "sampleIntervalMs": 100,
+    "hardwareVerified": false,
+    "fileName": "sensor-lab-mlx90393-v1.hex",
+    "sha256": "94192708b9bd394aa309c6168c0370e7c313d19d19e407603c0a963ba38b6c90",
+    "partial": {
+      "id": "mlx90393",
+      "name": "mlx90393",
+      "file": "sensor-lab-mlx90393-v1.bin",
+      "start": 299008,
+      "end": 310848,
+      "runtimeHash": "5f21a4c8e2b240e5",
+      "programHash": "b7001b0021001300",
+      "sha256": "d8f12c3c322cdfe01905eb2cba4dca244eff50ea4be3289d1bc20c510a7e4dc3",
+      "hexSha256": "94192708b9bd394aa309c6168c0370e7c313d19d19e407603c0a963ba38b6c90",
+      "runtimeSha256": "01170c7b83185c2d2e49eb83432a893511f160a67af90c0baf20de5841487da2",
+      "bytes": 11840
+    },
+    "source": {
+      "path": "firmware/examples/mlx90393.js",
+      "build": "dev/firmware/publish.mjs",
+      "buildRecord": "public/firmware/sensor-lab-mlx90393-v1.build.json",
+      "target": "pxt-microbit@9.1.1",
+      "compiler": "pxt-core@13.0.1"
+    }
   }
 };

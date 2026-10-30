@@ -42,6 +42,9 @@
 .guide-reception-state strong { font-size:1rem; }
 .guide-reception-state p { font-size:0.8125rem; line-height:1.7; color:var(--sl-stage-muted); margin:6px 0px 0px; }
 .guide-reading-note { font-size:0.8125rem; line-height:1.7; color:var(--sl-stage-muted); }
+.guide [data-sensor-settings-host] { border-color:var(--sl-stage-line); }
+.guide [data-sensor-settings-host] .lab-note { color:var(--sl-stage-muted); }
+.guide .sensor-setting-field select { color:var(--sl-stage-control-text); background:var(--sl-stage-detail-bg); border-color:var(--sl-stage-control-line); }
 .step-content[data-group="wiring"] { min-height:var(--wiring-content-height,220px); }
 .guide-substeps { display:flex; flex-wrap:wrap; list-style:none; padding:0px; margin:0px 0px 16px; gap:6px; }
 .guide-substeps button { padding:5px 10px; font-size:0.75rem; font-weight:400; background:transparent; }

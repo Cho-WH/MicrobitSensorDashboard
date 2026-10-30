@@ -49,6 +49,7 @@ export function createController(root = document, { repository = null, deviceTra
   let recordingMode = 'continuous', capture = createPointCapture();
   let copy = getLabCopy(null), copyContext;
   let preview = null, attempt = 0, connected = false, connecting = false, busy = false;
+  let readingWarning = '';
   let leaving = false, navigatingDocument = false;
   let connectionRequest = 0, handingOff = false;
   let renderRequested = true, renderedEvents = -1, renderedContext, exportedRevision = -1;
@@ -57,6 +58,7 @@ export function createController(root = document, { repository = null, deviceTra
   const transport = deviceTransport ?? createTransport(mock ? {ble:createMockBleClient(()=>context)} : {});
   const connectionNotice = createConnectionNotice(root, { signal });
   let targetContext = null, runtime = null, programmer = null, programmerState = {}, installed = false, recordingSourceAllowed = false;
+  let sensorSettingsViews = [];
   let deviceState = transport.getState();
   const resumeKey = 'sensor-lab:active-run';
   let bootstrapped = false, restoring = false, rememberedRun;
@@ -87,6 +89,22 @@ export function createController(root = document, { repository = null, deviceTra
   const help = createActionHelp(root, { messages: { continuousRecording: {label:'연속 기록',text:'켜면 시간에 따른 값을 계속 저장합니다. 꺼도 현재값과 최근 60초 그래프를 볼 수 있으며, 한 점 기록을 누른 값만 저장합니다. 기록을 시작한 뒤에는 추가 측정에서도 이 설정이 유지됩니다.'}, tableSelection: {label:'표 선택과 분석 대상',text:'체크한 행과 분석에 쓰는 자료는 별개입니다. 선택 자료로 분석을 누르면 분석 대상을 바꿀 수 있고, 분석에서 제외를 누르면 원자료를 보존하면서 계산에서 뺍니다.'} } });
   const policy = () => getActivityPolicy(context);
   const onChange = () => { renderRequested = true; };
+  function changeSensorSetting(action) {
+    return act(async () => {
+      if (store || !runtime?.preparation?.createSettingsView || !connected) return;
+      await transport.performAction(action);
+    });
+  }
+  function mountSensorSettings() {
+    sensorSettingsViews.forEach(view => view.dispose()); sensorSettingsViews = [];
+    root.querySelectorAll('[data-sensor-settings-host]').forEach(host => host.remove());
+    if (!runtime?.preparation?.createSettingsView) return;
+    for (const parent of [root.querySelector('.guide-reception'), root.querySelector('#measurement-settings .ui-dialog-body')]) {
+      const host = document.createElement('div'); host.dataset.sensorSettingsHost = '';
+      parent.append(host);
+      sensorSettingsViews.push(runtime.preparation.createSettingsView(host, { onAction: changeSensorSetting }));
+    }
+  }
   const canUseDevice = () => !!runtime && (!store || (!store.getState().temporary && store.getState().writable
     && recordingSourceAllowed));
   function showError(error) { $('lab-error').textContent = copy.point[error?.code] ?? error?.message ?? String(error); $('lab-error').hidden = false; renderRequested = true; }
@@ -116,6 +134,11 @@ export function createController(root = document, { repository = null, deviceTra
   function listen(id, work) { $(id).addEventListener('click', () => act(work), { signal }); }
   function accept(input) {
     if (!context || !runtime || input.attemptId !== attempt) return;
+    if (input.type === 'reading' && ((input.warning ?? '') !== readingWarning || (input.warning && $('lab-error').hidden))) {
+      if (input.warning) showError(input.warning);
+      else if ($('lab-error').textContent === readingWarning) clearError();
+      readingWarning = input.warning ?? '';
+    }
     if (input.type === 'reading') preview = input;
     try { if (session) session.acceptInput(input); else capture.accept(input); } catch(error) { showError(error); }
     livePreview.freeze(session?.getState().state === 'paused');
@@ -126,6 +149,8 @@ export function createController(root = document, { repository = null, deviceTra
     ++connectionRequest;
     if (handingOff) programmer?.cancel();
     connected = false; connecting = false; preview = null; livePreview.reset();
+    if (readingWarning && $('lab-error').textContent === readingWarning) clearError();
+    readingWarning = '';
     session?.disconnected();
     capture.disconnected();
     await transport.disconnect(); deviceState=transport.getState(); attempt=deviceState.attemptId;
@@ -154,6 +179,7 @@ export function createController(root = document, { repository = null, deviceTra
     deviceState = transport.getState();
     if (!store) capture = createPointCapture({ config: context?.connectionPolicy });
     guide.open(context, {reset:true});
+    mountSensorSettings();
     if (runtime && !runtime.definition.firmware.stale) programmer = createProgrammer({ firmwareId: runtime.definition.firmware.id,
       version: runtime.definition.firmware.version, canInstall, beforeFlash: disconnect,
       onState: state => {
@@ -185,6 +211,14 @@ export function createController(root = document, { repository = null, deviceTra
       await transport.connect(context, accept, state => {
         const wasConnected = connected;
         deviceState = state; attempt = state.attemptId;
+        const preparation = state.devicePreparation;
+        if (preparation?.settings && !store && runtime?.preparation?.configureContext) {
+          if (preparation.allowReadings && JSON.stringify(context.setup?.sensorSettings) !== JSON.stringify(preparation.settings)) {
+            context = runtime.preparation.configureContext(context, preparation.settings);
+            guide.open(context);
+            preview = null; livePreview.reset(); capture = createPointCapture({ config: context.connectionPolicy });
+          } else if (!preparation.allowReadings) { preview = null; livePreview.reset(); capture.disconnected(); }
+        }
         connected = state.status === 'connected'; connecting = state.status === 'connecting';
         if (screen === 'measure' && state.devicePreparation?.requiredStep) {
           guide.showDevicePreparation(state.devicePreparation.requiredStep); navigate('prepare');
@@ -207,7 +241,7 @@ export function createController(root = document, { repository = null, deviceTra
     if (!memoView.flush() || !pointView.flush()) return;
     requireReady();
     if (store) throw new Error('새 실험 준비를 눌러 다음 실험을 시작하세요.');
-    const recordedContext = { ...context, setup: guide.getProgress().setup };
+    const recordedContext = { ...context, setup: { ...guide.getProgress().setup, ...(context.setup?.sensorSettings ? {sensorSettings:context.setup.sensorSettings} : {}) } };
     const nextStore = await openRunStore({ repository: repo, context: recordedContext, name: input('run-name').value.trim() || undefined, source: mock ? 'replay' : 'device', create: true, onChange, manualColumns: pointView.manualColumns() });
     if (!readyToRecord()) {
       // Roll back only this never-started, empty Run while still owning its writer lock.
@@ -229,7 +263,7 @@ export function createController(root = document, { repository = null, deviceTra
     requireReady();
     const request = capture.prepare(captureConnection(), values);
     try {
-      const nextStore = await openRunStore({ repository: repo, context: { ...context, setup: guide.getProgress().setup },
+      const nextStore = await openRunStore({ repository: repo, context: { ...context, setup: { ...guide.getProgress().setup, ...(context.setup?.sensorSettings ? {sensorSettings:context.setup.sensorSettings} : {}) } },
         name: input('run-name').value.trim() || undefined, source: mock ? 'replay' : 'device', create: true, onChange,
         recordingMode: 'point', manualColumns: pointView.manualColumns(), initialPoint: { sample: request.sample, ...request.point },
         beforeCreate: () => request.validate(captureConnection()) });
@@ -306,6 +340,7 @@ export function createController(root = document, { repository = null, deviceTra
       await releaseCurrent();
       transport.forgetDevice?.(); deviceState = transport.getState();
       programmer = null; programmerState = {}; runtime = null; installed = false;
+      mountSensorSettings();
       context = null; targetContext = null;
       preview = null; livePreview.reset();
       input('run-name').value = '';
@@ -558,6 +593,8 @@ export function createController(root = document, { repository = null, deviceTra
       firmwareInstalled:installed ? context.firmware : false,calibration:deviceState.calibration ?? 'unknown',devicePreparation:deviceState.devicePreparation,
       busy:busy || programmerState.busy,recording:recording || current?.state === 'finishing',programmerState,mock,
       canInstall:canInstall(),canReconnect,unsupported:!transport.isSupported(),canConnect:canUseDevice() && (!recording || pointMode) && !connected && !connecting && transport.isSupported()});
+    for (const view of sensorSettingsViews) view.render({ settings: deviceState.devicePreparation?.settings ?? context?.setup?.sensorSettings,
+      locked: !!store, connected, busy: busy || connecting || deviceState.devicePreparation?.allowReadings === false });
     $('current-experiment').hidden = !store || screen !== 'saved';
     $('current-experiment-label').textContent = saved ? saved.name + ' · ' + (recording ? copy.common.recordingActive : copy.measurement.stored) : '';
     $('prepare-title').textContent = context ? formatCopy(copy.prepare.title, {name: context.activity?.name ?? context.sensor.name}) : '';
@@ -712,6 +749,7 @@ export function createController(root = document, { repository = null, deviceTra
     bootstrapped = true;
   }); render();
   return { ready, async dispose(){
+    sensorSettingsViews.forEach(view => view.dispose());
     await persistCurrent(); await disconnect(); await store?.close();
     clearInterval(interval);abort.abort();dialogs.dispose();guide.dispose();await programmer?.dispose();analysis.dispose();help.dispose();memoView.dispose();measurement.dispose();pointView.dispose();experimentGuide.dispose();share.dispose();repo.close();
   }, getState:()=>({screen,context,targetContext,busy:busy || !!programmerState.busy,storage:store?.getState(),session:session?.getState()}) };

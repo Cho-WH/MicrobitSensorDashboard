@@ -127,6 +127,23 @@
         "startCommand": "start",
         "sampleIntervalMs": 1000
       }
+    },
+    "mlx90393": {
+      "id": "sensor-lab-mlx90393",
+      "version": 1,
+      "name": "sensor-lab-mlx90393-v1",
+      "description": "MLX90393 two-preset XYZ UART program",
+      "source": "firmware/examples/mlx90393.js",
+      "additionalSources": {
+        "sensor-display.ts": "firmware/common/sensor-display.ts",
+        "mlx90393-driver.ts": "firmware/drivers/mlx90393.ts"
+      },
+      "protocol": {
+        "codecId": "mlx90393-v1",
+        "startCommand": "prepare",
+        "sampleIntervalMs": 100
+      },
+      "displayName": "MLX90393 센서 프로그램"
     }
   },
   "releases": [
@@ -135,6 +152,7 @@
     "accelerometer",
     "magnetometer",
     "bmp280",
-    "ds18b20"
+    "ds18b20",
+    "mlx90393"
   ]
 }

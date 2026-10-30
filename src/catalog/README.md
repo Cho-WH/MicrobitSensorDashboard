@@ -149,6 +149,8 @@ policy에 둔다.
 
 ## 장치와 주고받는 센서 전용 준비
 
+MLX90393처럼 기록 전에만 설정을 변경하는 센서는 같은 preparation에 `createSettingsView`와 `configureContext`를 제공한다. 공통 준비 미리보기와 설정 창이 같은 뷰를 사용하며 제어기가 첫 기록 이후 변경을 차단한다. 확인된 설정은 `context.setup.sensorSettings`에 저장한다. 세션은 전달받은 설정을 검증하고 재연결 시 적용하며 `processReading`에서 요청 토큰을 확인해 수신 허용 여부를 판단한다. 단위 변환은 codec이 소유한다. 설정 변경 시 Transport는 이전 수신 확인을 초기화한다. 상세 계약은 [MLX90393 설계](../../docs/mlx90393-design.md)를 따른다.
+
 자기장처럼 수치 수신 전에 장치 응답과 사용자 선택이 필요한 센서는 `index.js`에
 선택적 `preparation`을 등록한다. 계약은 `src/device/preparation-types.js`에 있다.
 

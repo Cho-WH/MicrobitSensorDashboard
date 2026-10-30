@@ -53,9 +53,14 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
     clearTimers();
     emit({ status: 'connecting', busy: true, message: '', deviceName: '', firstReading: false,
       confirmed: false, readingsCompatible: false, calibration: 'unknown', devicePreparation: null, lastReceivedAt: null });
-    preparation = extension?.createSession({ timers, reconnecting,
+    preparation = extension?.createSession({ timers, reconnecting, settings: context.setup?.sensorSettings,
       send: command => current(id) ? ble.sendStartCommand(command) : Promise.reject(new Error('연결이 바뀌었습니다.')),
-      onChange: value => { if (current(id)) { emit({devicePreparation:value,calibration:value.calibration}); if (value.allowReadings) waitForReading(); } },
+      onChange: value => { if (current(id)) {
+        // Configurable sensors invalidate old readiness on every setting transition.
+        if (value.settings) { monitor = createReceptionMonitor(policy); hasReading = false; clearTimers(); }
+        emit({devicePreparation:value,calibration:value.calibration, ...(value.settings ? { firstReading:false, confirmed:false } : {})});
+        if (value.allowReadings) waitForReading();
+      } },
       onError: message => { if (current(id)) void disconnect(message); },
     }) ?? null;
     let setupReady = false;
@@ -74,10 +79,11 @@ export function createTransport({ ble = createBleClient(), clock = { utc: () => 
         const handleFrame = frame => {
           if (!current(id)) return;
           const at = { attemptId: id, receivedAt: clock.utc(), monotonicAt: clock.mono() };
-          const input = typeof frame === 'string' ? decode(frame, at)
+          let input = typeof frame === 'string' ? decode(frame, at)
             : { type: 'parse-error', reasonCode: frame.reasonCode ?? 'invalid-frame', ...at };
           // Optional module protocol events stay outside samples, reception counts and RunStore.
           if (input.type === 'device-status') { preparation?.accept(input); return; }
+          if (preparation?.processReading) { input = preparation.processReading(input); if (!input) return; }
           if (preparation && !preparation.getState().allowReadings) return;
           const valid = isReceptionReading(input, policy);
           if (valid && !hasReading) { hasReading = true; clearStartup(); }

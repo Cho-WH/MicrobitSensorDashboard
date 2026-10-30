@@ -128,7 +128,7 @@ test('saved metadata cannot inject resources or substitute an unregistered activ
   assert.equal(createGuideProgress(context).getState().ready, false);
   const content = getGuideContent(getExperiment('bmp280')); content.equipment.length = 0;
   assert.ok(getGuideContent(getExperiment('bmp280')).equipment.length > 0);
-  assert.deepEqual(new Set(registry.catalog.sensors.map(sensor => sensor.id)), new Set(['bmp280', 'magnetometer', 'temperature', 'light-level', 'accelerometer', 'ds18b20']));
+  assert.deepEqual(new Set(registry.catalog.sensors.map(sensor => sensor.id)), new Set(['bmp280', 'magnetometer', 'temperature', 'light-level', 'accelerometer', 'ds18b20', 'mlx90393']));
 });
 
 test('registry rejects duplicate versions, missing runtime and conflicting guide steps before app startup', () => {

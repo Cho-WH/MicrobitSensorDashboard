@@ -192,7 +192,7 @@ export function createGuideView(host, callbacks = {}) {
       select.addEventListener('change',()=>viewer?.setOption(choice.id,select.value)); label.append(select);viewerChoices.append(label);
     }
     preparationView?.dispose(); suggestion=''; preparationHost.hidden=true;
-    preparationView=getSensorPreparation(context)?.createView(preparationHost,{onAction:action=>run(()=>callbacks.onDeviceAction?.(action))})??null;
+    preparationView=getSensorPreparation(context)?.createView?.(preparationHost,{onAction:action=>run(()=>callbacks.onDeviceAction?.(action))})??null;
     help?.dispose(); layout?.dispose(); contentAbort.abort(); contentAbort=new AbortController();
     const signal=contentAbort.signal, steps=progress.getState().steps;
     stepButtons.clear(); groupButtons.clear(); quickChecks.clear(); nav.replaceChildren(); subnav.replaceChildren();
@@ -455,7 +455,12 @@ export function createGuideView(host, callbacks = {}) {
     if (quick) show.add('quick-confirm'); else if (isSummary) show.add('measure'); else if (!preparationView?.handlesProgression(step?.id)) {
       show.add(['manual','calibration'].includes(step?.kind) ? 'confirm' : 'next');
     }
-    if (connectionStep && state.canMeasure) show.add('measure');
+    if (connectionStep && state.canMeasure) {
+      show.add('measure');
+      // Once the remaining checks are complete, measurement is the next action.
+      // Keep progression available when an activity still has preparation to do.
+      if (state.ready && steps.slice(index + 1).every(item => item.complete)) show.delete('next');
+    }
     if (step?.kind==='program'&&!quick) {
       if(!usbRequired&&(!wireless||!installing))show.add('install');
       if(programmer.status!=='success'&&(!wireless||!installing&&!recoveryActions))show.add('program-confirm');
