@@ -4,6 +4,7 @@ const channel = (id, name, color) => ({ id, name, color, unit: 'µT', quantity: 
 const components = [channel('magneticX', '자기장 X 성분', '#c46046'), channel('magneticY', '자기장 Y 성분', '#4e8764'),
   channel('magneticZ', '자기장 Z 성분', '#5e6ca8'), channel('magneticStrength', '자기장 크기', '#8062a2')];
 export const mlx90393 = {
+  releaseStage: 'beta',
   id: 'mlx90393', version: 1, name: 'MLX90393 외장 자기장 센서', boards: ['micro:bit-v2'], codecId: 'mlx90393-v1',
   defaultVisibleChannelIds: ['magneticStrength'],
   readout: { primaryChannelId: 'magneticStrength', componentChannelIds: ['magneticX', 'magneticY', 'magneticZ'] },

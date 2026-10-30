@@ -86,7 +86,7 @@ export function createController(root = document, { repository = null, deviceTra
   const experimentGuide = createExperimentGuide(root.querySelector('.lab-shell'));
   const share = createShareView(findElement(root, 'section', '[data-screen="preview"]'));
   const analysis = createAnalysisView(root.querySelector('[data-screen="analysis"]'), { onError: showError, onExport: kind => act(() => exportFile(kind)) });
-  const help = createActionHelp(root, { messages: { continuousRecording: {label:'연속 기록',text:'켜면 시간에 따른 값을 계속 저장합니다. 꺼도 현재값과 최근 60초 그래프를 볼 수 있으며, 한 점 기록을 누른 값만 저장합니다. 기록을 시작한 뒤에는 추가 측정에서도 이 설정이 유지됩니다.'}, tableSelection: {label:'표 선택과 분석 대상',text:'체크한 행과 분석에 쓰는 자료는 별개입니다. 선택 자료로 분석을 누르면 분석 대상을 바꿀 수 있고, 분석에서 제외를 누르면 원자료를 보존하면서 계산에서 뺍니다.'} } });
+  const help = createActionHelp(root, { messages: { betaTool: {label:'개발 중인 도구',text:'아직 개발 중인 도구로, 실기기에서의 동작 안정성은 검증되지 않았어요.'}, continuousRecording: {label:'연속 기록',text:'켜면 시간에 따른 값을 계속 저장합니다. 꺼도 현재값과 최근 60초 그래프를 볼 수 있으며, 한 점 기록을 누른 값만 저장합니다. 기록을 시작한 뒤에는 추가 측정에서도 이 설정이 유지됩니다.'}, tableSelection: {label:'표 선택과 분석 대상',text:'체크한 행과 분석에 쓰는 자료는 별개입니다. 선택 자료로 분석을 누르면 분석 대상을 바꿀 수 있고, 분석에서 제외를 누르면 원자료를 보존하면서 계산에서 뺍니다.'} } });
   const policy = () => getActivityPolicy(context);
   const onChange = () => { renderRequested = true; };
   function changeSensorSetting(action) {

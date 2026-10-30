@@ -6,6 +6,12 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.goto('/lab.html');
     const sensor = page.locator('#sensor-cards a[href*="/sensors/bmp280/"]');
     await expect(sensor).toBeVisible();
+    const betaHelp = page.locator('#sensor-cards [data-action-help="betaTool"]');
+    await betaHelp.first().click();
+    await expect(page.getByRole('tooltip')).toBeVisible();
+    await expect(page.locator('[data-screen="home"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('tooltip')).toBeHidden();
     if (viewport.width > 1000) await sensor.hover();
     await page.screenshot({ path: testInfo.outputPath('home.png'), fullPage: true });
     await page.locator('#sensor-cards a[href*="/activities/gay-lussac/"]').click();

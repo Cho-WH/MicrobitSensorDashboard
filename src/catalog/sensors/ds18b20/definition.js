@@ -2,6 +2,7 @@ import { getFirmwareArtifact } from '../../../device/firmware.js';
 const artifact = getFirmwareArtifact('sensor-lab-ds18b20');
 
 export const ds18b20 = {
+  releaseStage: 'beta',
   id: 'ds18b20', version: 1, name: 'DS18B20 방수 온도 센서', boards: ['micro:bit-v2'], codecId: 'ds18b20-csv-v1',
   defaultVisibleChannelIds: ['temperature1C', 'temperature2C'],
   channels: [

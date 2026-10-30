@@ -26,7 +26,15 @@ export function renderHomeCards(root, { sensors, activities, linkTo, onSelect, s
     return anchor;
   }
   const sensorCards = sensors.map(item => {
-    const card = element('article', 'experiment-card sensor-card'); card.append(heading(item));
+    const card = element('article', 'experiment-card sensor-card');
+    if (item.context.sensor.releaseStage === 'beta') {
+      const status = element('div', 'home-card-status');
+      const help = element('button', 'help-trigger', '?');
+      help.type = 'button'; help.dataset.actionHelp = 'betaTool';
+      help.setAttribute('aria-label', '개발 중인 도구 도움말');
+      status.append(element('span', 'home-card-beta', 'beta'), help); card.append(status);
+    }
+    card.append(heading(item));
     const related = activities.filter(activity => activity.context.activity.sensorIds.includes(item.context.sensor.id));
     if (related.length) {
       const footer = element('div', 'home-card-related');

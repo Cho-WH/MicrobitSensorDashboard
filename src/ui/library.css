@@ -31,6 +31,8 @@ button.delete-run:hover { color:rgb(161, 61, 54); background:rgba(161, 61, 54, 0
 [data-visual-theme="luminous"] .experiment-cards { gap:var(--sl-space-4); }
 [data-visual-theme="luminous"] .experiment-card { position:relative; min-width:0; min-height:150px; gap:4px; margin:0; padding:16px 22px; border:1px solid var(--sl-line); border-radius:var(--sl-radius-panel); background:linear-gradient(145deg,#fff,#fbfcff); box-shadow:0 2px 5px #0b1f3b0a,0 10px 24px #0b1f3b12,inset 0 1px 0 #fff; transition:transform var(--sl-motion-panel) var(--sl-motion-panel-easing),box-shadow var(--sl-motion-panel),border-color var(--sl-motion-control),background var(--sl-motion-control); }
 .home-card-link { display:flex; flex-direction:column; gap:4px; color:var(--sl-navy); text-decoration:none; }
+.home-card-status { display:flex; align-items:center; gap:4px; align-self:flex-start; position:relative; z-index:1; color:var(--sl-muted); margin-bottom:4px; }
+.home-card-beta { font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:1rem; font-weight:400; letter-spacing:.035em; line-height:1; }
 .home-card-link::after { content:""; position:absolute; inset:0; border-radius:var(--sl-radius-panel); }
 .home-card-link:focus-visible { outline:none; }
 .home-card-link:focus-visible::after { outline:2px solid var(--sl-focus); outline-offset:4px; }
