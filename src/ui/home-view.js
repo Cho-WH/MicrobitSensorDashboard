@@ -16,24 +16,27 @@ export function renderHomeCards(root, { sensors, activities, linkTo, onSelect, s
   }
   function heading(item, activity = false) {
     const anchor = link(item, 'home-card-link');
+    const beta = !activity && item.context.sensor.releaseStage === 'beta';
+    const content = beta ? element('div', 'home-card-content') : anchor;
     if (activity) anchor.append(element('span', 'home-card-eyebrow', item.copy.activityEyebrow));
     anchor.append(element('strong', 'home-card-title', activity
       ? item.copy.activityTitle || item.context.activity.name : item.copy.sensorTitle || item.context.sensor.name));
-    if (!activity) anchor.append(element('span', 'home-card-sensor', item.copy.sensorEquipment));
-    anchor.append(element('span', 'home-card-description', activity ? item.copy.activityDescription
-      : item.copy.sensorDescription || item.context.channels.map(channel => channel.name).join(' · ')));
-    const arrow = element('span', 'home-card-arrow', '↗'); arrow.setAttribute('aria-hidden', 'true'); anchor.append(arrow);
-    return anchor;
-  }
-  const sensorCards = sensors.map(item => {
-    const card = element('article', 'experiment-card sensor-card');
-    if (item.context.sensor.releaseStage === 'beta') {
-      const status = element('div', 'home-card-status');
+    if (beta) {
+      const row = element('div', 'home-card-heading'), status = element('span', 'home-card-status');
       const help = element('button', 'help-trigger', '?');
       help.type = 'button'; help.dataset.actionHelp = 'betaTool';
       help.setAttribute('aria-label', '개발 중인 도구 도움말');
-      status.append(element('span', 'home-card-beta', 'beta'), help); card.append(status);
+      status.append(element('span', 'home-card-beta', 'beta'), help);
+      row.append(anchor, status); content.append(row);
     }
+    if (!activity) content.append(element('span', 'home-card-sensor', item.copy.sensorEquipment));
+    content.append(element('span', 'home-card-description', activity ? item.copy.activityDescription
+      : item.copy.sensorDescription || item.context.channels.map(channel => channel.name).join(' · ')));
+    const arrow = element('span', 'home-card-arrow', '↗'); arrow.setAttribute('aria-hidden', 'true'); anchor.append(arrow);
+    return content;
+  }
+  const sensorCards = sensors.map(item => {
+    const card = element('article', 'experiment-card sensor-card');
     card.append(heading(item));
     const related = activities.filter(activity => activity.context.activity.sensorIds.includes(item.context.sensor.id));
     if (related.length) {
