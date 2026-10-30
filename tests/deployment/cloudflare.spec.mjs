@@ -40,6 +40,13 @@ test('Cloudflare HTML normalization preserves routes and queries; missing files 
   const social = await page.locator('meta[property="og:image"]').getAttribute('content');
   expect(new URL(social).origin).toBe(new URL(officialBase).origin);
   expect((await request.get(new URL(social).pathname)).status()).toBe(200);
+  // Lazy images must keep the app root after home-to-activity history navigation.
+  await page.locator('a[href*="/activities/gay-lussac/"]').first().click();
+  await page.locator('#activate-experiment').click();
+  await page.locator('#to-measure').click();
+  const board = page.locator('.luminous-device img');
+  await board.scrollIntoViewIfNeeded();
+  await expect.poll(() => board.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
 });
 
 test('production build shares the official link and QR and loads lazy USB/firmware assets', async ({ page }) => {

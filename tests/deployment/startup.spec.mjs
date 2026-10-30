@@ -19,6 +19,14 @@ test('built app resolves routes, lazy assets and USB preparation under a hosting
   expect(requests.some(url => /\/dist\/public\/firmware\/.*\.hex$/.test(url))).toBe(true);
   // Preparation must not open a hardware chooser or claim installation success.
   await expect(page.locator('[data-guide-action="install"]')).toBeEnabled();
+  await page.locator('[data-guide-group="connection"]').click();
+  await page.locator('.guide-device-actions [data-connection-help]').click();
+  const help = page.locator('#connection-troubleshooting');
+  await expect.poll(() => help.locator('img').evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
+  await help.getByRole('button', {name:'닫기',exact:true}).click();
+  await page.locator('#to-measure').click();
+  await page.locator('.experiment-guide [data-guide-next]').click();
+  await expect.poll(() => page.locator('.luminous-device img').evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
   expect(failures).toEqual([]);
 });
 
