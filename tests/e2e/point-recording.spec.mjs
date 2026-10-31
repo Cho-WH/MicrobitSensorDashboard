@@ -400,6 +400,9 @@ test.describe('continuous point capture', () => {
 
   test('collapsed capture and table edits preserve the continuous stream, sample origins and recording gates', async ({ page }) => {
     const button = page.locator('#capture-continuous-point'), panel = page.locator('#point-panel > summary');
+    // Keep nearby captures grouped while testing navigation away from an invalid draft.
+    await page.locator('#live-range > summary').click();
+    await page.locator('[data-live-range="recent"]').click();
     await expect(button).toBeDisabled();
     expect((await readState(page)).storage).toBeUndefined();
     await panel.click(); await defineCondition(page);

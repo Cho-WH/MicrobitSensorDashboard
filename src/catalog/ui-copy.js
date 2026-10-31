@@ -59,7 +59,7 @@ export const labDefaults = {
     start: '기록 시작', reconnect: '장치 다시 연결', pause: '기록 일시정지', resume: '기록 재개', finish: '기록 마치기', additional: '추가 측정', guide: '실험 방법 보기', guideCompact: '실험 방법',
     mockNotice: '모의 측정값입니다.',
     previewNote: recordingPreviewNote, count: '원자료 {count}개', stored: '보관한 자료', storedValues: '보관한 측정값', waiting: '수신 대기',
-    chartTitle: '시간에 따른 변화', range: '표시 구간', recent: '최근 60초', all: '전체', allRecords: '전체 기록', allPreview: '전체 미리보기', chartSummary: '{range} · {count}개 표시',
+    chartTitle: '시간에 따른 변화', range: '표시 구간', recent10: '최근 10초', recent: '최근 60초', all: '전체', allRecords: '전체 기록', allPreview: '전체 미리보기', chartSummary: '{range} · {count}개 표시',
   },
   saved: { title: '저장된 실험 이어하기', description: '이 브라우저에 저장된 기록입니다. 전체 실험 JSON을 따로 보관하면 다른 기기에서도 이어서 분석할 수 있습니다.', empty: '저장된 실험이 없습니다.', open: '실험 열기' },
   analysis: {

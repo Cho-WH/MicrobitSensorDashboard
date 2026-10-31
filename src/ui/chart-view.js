@@ -305,7 +305,7 @@ export function createChartView(canvas, { context, channels, displayValue = (val
   ready = true;
   if (!legendToggle) chart.options.plugins.legend.onClick = () => {};
   return {
-    render(points, now, { range = 'recent', events = [], origin = undefined, timeRange = null, connectGaps = false, nowUtc = Date.now(), bottomPadding = 0, pointsOnly = false, focusSampleId = null, referencePoints = points, scopeKey = undefined } = {}) {
+    render(points, now, { range = 'recent', recentSeconds = 60, events = [], origin = undefined, timeRange = null, connectGaps = false, nowUtc = Date.now(), bottomPadding = 0, pointsOnly = false, focusSampleId = null, referencePoints = points, scopeKey = undefined } = {}) {
       axisState.setScope(scopeKey);
       chart.options.layout.padding.bottom = bottomPadding;
       const relative = point => Number.isFinite(point.monotonicAt) ? (point.monotonicAt - now) / 1000 : (point.receivedAt - nowUtc) / 1000;
@@ -319,7 +319,7 @@ export function createChartView(canvas, { context, channels, displayValue = (val
       // threshold alone cannot show. They never modify the source samples.
       const breakTimes = events.filter(event => ['discontinuity','recording-paused','recording-resumed','additional-measurement','interrupted'].includes(event.type)
         || (event.type==='reception-change'&&event.payload?.state==='stale')).map(event=>event.receivedAt).filter(Number.isFinite).sort((a,b)=>a-b);
-      chart.options.scales.x.min = whole ? undefined : -60;
+      chart.options.scales.x.min = whole ? undefined : -recentSeconds;
       chart.options.scales.x.max = whole ? undefined : 0;
       // Keep the original elapsed-time origin while filling the plot with the
       // requested interval; automatic rounded ticks can otherwise leave it small.

@@ -13,7 +13,7 @@ import { STANDARD_GRAVITY, isSIAcceleration } from '../domain/acceleration-units
 import { timeOrigin } from '../analysis/scope.js';
 import { createCentripetalRecording } from './centripetal/recording.js';
 import { createAxisRangeState } from './chart-ranges.js';
-import { getTimeAxisPolicies } from '../catalog/index.js';
+import { getTimeAxisPolicies, getMeasurementOptions } from '../catalog/index.js';
 
 /** @param {ParentNode} root @param {()=>void} onChange @param {(event:any)=>void} [onEditNote] @param {(number:number)=>void} [onSelectPoint] */
 export function createMeasurementView(root,onChange,onEditNote = null,onSelectPoint = () => {}) {
@@ -48,7 +48,7 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
     const layout = geometry ? {...geometry, ...metrics} : null;
     eventView?.layout(layout); pointMarkers.layout(layout, markerOffset);
   }
-  let rangeValue='recent';
+  let rangeValue='recent10';
   bindDisclosureMenu(range,{signal:abort.signal});
   range.addEventListener('click',event=>{
     const button=event.target instanceof Element ? event.target.closest('[data-live-range]') : null;
@@ -63,7 +63,7 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
     if(context===next)return;
     axisState.reset();
     contentAbort.abort();contentAbort=new AbortController();
-    context=next;chart?.dispose();chart=null;chartKey='';runId=null;rows=[];events=[];eventCount=-1;rangeValue='recent';
+    context=next;chart?.dispose();chart=null;chartKey='';runId=null;rows=[];events=[];eventCount=-1;rangeValue=getMeasurementOptions(next).defaultLiveRange;
     pointRevision=-1;pointMarkers.reset();
     range.open=false;
     inG=false;unitToggle.setAttribute('aria-pressed','false');
@@ -127,9 +127,10 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
         pointMarkers.render(pointRecords,next,manualColumns);
       }
       findElement(range,'button','[data-live-range="all"]').disabled=previewOnly;
-      if(previewOnly) rangeValue='recent';
+      if(previewOnly&&rangeValue==='all') rangeValue=getMeasurementOptions(next).defaultLiveRange==='recent10'?'recent10':'recent';
+      const recentSeconds=rangeValue==='recent10'?10:60;
       const source=stored?rows:previewPoints, end=paused?displayNow:recording||!stored?displayNow:source.at(-1)?.receivedAt??displayNow;
-      const points=rangeValue==='all'?source:source.filter(point=>!Number.isFinite(point.receivedAt)||point.receivedAt>=end-60000);
+      const points=rangeValue==='all'?source:source.filter(point=>!Number.isFinite(point.receivedAt)||point.receivedAt>=end-recentSeconds*1000);
       const channels=displayChannels.filter(channel=>selected.has(channel.id)), key=channels.map(channel=>channel.id).join('|')+':'+inG;
       eventView?.render(events,next,saved?.writable===true,selectedMemoId);
       if(chartKey!==key||!chart){chart?.dispose();chart=createChartView(findElement(root,'canvas','#live-chart'),{context:next,channels,displayValue,axisState,axisPolicies:getTimeAxisPolicies(next),legendToggle:false,theme,eventMarkers:!eventView,onLayout:layoutMarkers});chartKey=key;painted=null;}
@@ -139,15 +140,15 @@ export function createMeasurementView(root,onChange,onEditNote = null,onSelectPo
         && painted.last===source.at(-1) && painted.events===events && painted.range===rangeValue && painted.pointRevision===pointRevision
         && painted.markerHeight===markerMetrics().laneHeight && painted.runId===id;
       if(!unchanged){
-        const from=rangeValue==='all'?source[0]?.receivedAt:end-60000;
+        const from=rangeValue==='all'?source[0]?.receivedAt:end-recentSeconds*1000;
         markerHeight=markerMetrics().laneHeight;
         markerOffset=eventView?.hasVisibleMarkers(from,end)?markerHeight:0;
         const bottomPadding=markerOffset+(pointMarkers.hasVisibleMarkers(from,end)?markerHeight:0);
-        chart.render(points,displayMono,{range:rangeValue,events,origin:stored?timeOrigin(source,saved??{}):previewOrigin??timeOrigin(source),nowUtc:end,bottomPadding,referencePoints:source,scopeKey:id});
+        chart.render(points,displayMono,{range:rangeValue,recentSeconds,events,origin:stored?timeOrigin(source,saved??{}):previewOrigin??timeOrigin(source),nowUtc:end,bottomPadding,referencePoints:source,scopeKey:id});
         painted={source,count:source.length,last:source.at(-1),events,range:rangeValue,recording,pointRevision,markerHeight,runId:id};
       }
       layoutMarkers();
-      chartSummary.textContent=(previewOnly?copy.point.previewChart+' · ':'')+formatCopy(copy.measurement.chartSummary,{range:rangeValue==='all'?copy.measurement.all:copy.measurement.recent,count:points.length.toLocaleString('ko-KR')});
+      chartSummary.textContent=(previewOnly?copy.point.previewChart+' · ':'')+formatCopy(copy.measurement.chartSummary,{range:rangeValue==='all'?copy.measurement.all:rangeValue==='recent10'?copy.measurement.recent10:copy.measurement.recent,count:points.length.toLocaleString('ko-KR')});
       range.querySelector('[data-live-range="all"]').textContent=stored?copy.measurement.allRecords:copy.measurement.allPreview;
       for(const button of range.querySelectorAll('[data-live-range]'))button.setAttribute('aria-pressed',String(button.getAttribute('data-live-range')===rangeValue));
       setText(root.querySelector('#live-range-label'),range.querySelector('[data-live-range="'+rangeValue+'"]').textContent);

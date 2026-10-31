@@ -176,7 +176,8 @@
 :root[data-visual-theme="luminous"] .guide .guide-top [data-guide-action="quick"] { flex:0 0 auto; max-width:100%; min-height:var(--sl-target-compact); padding:8px 12px; border-radius:var(--sl-radius-compact); font-size:var(--sl-type-label); line-height:18px; font-weight:500; margin-left:auto; }
 :root[data-visual-theme="luminous"] .guide :is(.guide-note, .guide-connection-status):empty { display:none; }
 :root[data-visual-theme="luminous"] .guide .guide-device-visual { position:relative; padding:0px 18px 22px; background:none; min-height:0px; }
-:root[data-visual-theme="luminous"] .guide .guide-usb-image { height:clamp(180px, 100dvh - 500px, 320px); width:100%; object-fit:contain; filter:drop-shadow(rgba(2, 11, 24, 0.314) 0px 18px 24px); margin:0px; }
+/* Inline visuals keep their size as mobile browser bars retract during scrolling. */
+:root[data-visual-theme="luminous"] .guide .guide-usb-image { height:clamp(180px, 100svh - 500px, 320px); width:100%; object-fit:contain; filter:drop-shadow(rgba(2, 11, 24, 0.314) 0px 18px 24px); margin:0px; }
 :root[data-visual-theme="luminous"] .guide .guide-device-visual h4 { color:var(--sl-surface); font-size:1.0625rem; margin:0px 0px 8px; }
 :root[data-visual-theme="luminous"] .guide .guide-device-visual :is(p, small) { color:var(--sl-stage-muted); font-size:var(--sl-type-control); line-height:1.75; }
 :root[data-visual-theme="luminous"] .guide .guide-device-visual .eyebrow { color:var(--sl-stage-selection); margin:12px 0px 0px; font-size:var(--sl-type-small); }
@@ -188,7 +189,7 @@
 :root[data-visual-theme="luminous"] .guide button.help-trigger[data-action-help]:is(:hover, [aria-expanded="true"]) { background:rgb(52, 82, 115); }
 :root[data-visual-theme="luminous"] .guide :is(.model-toolbar, .wiring-view-controls) { background:rgb(24, 47, 74); border-color:rgb(73, 103, 130); }
 :root[data-visual-theme="luminous"] .guide .viewer-large { color:rgb(200, 223, 255); }
-:root[data-visual-theme="luminous"] .guide .guide-frame { height:clamp(260px, 100dvh - 520px, 520px); border:1px solid rgb(89, 113, 141); border-radius:0px 0px 10px 10px; }
+:root[data-visual-theme="luminous"] .guide .guide-frame { height:clamp(260px, 100svh - 520px, 520px); border:1px solid rgb(89, 113, 141); border-radius:0px 0px 10px 10px; }
 :root[data-visual-theme="luminous"] .guide .guide-wiring { color:rgb(238, 244, 255); }
 :root[data-visual-theme="luminous"] .guide .guide-wiring :is(th, td) { border-color:var(--sl-stage-detail-line); }
 :root[data-visual-theme="luminous"] .guide .guide-wiring .is-current { background:rgb(42, 76, 112); }
@@ -223,7 +224,7 @@
 :root[data-visual-theme="luminous"] .guide .guide-power summary { min-height:var(--sl-target-compact); align-content:center; }
 :root[data-visual-theme="luminous"] .guide .guide-device-image img { max-height:190px; }
 :root[data-visual-theme="luminous"] .guide .guide-step-image { padding:16px; }
-:root[data-visual-theme="luminous"] .guide .guide-step-image img { height:clamp(250px, 100dvh - 380px, 420px); background:var(--sl-surface-soft); border-radius:var(--sl-radius-control); }
+:root[data-visual-theme="luminous"] .guide .guide-step-image img { height:clamp(250px, 100svh - 380px, 420px); background:var(--sl-surface-soft); border-radius:var(--sl-radius-control); }
 :root[data-visual-theme="luminous"] .guide .guide-summary li { padding:10px 0px; line-height:1.6; }
 :root[data-visual-theme="luminous"] .guide .guide-summary button { min-height:var(--sl-target-compact); }
 :root[data-visual-theme="luminous"] .guide .step-instructions li::marker { color:var(--sl-stage-attention); font-weight:650; }

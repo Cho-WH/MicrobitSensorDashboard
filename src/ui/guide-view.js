@@ -412,7 +412,7 @@ export function createGuideView(host, callbacks = {}) {
     }
     quickPanel.hidden=!quick; for (const check of quickChecks.values()) check.disabled=locked();
     program.hidden=quick||step?.kind!=='program';
-    installHelp.hidden=program.hidden||wireless; installHelp.disabled=Boolean(facts.busy||programmer.busy);
+    installHelp.hidden=program.hidden||wireless||facts.tour===true; installHelp.disabled=Boolean(facts.busy||programmer.busy);
     const installing=Boolean(programmer.busy||['connecting','flashing'].includes(programmer.status));
     program.dataset.state=programmer.status??'idle'; program.setAttribute('aria-busy',String(installing));
     program.dataset.mode=installMode;
@@ -436,7 +436,7 @@ export function createGuideView(host, callbacks = {}) {
     modeButton.textContent=wireless?labels.guide.usbMode:labels.guide.wirelessMode;
     modeButton.classList.toggle('primary',usbRequired); modeButton.classList.toggle('quiet-button',!usbRequired);
     modeButton.classList.toggle('install-mode-link',!recoveryActions);
-    modeButton.disabled=locked()||facts.mock===true||facts.canInstall===false;
+    modeButton.disabled=locked()||(facts.mock===true&&!facts.tour)||facts.canInstall===false;
     bar.hidden=programmer.status!=='flashing'; if (programmer.progress==null) bar.removeAttribute('value'); else bar.value=programmer.progress;
     const deviceText=connectionStep?(facts.unsupported?labels.guide.unsupported:facts.deviceMessage??''):'';
     if (connectionNotice.dataset.message !== deviceText) {
@@ -455,16 +455,17 @@ export function createGuideView(host, callbacks = {}) {
     if (quick) show.add('quick-confirm'); else if (isSummary) show.add('measure'); else if (!preparationView?.handlesProgression(step?.id)) {
       show.add(['manual','calibration'].includes(step?.kind) ? 'confirm' : 'next');
     }
-    if (connectionStep && state.canMeasure) {
+    const preparationAhead=steps.slice(index + 1).some(item=>item.required&&!item.complete);
+    if (connectionStep && state.canMeasure && !preparationAhead) {
       show.add('measure');
-      // Once the remaining checks are complete, measurement is the next action.
-      // Keep progression available when an activity still has preparation to do.
-      if (state.ready && steps.slice(index + 1).every(item => item.complete)) show.delete('next');
+      // Past unchecked items do not add a redundant summary hop. If activity
+      // preparation remains ahead, keep Next as the single forward action.
+      show.delete('next');
     }
     if (step?.kind==='program'&&!quick) {
       if(!usbRequired&&(!wireless||!installing))show.add('install');
       if(programmer.status!=='success'&&(!wireless||!installing&&!recoveryActions))show.add('program-confirm');
-      if(wireless&&programmer.busy)show.add('cancel-install');
+      if((wireless||facts.tour)&&programmer.busy)show.add('cancel-install');
       if(wireless&&(installing||recoveryActions))show.delete('next');
     }
     if (connectionStep) {if (facts.connected||facts.connecting) show.add('disconnect'); else {show.add('connect'); if (facts.canReconnect) show.add('reconnect');} if (step?.kind==='battery') show.add('battery');}
@@ -476,7 +477,7 @@ export function createGuideView(host, callbacks = {}) {
     buttons.get('next').classList.toggle('primary',!show.has('measure'));
     buttons.get('measure').disabled=locked()||!state.canMeasure;
     buttons.get('quick-confirm').disabled ||= [...quickChecks.values()].some(check=>!check.checked);
-    buttons.get('install').disabled ||= facts.canInstall===false||facts.mock===true||programmer.status==='unavailable';
+    buttons.get('install').disabled ||= facts.canInstall===false||(facts.mock===true&&!facts.tour)||programmer.status==='unavailable';
     buttons.get('install').setAttribute('aria-busy',String(installing));
     buttons.get('install').textContent=programmer.busy?labels.guide.installing:['error','cancelled'].includes(programmer.status)?labels.guide.retryInstall:programmer.status==='success'?labels.guide.reinstall:labels.guide.install;
     if(wireless) buttons.get('install').textContent=programmer.busy?labels.guide.installing:programmer.status==='recovery'?labels.guide.retryConnection:['error','cancelled'].includes(programmer.status)?labels.guide.wirelessRetry:programmer.status==='success'?labels.guide.reinstall:labels.guide.wirelessInstall;
@@ -487,7 +488,7 @@ export function createGuideView(host, callbacks = {}) {
     buttons.get('reconnect').disabled ||= facts.canConnect===false;
     buttons.get('disconnect').textContent=facts.connecting?labels.common.cancelConnection:labels.common.disconnect; buttons.get('disconnect').disabled=Boolean(facts.programmerState?.busy);
     buttons.get('battery').disabled ||= !facts.connected; deviceActions.hidden=!connectionStep; wiringNote.hidden=step?.group!=='wiring'||!content.wiringTable?.note;
-    const noteText=facts.recording?labels.guide.reconnectNote:facts.mock&&step?.kind==='program'?facts.tour?'프로그램이 준비된 예시 장치를 사용합니다.':labels.guide.mockProgramNote:step?.kind==='program'?'':step?.kind==='battery'&&state.observations.battery.startedAt!==null?step.complete?labels.guide.batterySeen:labels.guide.batteryWaiting:step?.kind==='calibration'&&!managed?labels.guide.calibrationNote:'';
+    const noteText=facts.recording?labels.guide.reconnectNote:facts.mock&&step?.kind==='program'?facts.tour?'':labels.guide.mockProgramNote:step?.kind==='program'?'':step?.kind==='battery'&&state.observations.battery.startedAt!==null?step.complete?labels.guide.batterySeen:labels.guide.batteryWaiting:step?.kind==='calibration'&&!managed?labels.guide.calibrationNote:'';
     setText(note,noteText); note.hidden=!noteText;
     copy.dataset.group=step?.group??''; layout?.measure(); layout?.syncProgress();
     renderedStep=nextStep;

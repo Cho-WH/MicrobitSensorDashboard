@@ -7,6 +7,8 @@ async function enter(page,activity){
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto(`/activities/${activity}/?view=preview`);
   await page.locator('#preview-tour').click();
+  await expect(page.locator('[data-screen="prepare"]')).toBeVisible();
+  await page.locator('#to-measure').click();
   await expect(page.locator('[data-screen="measure"]')).toBeVisible();
   await expect(page.locator('#tour-status')).toBeVisible();
   if(await page.locator('.experiment-guide').isVisible())await page.locator('.experiment-guide .experiment-guide-close').click();

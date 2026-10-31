@@ -1,8 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getExperiment, resolveExperiment } from '../../src/catalog/index.js';
+import { getExperiment, resolveExperiment, getMeasurementOptions } from '../../src/catalog/index.js';
 import { decodeBmp280 } from '../../src/catalog/sensors/bmp280/codec.js';
 import { validateChannels } from '../../src/domain/contracts.js';
+
+test('measurement defaults inherit sensor settings with activity overrides',()=>{
+  for(const id of ['temperature','ds18b20','bmp280']) assert.equal(getMeasurementOptions(getExperiment(id)).defaultLiveRange,'recent');
+  for(const id of ['accelerometer','magnetometer','light-level','mlx90393']) assert.equal(getMeasurementOptions(getExperiment(id)).defaultLiveRange,'recent10');
+  const gas=getMeasurementOptions(getExperiment('bmp280','gay-lussac'));
+  assert.equal(gas.defaultLiveRange,'all');assert.equal(gas.continuousOnly,true);assert.equal(gas.points,true);
+  const rotation=getMeasurementOptions(getExperiment('motion-magnetic','centripetal'));
+  assert.equal(rotation.defaultLiveRange,'recent10');assert.equal(rotation.points,false);
+});
 test('BMP280 free measurement and Gay-Lussac share channels and firmware, activity alone supplies actions and calculations',()=>{
   const free=getExperiment(), activity=getExperiment('bmp280','gay-lussac');
   const measurementDefinition = channels => channels.map(({name, ...channel}) => channel);

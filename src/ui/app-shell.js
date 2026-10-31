@@ -40,26 +40,30 @@ function bindHelpDialog(root, signal, kind) {
   signal.addEventListener('abort', () => { if (dialog.open) dialog.close(); }, { once: true });
 }
 
-// Move the existing control so focus order follows the visible mobile header.
+// Move the existing file/tour controls so focus order follows the mobile header.
+// The controller owns which action is visible; the shell only places it.
 function bindFileButtonPlacement(root, signal) {
-  const button = findElement(root, 'button', '#open-file');
+  const buttons = ['open-file', 'exit-tour'].map(id => findElement(root, 'button', '#' + id));
+  const doc = buttons[0].ownerDocument;
   const tools = findElement(root, 'div', '#file-tools');
   const slot = findElement(root, 'div', '.mobile-file-slot');
-  const doc = button.ownerDocument;
   const media = doc.defaultView.matchMedia('(max-width:760px)');
   // CSS may hide the old parent and blur the button before matchMedia fires.
-  // Remember its focus until the user moves focus or points elsewhere.
-  let focused = doc.activeElement === button;
-  doc.addEventListener('focusin', event => { focused = event.target === button; }, { signal });
+  // Remember the focused control until the user moves focus or points elsewhere.
+  let focused = buttons.find(button => doc.activeElement === button);
+  doc.addEventListener('focusin', event => { focused = buttons.find(button => event.target === button); }, { signal });
   doc.addEventListener('pointerdown', event => {
-    if (!button.contains(/** @type {Node} */ (event.target))) focused = false;
+    if (!focused?.contains(/** @type {Node} */ (event.target))) focused = undefined;
   }, { signal });
   function place(mobile = media.matches) {
     const target = mobile ? slot : tools;
-    if (button.parentElement === target) return;
-    if (mobile) slot.append(button);
-    else tools.prepend(button);
-    if (focused) button.focus({ preventScroll: true });
+    const restoreFocus = focused;
+    for (const button of buttons) {
+      if (button.parentElement === target) continue;
+      if (mobile) slot.append(button);
+      else tools.prepend(button);
+    }
+    restoreFocus?.focus({ preventScroll: true });
   }
   media.addEventListener('change', () => place(), { signal });
   signal.addEventListener('abort', () => place(false), { once: true });

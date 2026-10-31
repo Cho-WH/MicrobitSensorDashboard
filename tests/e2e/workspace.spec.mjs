@@ -81,6 +81,22 @@ test('actual page: shell reflow preserves file-button focus and preview guidance
   await expect(settings).toBeFocused();
 });
 
+test('actual page: tour exit stays reachable before recording and preserves focus through shell reflow', async ({page}) => {
+  await page.setViewportSize({width:320,height:640});
+  await page.goto('/activities/centripetal/?mock=1&view=prepare');
+  const exit=page.locator('#exit-tour');
+  await expect(exit).toBeVisible();
+  await expect(page.locator('#open-file')).toBeHidden();
+  await exit.focus();
+  for (const width of [1366,320]) {
+    await page.setViewportSize({width,height:844});
+    await expect(exit).toBeFocused();
+  }
+  await exit.press('Enter');
+  await expect(page).toHaveURL(/activities\/centripetal\/\?view=preview$/);
+  await expect(page.locator('#open-file')).toBeVisible();
+});
+
 // Other viewport combinations, original samples and analysis navigation are
 // covered by the existing workspace suite. Keep this regression on reflection.
 test('actual page: reflection answers and print action survive reflow', async ({ page }) => {

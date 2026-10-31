@@ -13,6 +13,8 @@ test('tour chooser, paused one-minute replay and automatic finish preserve data 
   await page.clock.install();
   await page.goto('/sensors/accelerometer/?view=preview');
   await page.locator('#preview-tour').click();
+  await expect(page.locator('[data-screen="prepare"]')).toBeVisible();
+  await page.locator('#to-measure').click();
   await expect(page).toHaveURL(/mock=1/);
   await expect(page.locator('#tour-status')).toBeVisible();
   if(await page.locator('.experiment-guide').isVisible())await page.locator('.experiment-guide .experiment-guide-close').click();
@@ -47,6 +49,7 @@ test('tour chooser, paused one-minute replay and automatic finish preserve data 
     const {createRepository}=await import('/src/data/repository.js');const repository=createRepository();
     try{return await repository.listRuns();}finally{repository.close();}
   });expect(original).toHaveLength(0);
+  await page.setViewportSize({width:320,height:640});
   await page.locator('#exit-tour').click();await page.locator('#leave-save').click();
   await expect(page).toHaveURL(/sensors\/accelerometer\/\?view=preview$/);
   await expect(page.locator('#tour-status')).toBeHidden();

@@ -46,7 +46,9 @@ export function getMeasurementReadout(context, modules = registry) {
 }
 // Current activity UI policy; stored records and their original mode remain intact.
 export function getMeasurementOptions(context) {
-  return registry.getActivity(context?.activity, context?.sensor)?.measurement ?? {continuousOnly:false, points:true};
+  return {continuousOnly:false, points:true, defaultLiveRange:'recent10',
+    ...registry.getSensor(context?.sensor)?.measurement,
+    ...registry.getActivity(context?.activity, context?.sensor)?.measurement};
 }
 export function getActivityPolicy(context, modules = registry) {
   return modules.getActivity(context?.activity, context?.sensor)?.policy;

@@ -4,7 +4,7 @@ export const centripetal = {
   sensorIds: ['motion-magnetic'], requiredChannels: motionMagnetic.channels.map(channel => channel.id),
   policyId: 'centripetal-v1', readout: motionMagnetic.readout,
   preparation: ['수평 회전판에 보드와 배터리를 단단히 고정하고 회전축에서 센서 칩까지의 반지름을 재세요.',
-    '고정 자석과 회전부가 닿지 않게 배치하세요. 측정 화면의 미리보기에서 한 바퀴마다 반복되는 신호를 확인한 뒤 기록을 시작하세요.'],
+    '고정 자석과 회전부가 닿지 않게 배치하세요. 회전을 기록하며 한 바퀴마다 반복되는 자기장 신호를 살펴보세요.'],
   channelNames: {},
   memoPresets: [{ id: 'rotation-start', text: '회전 시작' }, { id: 'speed-changed', text: '회전 속도 변경' },
     { id: 'rotation-stop', text: '회전 멈춤' }],

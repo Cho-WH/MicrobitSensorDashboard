@@ -6,6 +6,7 @@ import { createTransport } from '../device/transport.js';
 import { createMockBleClient } from '../device/mock-client.js';
 import { createTourDevicePicker } from '../ui/tour-device-picker.js';
 import { createTourRepository } from '../data/tour-repository.js';
+import { createMockProgrammer } from '../device/mock-programmer.js';
 import { createProgrammer } from '../device/programmer.js';
 import { loadFirmwareHex } from '../device/firmware.js';
 import { createGuideView } from '../ui/guide-view.js';
@@ -105,7 +106,7 @@ export function createController(root = document, { repository = null, deviceTra
   const experimentGuide = createExperimentGuide(root.querySelector('.lab-shell'));
   const share = createShareView(findElement(root, 'section', '[data-screen="preview"]'));
   const analysis = createAnalysisView(root.querySelector('[data-screen="analysis"]'), { onError: showError, onExport: kind => act(() => exportFile(kind)) });
-  const help = createActionHelp(root, { messages: { betaTool: {label:'개발 중인 도구',text:'아직 개발 중인 도구로, 실기기에서의 동작 안정성은 검증되지 않았어요.'}, continuousRecording: {label:'연속 기록',text:'켜면 시간에 따른 값을 계속 저장합니다. 꺼도 현재값과 최근 60초 그래프를 볼 수 있으며, 한 점 기록을 누른 값만 저장합니다. 기록을 시작한 뒤에는 추가 측정에서도 이 설정이 유지됩니다.'}, tableSelection: {label:'표 선택과 분석 대상',text:'체크한 행과 분석에 쓰는 자료는 별개입니다. 선택 자료로 분석을 누르면 분석 대상을 바꿀 수 있고, 분석에서 제외를 누르면 원자료를 보존하면서 계산에서 뺍니다.'} } });
+  const help = createActionHelp(root, { messages: { tour: {label:'둘러보기',text:'기기나 실험 환경이 없어도 앱의 기능을 처음부터 끝까지 모의로 체험할 수 있어요.'}, betaTool: {label:'개발 중인 도구',text:'아직 개발 중인 도구로, 실기기에서의 동작 안정성은 검증되지 않았어요.'}, continuousRecording: {label:'연속 기록',text:'켜면 시간에 따른 값을 계속 저장합니다. 꺼도 현재값과 최근 구간의 그래프를 볼 수 있으며, 한 점 기록을 누른 값만 저장합니다. 기록을 시작한 뒤에는 추가 측정에서도 이 설정이 유지됩니다.'}, tableSelection: {label:'표 선택과 분석 대상',text:'체크한 행과 분석에 쓰는 자료는 별개입니다. 선택 자료로 분석을 누르면 분석 대상을 바꿀 수 있고, 분석에서 제외를 누르면 원자료를 보존하면서 계산에서 뺍니다.'} } });
   const policy = () => getActivityPolicy(context);
   const onChange = () => { renderRequested = true; };
   function changeSensorSetting(action) {
@@ -179,7 +180,7 @@ export function createController(root = document, { repository = null, deviceTra
   }
   function canInstall() {
     const saved = store?.getState(), current = session?.getState();
-    return !!context && !!runtime && !runtime.definition.firmware.stale && canUseDevice() && screen === 'prepare' && !mock && !connected && !connecting
+    return !!context && !!runtime && !runtime.definition.firmware.stale && canUseDevice() && screen === 'prepare' && (!mock || isTour()) && !connected && !connecting
       && (!saved || (saved.writable && saved.status === 'clean' && (!current || current.state === 'ended')));
   }
   async function downloadProgram() {
@@ -204,7 +205,7 @@ export function createController(root = document, { repository = null, deviceTra
     if (!store) capture = createPointCapture({ config: context?.connectionPolicy });
     guide.open(context, {reset:true});
     mountSensorSettings();
-    if (runtime && !runtime.definition.firmware.stale) programmer = createProgrammer({ firmwareId: runtime.definition.firmware.id,
+    if (runtime && !runtime.definition.firmware.stale) programmer = (isTour() ? createMockProgrammer : createProgrammer)({ chooseDevice: (device, options) => picker.choose(device, options), cancelChoice: () => picker.cancel(), firmwareId: runtime.definition.firmware.id,
       version: runtime.definition.firmware.version, canInstall, beforeFlash: disconnect,
       onState: state => {
         programmerState = state; if (state.installedThisSession) installed = true; renderRequested = true;
@@ -575,7 +576,7 @@ export function createController(root = document, { repository = null, deviceTra
     screen = next;
     if (historyEnabled && push) history.pushState(null, '', routeUrl(next === 'preview' ? targetContext : context, next, {mock}));
     findElement(root,'a','.skip-link').href = location.pathname + location.search + '#main';
-    if (next === 'prepare' && !mock) programmer?.prepare().catch(showError);
+    if (next === 'prepare' && (!mock || isTour())) programmer?.prepare().catch(showError);
     for (const section of /** @type {NodeListOf<HTMLElement>} */ (root.querySelectorAll('[data-screen]'))) {
       const hidden = section.dataset.screen !== next;
       if (hidden) for (const dialog of /** @type {NodeListOf<HTMLDialogElement>} */ (section.querySelectorAll('dialog[open]'))) dialog.close();
@@ -646,7 +647,7 @@ export function createController(root = document, { repository = null, deviceTra
     $('disconnect').textContent = connecting ? copy.common.cancelConnection : copy.common.disconnect;
     $('tour-status').hidden = !tourContext(displayContext);
     $('exit-tour').hidden = !isTour();
-    $('preview-tour').hidden = !supportsTour(targetContext);
+    $('preview-tour-control').hidden = !supportsTour(targetContext);
     button('preview-tour').disabled = busy;
     $('open-file').hidden = isTour();
     $('mock-link').parentElement.hidden = mock || !supportsTour(context);
@@ -759,7 +760,7 @@ export function createController(root = document, { repository = null, deviceTra
   }, { signal });
   listen('additional-recording',async()=>{requireReady();await dialogs.additional(policy(),confirmation=>{requireReady();session.startAdditional(confirmation);replayCycle++;});});
   listen('new-experiment',()=>exitToHome());
-  listen('preview-tour',()=>{if(supportsTour(targetContext))loadPage(routeUrl(targetContext,'measure',{mock:true}).href,false);});
+  listen('preview-tour',()=>{if(supportsTour(targetContext))loadPage(routeUrl(targetContext,'prepare',{mock:true}).href,false);});
   listen('exit-tour',()=>leaveExperiment(context,'preview'));
   listen('activate-experiment',()=>activateExperiment()); listen('activate-prepared',()=>activateExperiment(true)); listen('prepare-device',()=>navigate('prepare'));
   listen('show-experiment-guide',()=>experimentGuide.show(context,{anchor:$('show-experiment-guide')}));
@@ -782,7 +783,7 @@ export function createController(root = document, { repository = null, deviceTra
   listen('export-json',()=>exportFile('json'));listen('export-csv',()=>exportFile('csv'));
   $('open-file').addEventListener('click',()=>input('file-input').click(),{signal});
   input('file-input').addEventListener('change',()=>{const file=input('file-input').files[0];input('file-input').value='';act(()=>readFile(file));},{signal});
-  $('mock-link').addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) loadPage(routeUrl(context,'measure',{mock:true}).href,false);});},{signal});
+  $('mock-link').addEventListener('click',event=>{event.preventDefault();act(async()=>{if(await confirmTransition()) loadPage(routeUrl(context,'prepare',{mock:true}).href,false);});},{signal});
   window.addEventListener('beforeunload',event=>{const draftsSaved=memoView.flush() && analysis.flush() && pointView.flush(),saved=store?.getState();if(!draftsSaved || session?.getState().recording || (saved?.writable && saved.status!=='clean') || (saved?.temporary && exportedRevision!==saved.runRevision)) {event.preventDefault();event.returnValue='';}},{signal});
   document.addEventListener('visibilitychange',()=>{if(document.hidden && store?.getState().writable){memoView.flush();analysis.flush();pointView.flush();store.flush().catch(showError);}},{signal});
   const interval = setInterval(()=>{

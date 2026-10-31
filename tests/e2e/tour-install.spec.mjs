@@ -1,0 +1,53 @@
+import { test, expect } from '@playwright/test';
+import { chooseTourDevice } from './support/tour.mjs';
+
+test('tour starts with preparation, simulates installation and continues to receiving without hardware APIs', async ({page}, info) => {
+  await page.addInitScript(() => {
+    for (const name of ['usb', 'bluetooth']) Object.defineProperty(navigator, name, { configurable:true, value:undefined });
+  });
+  await page.clock.install();
+  await page.goto('/sensors/accelerometer/?view=preview');
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('[data-action-help="tour"]').click();
+  await expect(page.getByRole('tooltip')).toBeVisible();
+  await expect(page.locator('[data-screen="preview"]')).toBeVisible();
+  await page.screenshot({path:info.outputPath('tour-help-mobile.png'),fullPage:true});
+  await page.keyboard.press('Escape');
+  await page.locator('#preview-tour').click();
+  await expect(page.locator('[data-screen="prepare"]')).toBeVisible();
+  await expect(page.locator('[data-guide-step="equipment"]')).toHaveAttribute('aria-current','step');
+  await page.locator('[data-guide-action="confirm"]').click();
+  await expect(page.locator('[data-guide-step="program"]')).toHaveAttribute('aria-current','step');
+  const install=page.locator('[data-guide-action="install"]');
+  await install.click();
+  const picker=page.getByRole('dialog',{name:'설치할 micro:bit 선택'});
+  await expect(picker).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(install).toBeEnabled();
+  await expect(page.locator('[data-guide-action="next"]')).toBeDisabled();
+  await install.click();
+  await picker.getByRole('radio').check();
+  await picker.getByRole('button',{name:'선택',exact:true}).click();
+  await expect(page.locator('[data-guide-action="next"]')).toBeEnabled();
+  await install.click();
+  await picker.getByRole('radio').check();
+  await picker.getByRole('button',{name:'선택',exact:true}).click();
+  await expect(page.getByRole('progressbar')).toBeVisible();
+  await page.locator('[data-guide-action="cancel-install"]').click();
+  await expect(install).toBeEnabled();
+  await expect(page.locator('[data-guide-action="next"]')).toBeDisabled();
+  // The alternate install mode uses the same guide and cancellation contract.
+  await page.locator('[data-guide-action="install-mode"]').click();
+  await install.click();
+  await picker.getByRole('radio').check();
+  await picker.getByRole('button',{name:'선택',exact:true}).click();
+  await expect(page.locator('[data-guide-action="next"]')).toBeEnabled();
+  await page.screenshot({path:info.outputPath('tour-install-mobile.png'),fullPage:true});
+  await page.locator('[data-guide-action="next"]').click();
+  await page.locator('[data-guide-action="connect"]').click();
+  await chooseTourDevice(page);
+  await expect(page.locator('[data-guide-action="measure"]')).toBeEnabled();
+  await page.locator('[data-guide-action="measure"]').click();
+  if(await page.locator('.experiment-guide').isVisible()) await page.locator('.experiment-guide .experiment-guide-close').click();
+  await expect(page.locator('#start-recording')).toBeEnabled();
+});

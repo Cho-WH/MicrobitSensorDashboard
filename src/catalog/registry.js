@@ -2,13 +2,14 @@ import { validateChannels } from '../domain/contracts.js';
 /**
  * @typedef {{primaryChannelId:string,componentChannelIds:string[]}} ReadoutDefinition
  * @typedef {Record<string,{min?:number,max?:number,minSpan?:number}>} TimeAxisDefinition
+ * @typedef {{continuousOnly?:boolean,points?:boolean,pointTableChannelIds?:string[],defaultLiveRange?:string}} MeasurementOptions
  * @typedef {{definition:Omit<typeof import('./sensors/bmp280/definition.js').bmp280|typeof import('./sensors/magnetometer/definition.js').magnetometer,'channels'|'readout'> & {channels:import('../domain/columns.js').Channel[],readout?:ReadoutDefinition,timeAxis?:TimeAxisDefinition},
  * decode:typeof import('./sensors/bmp280/codec.js').decodeBmp280|typeof import('./sensors/magnetometer/codec.js').decodeMagnetometer|typeof import('./sensors/mlx90393/codec.js').decodeMlx90393,
  * mockLine:(time:number)=>string,guide:import('../guide/types.js').SensorGuide,
- * preparation?:import('../device/preparation-types.js').SensorPreparation,recording?:boolean,
+ * preparation?:import('../device/preparation-types.js').SensorPreparation,recording?:boolean,measurement?:MeasurementOptions,
  * uiCopy?:import('./ui-copy.js').LabCopy}} SensorModule
  * @typedef {{definition:Omit<typeof import('./activities/gay-lussac/definition.js').gayLussac,'readout'|'channelNames'> & {readout?:ReadoutDefinition,channelNames?:Record<string,string>,releaseStage?:string,timeAxis?:TimeAxisDefinition},
- * measurement?:{continuousOnly:boolean,points:boolean,pointTableChannelIds?:string[]},
+ * measurement?:MeasurementOptions,
  * tour?:{durationMs:number,lineAt:(ms:number)=>string,setup?:Record<string,string>,notes?:{atMs:number,note:string}[]},
  * policy?:typeof import('./activities/gay-lussac/policy.js').activityPolicy,guide:import('../guide/types.js').ActivityGuide,
  * uiCopy?:import('./ui-copy.js').LabCopy}} ActivityModule

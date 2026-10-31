@@ -31,12 +31,19 @@ test('centripetal uses shared calibration, battery preparation and five-channel 
   await page.locator('#to-measure').click();
   const guide = page.locator('.experiment-guide');
   await expect(guide).toBeVisible();
-  await guide.locator('[data-guide-next]').click();
-  await page.screenshot({ path: testInfo.outputPath('signal-guide-small.png'), fullPage: true });
-  await page.setViewportSize({ width: 1366, height: 900 });
-  await page.screenshot({ path: testInfo.outputPath('signal-guide-desktop.png'), fullPage: true });
-  await page.setViewportSize({ width: 320, height: 740 });
-  await guide.locator('[data-guide-next]').click();
+  const guidePages = guide.getByRole('navigation').getByRole('button');
+  for (let index = 0; index < await guidePages.count(); index++) {
+    await expect(guidePages.nth(index)).toHaveAttribute('aria-current', 'step');
+    const illustration = guide.locator('section:visible').getByRole('img');
+    await expect(illustration).toBeVisible();
+    await expect.poll(() => illustration.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`method-${index + 1}-small.png`), fullPage: true });
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await page.screenshot({ path: testInfo.outputPath(`method-${index + 1}-desktop.png`), fullPage: true });
+    await page.setViewportSize({ width: 320, height: 740 });
+    await guide.locator('[data-guide-next]').click();
+  }
+  await expect(guide).toBeHidden();
   await expect(page.locator('#show-experiment-guide')).toBeFocused();
   await expect(page.locator('#start-recording')).toBeEnabled();
   await expect(page.locator('[data-recording-mode="continuous"]').first()).toBeVisible();

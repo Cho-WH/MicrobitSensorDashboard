@@ -14,6 +14,7 @@ import {clockTime,formatClockTime} from '../../src/analysis/clock-time.js';
 const check=(value,message)=>{if(!value)throw new Error(message);};
 export async function runMeasurementTests(report=()=>{}) {
   await checkPointReadouts();
+  await checkLiveRangeDefaults();
   for(const sensor of ['magnetometer','accelerometer']) {
     const context=getExperiment(sensor), box=document.createElement('div'),canvas=document.createElement('canvas');
     box.style.cssText='width:600px;height:300px';box.append(canvas);document.body.append(box);
@@ -54,7 +55,10 @@ export async function runMeasurementTests(report=()=>{}) {
     const original=store.getSamples();
     view=createMeasurementView(host,()=>view.render(options));view.render(options);
     const range=host.querySelector('#live-range'), chart=()=>Chart.getChart(host.querySelector('canvas'));
+    check(chart().data.datasets[0].data.filter(p=>p.sampleId).length===51&&chart().scales.x.min===-10,'최근 10초의 자료 또는 가로축 범위가 맞지 않습니다.');
+    clickVisible(range.querySelector('summary'));clickVisible(range.querySelector('[data-live-range="recent"]'));
     check(chart().data.datasets[0].data.filter(p=>p.sampleId).length===301,'최근 60초가 저장 시각 기준과 다릅니다.');
+    check(chart().scales.x.min===-60,'최근 60초로 바꿔도 가로축이 갱신되지 않았습니다.');
     check(chart().data.datasets[0].data.every(p=>Number.isFinite(p.x)),'보관된 원자료에 없는 monotonicAt을 사용했습니다.');
     check(!host.querySelector('[data-point-marker]'),'최근 구간 밖의 점을 표시했습니다.');
     clickVisible(range.querySelector('summary'));clickVisible(range.querySelector('[data-live-range="all"]'));
@@ -79,6 +83,21 @@ export async function runMeasurementTests(report=()=>{}) {
     report('실제 측정 그래프 · 최근/전체 1,010개·UTC 시각·짧은 기록 공백·채널 선택과 원자료 보존');
   }finally{view?.dispose();await store.close();repository.close();fixture.dispose();await globalThis.idb.deleteDB(databaseName);}
   await checkAccelerationUnits(report);
+}
+
+async function checkLiveRangeDefaults() {
+  const fixture=await mountLabFixture({component:true});fixture.showScreen('measure');
+  const view=createMeasurementView(fixture.host,()=>{}), origin=1700000000000;
+  try {
+    for(const [sensor,activity,selected,min] of [['accelerometer',null,'recent10',-10],['ds18b20',null,'recent',-60],['bmp280','gay-lussac','all',0]]) {
+      const context=getExperiment(sensor,activity), points=Array.from({length:61},(_,i)=>({receivedAt:origin+i*1000,
+        values:Object.fromEntries(context.channels.map(c=>[c.id,20])),validity:Object.fromEntries(context.channels.map(c=>[c.id,'valid']))}));
+      view.render({context,store:null,latest:points.at(-1),previewPoints:points,device:{status:'connected',confirmed:true},recording:false,displayNow:origin+60000});
+      check(fixture.host.querySelector(`[data-live-range="${selected}"]`).getAttribute('aria-pressed')==='true',sensor+': 모듈의 초기 표시 구간이 반영되지 않았습니다.');
+      const chart=Chart.getChart(fixture.host.querySelector('#live-chart'));
+      check(chart.scales.x.min===min,sensor+': 기본 표시 구간과 시간축이 일치하지 않습니다.');
+    }
+  } finally {view.dispose();fixture.dispose();}
 }
 
 async function checkPointReadouts() {

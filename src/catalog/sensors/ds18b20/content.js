@@ -4,7 +4,7 @@ export const probeIllustration = {
 };
 export const uiCopy = {
   home: { sensorTitle: '온도(방수 프로브) 측정', sensorEquipment: 'DS18B20 · 외장 센서',
-    sensorDescription: '프로브 1~2개로 물의 온도 변화와 두 곳의 온도를 비교해요.' },
+    sensorDescription: '물의 온도 변화를 살펴보고, 두 곳의 온도를 비교해요.' },
   guide: { receptionNote: 'P1은 온도 1, P2는 온도 2예요. 연결하지 않은 쪽은 빈 값으로 남아요. 약 1초마다 들어오는 값이 안정될 때까지 기다리세요.' },
 };
 export const equipmentDescription = 'micro:bit V2와 DS18B20 프로브 키트 1~2개, 확장 보드, USB 데이터 케이블을 준비하세요.';

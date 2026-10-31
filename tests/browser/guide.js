@@ -66,7 +66,8 @@ export async function runGuideTests(report = (_message) => {}) {
     check(view.getProgress().canMeasure&&!view.getProgress().steps.find(step=>step.id==='calibration').complete,'생략이 완료로 둔갑하거나 측정을 차단했습니다.');
     check(view.getProgress().setup.calibration==='skipped'&&$('.step-description').textContent.includes('생략'),'생략 이력 또는 안내 누락');
     check($('.guide-checks .skipped')&&!$('.guide-checks .skipped').classList.contains('complete'),'수신 확인에 보정 생략이 완료로 표시됩니다.');
-    click('next');check($('.guide-summary .skipped')&&!$('.guide-summary .skipped').textContent.includes('✓'),'준비 결과에 보정 생략 표시 누락');
+    check($('[data-guide-action="next"]').hidden&&!$('[data-guide-action="measure"]').hidden&&!$('[data-guide-action="measure"]').disabled,
+      '보정 생략 이력 때문에 불필요한 다음 단계를 거치거나 측정 이동이 차단되었습니다.');
     view.render({ attemptId: 'mag-2', connected: false, receptionReady: false, connecting: true, busy: true, deviceMessage: 'micro:bit를 연결하는 중…' });
     check(!view.getProgress().ready, '새 연결 시도가 이전 보정·수신 확인을 재사용했습니다.');
     step('connection'); click('disconnect'); check(disconnects === 1, '연결 중 취소를 실행하지 못했습니다.');
@@ -101,6 +102,8 @@ export async function runGuideTests(report = (_message) => {}) {
     view.render({attemptId:'bmp-1',connected:true,receptionReady:true,receivedAt:10000,latest});
 
     check($('.guide-reception').dataset.state==='receiving','새 수신 상태 누락');
+    check(!view.getProgress().ready&&$('[data-guide-action="next"]').hidden&&!$('[data-guide-action="measure"]').hidden,
+      '이전 준비 확인이 남았다는 이유로 측정 이동과 다음 버튼을 함께 표시했습니다.');
     view.render({attemptId:'bmp-1',connected:true,receptionReady:false,receivedAt:10000,latest});
     check($('.guide-reception').dataset.fresh==='false'&&$('[data-guide-action="measure"]').hidden,'수신 중단 후 측정 행동이 남았습니다.');
     check($('.guide-value strong').textContent==='22','상태 갱신이 마지막 수신값을 버렸습니다.');
@@ -150,6 +153,11 @@ export async function runGuideTests(report = (_message) => {}) {
     check($('[data-guide-action="quick-confirm"]').disabled,'준비된 장치 확인을 생략했습니다.');
     for(const checkbox of host.querySelectorAll('[data-quick-confirm]')){checkbox.checked=true;checkbox.dispatchEvent(new Event('change'));}
     click('quick-confirm');check(!view.getProgress().ready,'빠른 준비만으로 수신/배터리/배치까지 통과했습니다.');
+    view.render({attemptId:'activity',connected:true,receptionReady:true});
+    check(!$('[data-guide-action="next"]').hidden&&!$('[data-guide-action="next"]').disabled&&$('[data-guide-action="measure"]').hidden,
+      '뒤에 배터리·배치 준비가 남았는데 다음 단계와 측정 이동을 동시에 제시했습니다.');
+    click('next');check($('[data-guide-step="reception"]').getAttribute('aria-current')==='step','수신 확인 단계로 진행하지 못했습니다.');
+    view.render({attemptId:'activity',connected:false,receptionReady:false});
     step('placement');check(!$('.guide-step-image').hidden&&$('.guide-model').hidden,'용기 배치에 배선 모델이 표시되었습니다.');
     click('confirm');check($('[data-guide-action="measure"]').disabled,'새 수신 없이 준비 결과에서 측정 이동을 허용했습니다.');
     view.render({attemptId:'activity',connected:true,receptionReady:true});
@@ -218,6 +226,18 @@ export async function runPreparationTests(report=()=>{}) {
         if(entry==='sensor=magnetometer') {
           await until(()=>$('.magnetic-preparation').dataset.phase==='choice',entry+': 보정 선택 없음');
           $('[data-device-action="skip"]').click();
+        } else {
+          // Activities retain their battery and placement steps before the
+          // final measurement action, rather than showing both Next/Measure.
+          for (const id of ['reception','battery']) {
+            await until(()=>!$('[data-guide-action="next"]').disabled,entry+': 다음 준비 단계로 진행할 수 없음');
+            $('[data-guide-action="next"]').click();
+            check($(`[data-guide-step="${id}"]`).getAttribute('aria-current')==='step',entry+': 준비 순서가 바뀌었습니다.');
+          }
+          $('[data-guide-action="battery"]').click();
+          await until(()=>!$('[data-guide-action="next"]').disabled,entry+': 배터리 전원 수신 확인 실패');
+          $('[data-guide-action="next"]').click();
+          $('[data-guide-action="confirm"]').click();
         }
         await until(()=>!$('[data-guide-action="measure"]').hidden&&!$('[data-guide-action="measure"]').disabled,entry+': 모의 연속 수신 확인 실패');
         check(first.dataset.complete==='true',entry+': 단계 이동이나 크기 변경이 준비 이력을 잃었습니다.');

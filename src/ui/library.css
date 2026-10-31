@@ -100,6 +100,9 @@ button.delete-run:hover { color:rgb(161, 61, 54); background:rgba(161, 61, 54, 0
 #preview-curriculum { margin:0; color:var(--sl-muted); font-size:var(--sl-type-small); line-height:1.8; }
 .preview-actions { gap:10px; margin-top:28px; padding-top:24px; border-top:1px solid var(--sl-line); }
 .preview-actions #preview-browse { margin-left:auto; }
+.preview-tour-control { position:relative; display:inline-flex; }
+.preview-tour-control > #preview-tour { width:100%; padding-right:48px; }
+#preview-tour-control > button.help-trigger[data-action-help] { position:absolute; right:10px; top:50%; transform:translateY(-50%); }
 [data-visual-theme="luminous"] #saved-runs { margin:24px 0px 0px; color:var(--sl-muted); line-height:1.7; }
 [data-visual-theme="luminous"] #saved-runs:not(:has(li)) { padding:24px; background:var(--sl-surface-soft); border-left:3px solid var(--sl-input-border); }
 [data-visual-theme="luminous"] #saved-runs li { align-items:center; padding:18px 0px; gap:16px; border-color:var(--sl-line); }
