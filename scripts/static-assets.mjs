@@ -1,9 +1,10 @@
 import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname, basename, extname } from 'node:path';
 import { createHash } from 'node:crypto';
+import { buildScenes } from './scenes.mjs';
 
 // Non-bundled resources use the same /assets/ cache contract as JS and CSS.
-export async function buildStaticAssets(root, output) {
+export async function buildStaticAssets(root, output, modulePreloads = {}) {
   const urls = {};
   async function files(directory) {
     const result = [];
@@ -25,6 +26,8 @@ export async function buildStaticAssets(root, output) {
     ...(await files('public/vendor')).filter(path => path.endsWith('.svg')),
     'vendor/qrcodegen.js', 'vendor/simple-qrcode.js',
     'src/catalog/sensors/magnetometer/calibration.png',
+    'src/catalog/sensors/magnetometer/calibration.webp',
+    'src/catalog/sensors/magnetometer/calibration-640.webp',
     'src/catalog/sensors/magnetometer/preparation.css',
   ];
   for (const path of independent) {
@@ -35,24 +38,9 @@ export async function buildStaticAssets(root, output) {
     await emit(target, bytes);
     urls[path] = target;
   }
-  // The two 3D entry points share native modules with relative imports. Version
-  // this small dependency tree together, preserving those URLs and one Three.js
-  // module identity. Image/firmware changes do not invalidate the 3D tree.
-  const sceneFiles = [
-    ...(await files('public/assets/devices')).filter(path => path.endsWith('.js')),
-    ...(await files('public/viewers/wiring')).filter(path => /\.(html|css|js)$/.test(path)),
-    'public/viewers/devices/viewer.css',
-    'public/vendor/three-r180.js',
-    'src/catalog/sensors/bmp280/wiring.js', 'src/catalog/sensors/ds18b20/wiring.js',
-    'src/catalog/sensors/magnetometer/calibration-scene.js',
-  ].sort();
-  const scene = await Promise.all(sceneFiles.map(async path => [path, await readFile(resolve(root, path))]));
-  const digest = createHash('sha256');
-  for (const [path, bytes] of scene) digest.update(path).update('\0').update(bytes).update('\0');
-  const directory = `assets/scene-${digest.digest('hex').slice(0, 16)}`;
-  for (const [path, bytes] of scene) await emit(`${directory}/${path}`, bytes);
-  for (const path of ['public/viewers/wiring/index.html', 'src/catalog/sensors/magnetometer/calibration-scene.js'])
-    urls[path] = `${directory}/${path}`;
+  const scene = await buildScenes(root, output);
+  Object.assign(urls, scene.urls);
+  Object.assign(modulePreloads, scene.preloads);
   return urls;
 }
 

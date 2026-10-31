@@ -3,6 +3,8 @@ import { escapeHtml } from './scientific-notation.js';
 let loader;
 const cache=new Map(),requests=new WeakMap();
 const load=()=>loader??=(import('../../public/vendor/mathjax-svg.js').catch(error=>{loader=null;throw error;}));
+// Share the same retryable request with actual rendering.
+export const prepareMath=()=>load();
 export async function mathSvg(tex,{display=false,size=18,description='수식'}={}) {
   const key=(display?'D:':'I:')+tex;
   let result=cache.get(key);

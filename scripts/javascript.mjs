@@ -2,7 +2,7 @@ import { build } from 'esbuild';
 import { readFile } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
 
-export async function bundleJavaScript(root, output, publicBase, assets = {}) {
+export async function bundleJavaScript(root, output, publicBase, assets = {}, modulePreloads = {}) {
   const result = await build({
     absWorkingDir: root, entryPoints: ['src/app/bootstrap.js'], outdir: resolve(output, 'assets'),
     bundle: true, splitting: true, format: 'esm', platform: 'browser', target: 'es2022',
@@ -15,7 +15,8 @@ export async function bundleJavaScript(root, output, publicBase, assets = {}) {
           ? `export const publicBaseUrl = ${JSON.stringify(publicBase)};`
           : await readFile(path, 'utf8');
         if (sourcePath === 'src/app/asset-url.js')
-          contents = contents.replace('const assets = {};', `const assets = ${JSON.stringify(assets)};`);
+          contents = contents.replace('const assets = {};', `const assets = ${JSON.stringify(assets)};`)
+            .replace('const modulePreloads = {};', `const modulePreloads = ${JSON.stringify(modulePreloads)};`);
         // All emitted chunks live in assets/. Preserve each source module's URL
         // so firmware, viewers, QR helpers and illustrations work under any base path.
         contents = contents.replaceAll('import.meta.url',

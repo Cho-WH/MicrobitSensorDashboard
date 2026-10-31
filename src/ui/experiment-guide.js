@@ -4,6 +4,8 @@ import { getGuideContent } from '../guide/steps.js';
 import { createExperimentGuidePreferences } from '../guide/experiment-guide-preferences.js';
 import { element, findElement } from './dom.js';
 import { createPanelTransition } from './panel-transition.js';
+import { setGuideImage } from './guide-image.js';
+import { afterVisibleContent } from './after-visible-content.js';
 
 /** @param {HTMLElement} host */
 export function createExperimentGuide(host) {
@@ -11,10 +13,12 @@ export function createExperimentGuide(host) {
   const transition=createPanelTransition(dialog);
   const preferenceCache=new Map();
   let guide=null, pageIndex=0, preferences=null, recording=false, controller=new AbortController();
+  let cancelPreload=()=>{};
   /** @type {HTMLElement|null} */ let returnFocus=null;
   /** @type {HTMLElement[]} */ let pages=[];
   /** @type {HTMLButtonElement[]} */ let pageButtons=[];
   function showPage(index, animate=true) {
+    cancelPreload();
     const target=Math.max(0,Math.min(pages.length-1,index)), direction=target<pageIndex?-1:1;
     pages.forEach((page,i)=>{page.hidden=i!==target;});
     pageButtons.forEach((button,i)=>{if(i===target)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});
@@ -27,8 +31,16 @@ export function createExperimentGuide(host) {
     });
     else transition.cancel();
     pageIndex=target;
+    const image=pages[target].querySelector('img');
+    if(image){image.loading='eager';image.fetchPriority='auto';setGuideImage(image,image.dataset.guideImage);}
+    cancelPreload=afterVisibleContent(dialog,()=>{
+      if(!dialog.open||pageIndex!==target)return;
+      const next=pages[target+1]?.querySelector('img');
+      if(next){next.loading='eager';next.fetchPriority='low';setGuideImage(next,next.dataset.guideImage);}
+    },controller.signal);
   }
   function build(next) {
+    cancelPreload();
     controller.abort(); controller=new AbortController(); const signal=controller.signal;
     guide=next;
     const key=`${next.id}@${next.version}`;
@@ -52,7 +64,7 @@ export function createExperimentGuide(host) {
       section.classList.toggle('experiment-guide-text',!hasVisual);
       if (hasVisual) {
         const visual=element('figure','experiment-guide-visual');
-        if (page.image) { const img=element('img','experiment-guide-image'); img.src=page.image; img.alt=page.alt; img.loading='lazy'; visual.append(img); }
+        if (page.image) { const img=element('img','experiment-guide-image'); img.dataset.guideImage=page.image; img.alt=page.alt; visual.append(img); }
         else {
           const flow=element('ol','experiment-recording-flow');
           for(const [name,text] of page.flow) {const li=element('li');li.append(element('strong','',name),element('span','',text));flow.append(li);}
@@ -79,7 +91,7 @@ export function createExperimentGuide(host) {
     findElement(dialog,'button','[data-guide-next]').addEventListener('click',()=>{if(pageIndex===pages.length-1)dialog.close();else showPage(pageIndex+1);},{signal});
     findElement(dialog,'button','.experiment-guide-close').addEventListener('click',()=>dialog.close(),{signal});
     const checkbox=findElement(dialog,'input','[data-suppress-guide]'); checkbox.addEventListener('change',()=>preferences.setSuppressed(checkbox.checked),{signal});
-    dialog.addEventListener('close',()=>{transition.cancel();if(returnFocus?.isConnected&&returnFocus.getClientRects().length)returnFocus.focus({preventScroll:true});returnFocus=null;},{signal});
+    dialog.addEventListener('close',()=>{cancelPreload();transition.cancel();if(returnFocus?.isConnected&&returnFocus.getClientRects().length)returnFocus.focus({preventScroll:true});returnFocus=null;},{signal});
   }
   return {
     show(context,{automatic=false,anchor=document.activeElement}={}) {
@@ -89,10 +101,10 @@ export function createExperimentGuide(host) {
       returnFocus=anchor instanceof HTMLElement?anchor:null;
       findElement(dialog,'input','[data-suppress-guide]').checked=preferences.isSuppressed();
       findElement(dialog,'p','[data-guide-recording]').hidden=!recording;
-      showPage(0,false);dialog.showModal();preferences.markSeen();findElement(dialog,'h2','h2').focus({preventScroll:true});return true;
+      dialog.showModal();showPage(0,false);preferences.markSeen();findElement(dialog,'h2','h2').focus({preventScroll:true});return true;
     },
     setRecording(active){recording=active;if(guide)findElement(dialog,'p','[data-guide-recording]').hidden=!active;},
     close(){returnFocus=null;recording=false;if(dialog.open)dialog.close();},
-    dispose(){returnFocus=null;controller.abort();transition.dispose();if(dialog.open)dialog.close();dialog.remove();},
+    dispose(){cancelPreload();returnFocus=null;controller.abort();transition.dispose();if(dialog.open)dialog.close();dialog.remove();},
   };
 }

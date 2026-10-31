@@ -1,4 +1,7 @@
-import { assetUrl } from '../app/asset-url.js';
+import { assetUrl, preloadAssetModules } from '../app/asset-url.js';
+import { setGuideImage } from './guide-image.js';
+import { afterVisibleContent } from './after-visible-content.js';
+import { createSceneLoading } from './scene-loading.js';
 // Adapted from G's grouped guide, contextual viewer and action flow at 59c5c149.
 import { getSensorPreparation } from '../catalog/index.js';
 import { createGuideProgress } from '../guide/progress.js';
@@ -36,7 +39,7 @@ export function createGuideView(host, callbacks = {}) {
           <div class="model-toolbar"><div class="viewer-modes" role="group" data-copy-aria-label="accessibility.wiringModes"></div><a class="viewer-large" target="_blank" rel="noopener" data-copy="guide.large"></a></div>
           <div class="wiring-view-controls" role="group" data-copy-aria-label="accessibility.wiringControls"></div>
           <p class="guide-model-status" role="status"></p>
-          <iframe class="guide-frame viewer-pending" title="배선 3D 안내" hidden></iframe>
+          <div class="guide-viewer-stage"><iframe class="guide-frame viewer-pending" title="배선 3D 안내" hidden></iframe></div>
           <div class="guide-table-panel" hidden><table class="guide-wiring"><caption></caption><thead><tr><th scope="col" data-copy="guide.wireRole"></th><th scope="col" data-wiring-board></th><th scope="col" data-wiring-sensor></th></tr></thead><tbody></tbody></table><p data-copy="guide.wiringNote"></p></div>
         </div>
         <figure class="guide-step-image" hidden><img alt=""><figcaption></figcaption></figure>
@@ -68,6 +71,8 @@ export function createGuideView(host, callbacks = {}) {
   const equipment = findElement(shell,'div','.guide-equipment'), model = findElement(shell,'div','.guide-model');
   const activityEquipment = findElement(shell,'div','.guide-activity-equipment');
   const modelStatus = findElement(shell,'p','.guide-model-status'), frame = findElement(shell,'iframe','iframe');
+  const viewerStage=findElement(shell,'div','.guide-viewer-stage'), sceneLoading=createSceneLoading();
+  viewerStage.append(sceneLoading);
   const tablePanel = findElement(shell,'div','.guide-table-panel'), tableBody = findElement(shell,'tbody','.guide-wiring tbody');
   const stepFigure = findElement(shell,'figure','.guide-step-image'), deviceVisual = findElement(shell,'div','.guide-device-visual');
   const preparationHost = findElement(shell,'div','.guide-sensor-preparation');
@@ -163,6 +168,9 @@ export function createGuideView(host, callbacks = {}) {
     const fallback=!content.viewer||mode==='table';
     findElement(model,'div','.model-toolbar').hidden=!content.viewer;
     frame.hidden=fallback; tablePanel.hidden=!fallback;
+    viewerStage.hidden=fallback;
+    sceneLoading.hidden=fallback||!frame.classList.contains('viewer-pending');
+    viewerStage.setAttribute('aria-busy',String(!sceneLoading.hidden));
     buttons.get('model').setAttribute('aria-pressed',String(!fallback));
     buttons.get('table').setAttribute('aria-pressed',String(fallback));
     buttons.get('model').disabled=viewerState==='unavailable';
@@ -170,7 +178,7 @@ export function createGuideView(host, callbacks = {}) {
     buttons.get('detail').hidden=!wire; viewerChoices.hidden=!wire; cableHelp.hidden=!content.cableHelp;
     for (const id of ['detail','restore']) buttons.get(id).disabled=viewerState!=='applied';
     for (const select of viewerChoices.querySelectorAll('select')) select.disabled=viewerState!=='applied';
-    modelStatus.hidden=viewerState==='applied'||viewerState==='idle';
+    modelStatus.hidden=viewerState!=='unavailable';
     setText(modelStatus,viewerState==='unavailable'?labels.guide.modelUnavailable:labels.guide.modelLoading);
     for (const row of tableBody.querySelectorAll('tr')) {
       row.classList.toggle('is-current',row.dataset.wire===wire); row.querySelector('small').hidden=row.dataset.wire!==wire;
@@ -225,8 +233,8 @@ export function createGuideView(host, callbacks = {}) {
     const messages={}; equipment.replaceChildren(); activityEquipment.replaceChildren();
     deviceVisual.replaceChildren(); power.open=false;
     const powerImage=findElement(power,'img','img');
-    if(content.illustrations){powerImage.src=content.illustrations.battery.src;powerImage.alt=content.illustrations.battery.alt;}
-    else {powerImage.removeAttribute('src');powerImage.alt='';}
+    if(content.illustrations){setGuideImage(powerImage,content.illustrations.battery.src);powerImage.alt=content.illustrations.battery.alt;}
+    else {powerImage.removeAttribute('src');powerImage.removeAttribute('srcset');powerImage.alt='';}
     for (const {label,items} of [{label:labels.guide.deviceEquipment,items:content.equipment},{label:labels.guide.activityEquipment,items:content.activityEquipment}]) {
       if (!items.length) continue;
       const section=element('section','equipment-section'); section.append(element('h4','',label));
@@ -235,7 +243,7 @@ export function createGuideView(host, callbacks = {}) {
         const li=element('li'), name=element('span','',item.name), helpButton=element('button','help-trigger','?');
         const illustration=items===content.equipment?content.illustrations?.equipment[item.id]:null;
         if(illustration){
-          const img=element('img');img.src=illustration.src;img.alt=illustration.alt;img.width=1440;img.height=900;img.decoding='async';
+          const img=element('img');img.loading='lazy';setGuideImage(img,illustration.src,'(max-width: 700px) 45vw, 240px');img.alt=illustration.alt;
           li.classList.add('equipment-illustrated');li.append(img);
         }
         const key='equipment-'+item.id; messages[key]={label:item.name,text:item.help};
@@ -333,10 +341,10 @@ export function createGuideView(host, callbacks = {}) {
     stepFigure.hidden = !stepImage;
     const img = findElement(stepFigure,'img','img');
     if (stepImage) {
-      if (img.getAttribute('src') !== stepImage.src) img.src = stepImage.src;
+      setGuideImage(img,stepImage.src);
       img.alt = stepImage.alt;
       setText(findElement(stepFigure,'figcaption','figcaption'), stepImage.caption);
-    } else img.removeAttribute('src');
+    } else { img.removeAttribute('src'); img.removeAttribute('srcset'); }
     const connectionStep=!quick&&!isSummary&&['connection','calibration','reception','battery'].includes(step?.kind);
     reception.hidden=!connectionStep||Boolean(managed&&presentation.hideValues);
     power.hidden=!content.illustrations||quick||isSummary||!['connection','reception','battery'].includes(step?.kind);
@@ -357,14 +365,14 @@ export function createGuideView(host, callbacks = {}) {
       }
       if(content.illustrations){
         const illustration=wireless&&!usbRequired?content.illustrations.battery:content.illustrations.usb;
-        const img=element('img','guide-usb-image');img.src=illustration.src;img.alt=illustration.alt;img.width=1440;img.height=900;img.decoding='async';
+        const img=element('img','guide-usb-image');let source=illustration.src;img.alt=illustration.alt;
         if(recovery){
-          img.src=assetUrl('../../public/assets/devices/posters/reset.png',import.meta.url).href;
+          source=assetUrl('../../public/assets/devices/posters/reset.png',import.meta.url).href;
           img.alt=labels.guide.resetImageAlt;
         } else if (visualMode==='usb' && shell.ownerDocument.documentElement.dataset.visualTheme === 'luminous') {
-          img.src=assetUrl('../../public/assets/design/luminous-usb.png',import.meta.url).href;
-          img.width=1200;img.height=1000;
+          source=assetUrl('../../public/assets/design/luminous-usb.png',import.meta.url).href;
         }
+        setGuideImage(img,source);
         deviceVisual.querySelector('.usb-diagram').replaceWith(img);
       }
     }
@@ -507,6 +515,7 @@ export function createGuideView(host, callbacks = {}) {
       context=structuredClone(nextContext); content=getGuideContent(context); labels=getLabCopy(context);
       if (!progress||reset) {progress=createGuideProgress(context); facts={}; selectedId='equipment';} else progress.setContext(context);
       quick=prepared; if (quick) selectedId='quick'; else if (!currentStep()) selectedId='equipment'; renderedStep=null; renderedProgram=null; buildContent(); paint();
+      if(content.viewer)afterVisibleContent(shell,()=>preloadAssetModules('../../public/viewers/wiring/bootstrap.js',import.meta.url),contentAbort.signal);
     },
     /** @param {import('../guide/types.js').GuideFacts} nextFacts */
     render(nextFacts) {if (!progress||disposed) return; facts={...nextFacts}; progress.setAttempt(facts.attemptId); progress.observe(facts); paint();},

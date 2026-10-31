@@ -5,7 +5,7 @@
   <header><h1 id="title">센서 배선</h1><p>단자 이름과 연결 방향을 확인하세요.</p></header>
   <main>
     <div id="options" aria-label="배선 구성"></div>
-    <div class="viewport"><div id="stage"></div><p id="loading" role="status">장치 그림을 준비하고 있어요.</p><p id="error" role="alert" hidden>3D 그림을 표시하지 못했습니다. 배선표에서 연결을 확인하세요.</p></div>
+    <div class="viewport"><div id="stage"></div><div id="loading" class="scene-loading" role="status"><span class="scene-loading-shape" aria-hidden="true"></span><span class="scene-loading-line" aria-hidden="true"></span><span class="scene-loading-status"><span class="scene-loading-ring" aria-hidden="true"></span><span>3D 그림을 준비하고 있어요.</span></span></div><p id="error" role="alert" hidden>3D 그림을 표시하지 못했습니다. 배선표에서 연결을 확인하세요.</p></div>
     <div class="toolbar" role="group" aria-label="3D 시점">
       <button type="button" data-view="iso">전체</button><button type="button" data-view="front">앞면</button><button type="button" data-view="back">뒷면</button>
       <button type="button" id="detail">연결부 확대</button><button type="button" id="zoom-in" aria-label="확대">＋</button><button type="button" id="zoom-out" aria-label="축소">−</button>
@@ -15,5 +15,5 @@
     <p id="description"></p>
     <p class="note">단자 이름을 기준으로 연결하세요. 선 색상·케이블 길이·부품 크기는 설명을 위한 예시예요.</p>
   </main>
-  <script type="module" src="./viewer.js"></script>
+  <script type="module" src="./bootstrap.js"></script>
 </body></html>

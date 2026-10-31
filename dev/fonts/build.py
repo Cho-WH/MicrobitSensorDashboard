@@ -21,8 +21,10 @@ def ranges(codes):
 
 OUTPUT.mkdir(parents=True, exist_ok=True)
 codes = set(TTFont(SOURCE).getBestCmap())
-common = set(map(ord, COMMON.read_text(encoding='utf-8'))) & codes
-manifest = {'sourceVersion': 'Pretendard 1.3.9', 'sourceSha256': hashlib.sha256(SOURCE.read_bytes()).hexdigest(), 'commonListSha256': hashlib.sha256(COMMON.read_bytes()).hexdigest(), 'family': 'Sensor Lab Sans', 'files': []}
+# A stable scientific repertoire, independent of the current screen's copy.
+scientific = 'µμΩωαβγδεζηθλνξπρστφχψΔΣΠΘΛΦΨℓℏÅÅ°℃℉±×÷−·⋅√∛∞≈≠≤≥∝∑∫∂∇→←↔⇒⇔²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎'
+common = (set(map(ord, COMMON.read_text(encoding='utf-8'))) | set(map(ord, scientific))) & codes
+manifest = {'sourceVersion': 'Pretendard 1.3.9', 'sourceSha256': hashlib.sha256(SOURCE.read_bytes()).hexdigest(), 'commonListSha256': hashlib.sha256(COMMON.read_bytes()).hexdigest(), 'scientificCharacters': scientific, 'family': 'Sensor Lab Sans', 'files': []}
 css = ['/* Derived from Pretendard 1.3.9, Copyright Kil Hyung-jin, SIL OFL 1.1. See LICENSE. */']
 for name, chars in [('core', common), ('extended', codes - common)]:
     font = TTFont(SOURCE, recalcTimestamp=False)

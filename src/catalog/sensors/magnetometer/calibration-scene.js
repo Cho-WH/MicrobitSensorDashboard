@@ -1,4 +1,5 @@
-// The extracted browser bundle is untyped. Keep its boundary dynamic, like the wiring viewer.
+// Keep untyped vendor modules outside the app's checkJs boundary. The scene build
+// resolves these literal URLs to static imports before bundling.
 const { Scene, Group, PerspectiveCamera, WebGLRenderer, HemisphereLight, DirectionalLight,
   Mesh, MeshBasicMaterial, PlaneGeometry, CanvasTexture, BufferGeometry, Line, LineBasicMaterial,
   CubicBezierCurve3, TubeGeometry, CylinderGeometry, Vector3, SRGBColorSpace, ACESFilmicToneMapping,

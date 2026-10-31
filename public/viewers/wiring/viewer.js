@@ -110,4 +110,5 @@ if (embedded) window.addEventListener('message', event => {
   if (!ready) { reply('error'); return; }
   try { if (data.type === 'prepare') reply('ready'); else { apply(data.state); reply('applied'); } } catch { reply('error'); }
 });
+if (embedded) parent.postMessage({ channel: WIRING_CHANNEL, version: WIRING_VERSION, type: ready ? 'scene-loaded' : 'unavailable' }, location.origin);
 window.addEventListener('pagehide', event => { if (event.persisted) return; ready = false; resize?.disconnect(); controls?.dispose(); current?.dispose(); renderer?.dispose(); });

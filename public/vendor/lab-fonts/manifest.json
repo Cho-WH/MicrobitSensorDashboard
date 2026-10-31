@@ -2,21 +2,22 @@
   "sourceVersion": "Pretendard 1.3.9",
   "sourceSha256": "9599f12fd42fc0bce1cd50b47a0c022e108d7aa64dd0d1bb0ed44f3282d900b4",
   "commonListSha256": "94517ece18213024c3ee7fe57509284785c933e9a9226c2bb434b92256c85a31",
+  "scientificCharacters": "\u00b5\u03bc\u03a9\u03c9\u03b1\u03b2\u03b3\u03b4\u03b5\u03b6\u03b7\u03b8\u03bb\u03bd\u03be\u03c0\u03c1\u03c3\u03c4\u03c6\u03c7\u03c8\u0394\u03a3\u03a0\u0398\u039b\u03a6\u03a8\u2113\u210f\u212b\u00c5\u00b0\u2103\u2109\u00b1\u00d7\u00f7\u2212\u00b7\u22c5\u221a\u221b\u221e\u2248\u2260\u2264\u2265\u221d\u2211\u222b\u2202\u2207\u2192\u2190\u2194\u21d2\u21d4\u00b2\u00b3\u00b9\u2070\u2074\u2075\u2076\u2077\u2078\u2079\u207a\u207b\u207c\u207d\u207e\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089\u208a\u208b\u208c\u208d\u208e",
   "family": "Sensor Lab Sans",
   "files": [
     {
       "role": "core",
-      "file": "core-de9499a8a82d.woff2",
-      "bytes": 606596,
-      "sha256": "de9499a8a82dce67f0f3e9192fc2ed59ace94a7778edc22b41b90ef0f21cd3ad",
-      "characters": 3728
+      "file": "core-1a8cc44a7977.woff2",
+      "bytes": 606928,
+      "sha256": "1a8cc44a7977a25db2d0643c304eb1be04607ecfe3f5b9288fdc3e9a2bc33ff4",
+      "characters": 3735
     },
     {
       "role": "extended",
-      "file": "extended-225c22eccfe4.woff2",
-      "bytes": 1527984,
-      "sha256": "225c22eccfe4e133616c7a04155e0e4ad04e55b45722c11f27d3463869e45f32",
-      "characters": 10608
+      "file": "extended-cbea4d68e6a0.woff2",
+      "bytes": 1526896,
+      "sha256": "cbea4d68e6a03977aa4b7b43b494327448ce1c6a4186d7958bfb7fbb21cd62e5",
+      "characters": 10601
     }
   ]
 }

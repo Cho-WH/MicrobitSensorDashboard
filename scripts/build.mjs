@@ -28,8 +28,9 @@ await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 for (const file of ['lab.html','LICENSE','README.md','THIRD_PARTY_NOTICES.md','src','public','vendor','firmware','docs']) await cp(resolve(root,file), resolve(output,file), { recursive: true });
 await writeFile(resolve(output, styleEntry), await bundleStyles(root));
-const assets = await buildStaticAssets(root, output);
-const scripts = await bundleJavaScript(root, output, publicBase, assets);
+const modulePreloads = {};
+const assets = await buildStaticAssets(root, output, modulePreloads);
+const scripts = await bundleJavaScript(root, output, publicBase, assets, modulePreloads);
 let template = rewriteHtmlAssets(renderFontPreload(await readFile(resolve(root,'lab.html'), 'utf8')), assets);
 // Classic global dependencies follow the same immutable-address contract as ESM.
 for (const [, entry] of template.matchAll(/<script defer src="([^"]+)"><\/script>/g)) {
@@ -49,7 +50,9 @@ for (const entry of [styleEntry, 'src/ui/guide.css']) {
   template = template.replace(`href="${entry}"`, `href="${asset}"`);
 }
 // Only content-addressed resources are immutable. HTML/unversioned files revalidate.
-await writeFile(resolve(output,'_headers'), '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n/public/vendor/lab-fonts/*.woff2\n  Cache-Control: public, max-age=31536000, immutable\n');
+// Intel HEX is ASCII text. Declaring its real MIME type enables Cloudflare's
+// negotiated text compression; firmware bytes and SHA-256 checks stay unchanged.
+await writeFile(resolve(output,'_headers'), '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n/public/vendor/lab-fonts/*.woff2\n  Cache-Control: public, max-age=31536000, immutable\n/assets/static/*.hex\n  Content-Type: text/plain; charset=utf-8\n/public/firmware/*.hex\n  Content-Type: text/plain; charset=utf-8\n');
 if (!template.includes('<script defer src="src/app/bootstrap.js"></script>')) throw new Error('Missing lab entry point');
 const source = renderPublicMetadata(template.replace('<script defer src="src/app/bootstrap.js"></script>',
   scripts.preloads.map(href => `<link rel="modulepreload" href="${href}">`).join('') + `<script type="module" src="${scripts.entry}"></script>`), publicBase);

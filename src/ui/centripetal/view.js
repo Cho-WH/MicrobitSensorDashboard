@@ -1,7 +1,8 @@
 import { createCentripetalComparison, comparisonHelp } from './comparison.js';
 import { tableRowHeight, visibleTableRows, tableSpacer, bindTableScrollKeys } from '../table-viewport.js';
 import { fieldWarningMessages, fieldWarningButton, setFieldWarning } from './field-warning.js';
-import { setMath } from '../math-view.js';
+import { setMath, prepareMath } from '../math-view.js';
+import { afterVisibleContent } from '../after-visible-content.js';
 import { symbolHtml, unitHtml } from '../scientific-notation.js';
 import { relations, relationDescriptions, substitutions, prepareOrbitMath } from './formulas.js';
 import { supportsCentripetal, closestSample, peakCandidates, inputNumber, calculationModel, numericFields, editCentripetal } from '../../analysis/activities/centripetal.js';
@@ -65,6 +66,12 @@ export function createCentripetalView(host,{refresh,navigation}) {
   let workspace=null,store=null,model=null,samples=[],visibleSamples=[],chart=null,chartKey='',owner='',origin=0,step='worksheet';
   let zoom=false,snapPeaks=[],dirty=new Map(),timer=null,colors=null;
   let readOnlySheetId=null,previewMean=false,analysisReady=false,orbitMath=null,orbitRequest=null,disposed=false;
+  let mathScheduled=false,cancelMathPreparation=()=>{};
+  function warmMath(){
+    if(mathScheduled||!host.checkVisibility())return;
+    mathScheduled=true;
+    cancelMathPreparation=afterVisibleContent(host,()=>prepareMath().catch(()=>{mathScheduled=false;}),signal);
+  }
   const inputs=new Map([...host.querySelectorAll('[data-cp-input]')].map(e=>[e.dataset.cpInput,e]));
   const action=fn=>{try{$('[data-cp-error]').textContent='';fn();refresh();return true;}catch(error){$('[data-cp-error]').textContent=error.message;return false;}};
   function flush(){clearTimeout(timer);if(!workspace||!dirty.size)return true;return action(()=>{
@@ -241,7 +248,10 @@ export function createCentripetalView(host,{refresh,navigation}) {
 
   bindTableScrollKeys(tableScroll,scheduleTable,signal);
   const tableObserver=new ResizeObserver(scheduleTable);tableObserver.observe(tableScroll);
-  const observer=new ResizeObserver(()=>{if(!host.hidden){layout();redraw();}});observer.observe(host);observer.observe($('.cp-measurements'));
+  const observer=new ResizeObserver(()=>{
+    if(!host.checkVisibility()){cancelMathPreparation();mathScheduled=false;return;}
+    layout();redraw();warmMath();
+  });observer.observe(host);observer.observe($('.cp-measurements'));
   function renderSheetMenu(){
     const key=model.book.sheets.map(sheet=>sheet.id).join(',');
     if(key!==sheetListKey){
@@ -289,8 +299,8 @@ export function createCentripetalView(host,{refresh,navigation}) {
       const key=[owner,state.tableLastSampleId,zoom,model.sheet.startId,model.sheet.endId].join(':');if(chartKey!==key){chart.render(visibleSamples,0,{range:'all',origin,timeRange:zoom?rangeState().analysisRange:null,events:store.getEvents(Infinity),referencePoints:samples,scopeKey:state.runId});chartKey=key;}chart.resize();layout();
     }
     paintTable();
-    range.update(samples,rangeState(),origin);layout();redraw();return true;
+    range.update(samples,rangeState(),origin);layout();redraw();warmMath();return true;
   }
-  function reset(){cancelAnimationFrame(tableFrame);tableFrame=null;tableBody.replaceChildren();tableScroll.scrollTop=0;measureHelp.close();range.reset();clearTimeout(timer);dirty.clear();previewMean=false;analysisReady=false;readOnlySheetId=null;chart?.dispose();chart=null;chartKey='';owner='';workspace=store=model=null;samples=[];step='worksheet';sheetMenu.open=false;sheetListKey='';host.hidden=true;navigation.hidden=true;}
+  function reset(){cancelMathPreparation();mathScheduled=false;cancelAnimationFrame(tableFrame);tableFrame=null;tableBody.replaceChildren();tableScroll.scrollTop=0;measureHelp.close();range.reset();clearTimeout(timer);dirty.clear();previewMean=false;analysisReady=false;readOnlySheetId=null;chart?.dispose();chart=null;chartKey='';owner='';workspace=store=model=null;samples=[];step='worksheet';sheetMenu.open=false;sheetListKey='';host.hidden=true;navigation.hidden=true;}
   return {render,flush,reset,dispose(){disposed=true;reset();measureHelp.dispose();dialogs.dispose();tableObserver.disconnect();observer.disconnect();abort.abort();}};
 }

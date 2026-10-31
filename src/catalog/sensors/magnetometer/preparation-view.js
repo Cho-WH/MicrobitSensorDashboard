@@ -2,6 +2,7 @@ import { assetUrl } from '../../../app/asset-url.js';
 import { element } from '../../../ui/dom.js';
 import { setText } from '../../../ui/text.js';
 import { createCalibrationDemo } from './calibration-demo.js';
+import { afterVisibleContent } from '../../../ui/after-visible-content.js';
 
 const copy = {
   disconnected: ['connection','micro:bit를 연결해요','연결한 뒤 나침반 보정 방법을 선택할 수 있어요.'],
@@ -20,6 +21,7 @@ export function createPreparationView(host, { onAction }) {
   const style = element('link'); style.rel='stylesheet'; style.href=assetUrl('./preparation.css',import.meta.url).href;
   const panel=element('div','magnetic-preparation');
   const demo=createCalibrationDemo(panel);
+  let demoPrepared=false;
   const heading=element('h4'), detail=element('p'), status=element('p','magnetic-state');
   const video=element('a','magnetic-video','영상으로 보기');
   video.href='https://support.microbit.org/helpdesk/attachments/19031012156';video.target='_blank';video.rel='noopener noreferrer';
@@ -49,6 +51,10 @@ export function createPreparationView(host, { onAction }) {
       const state=describe(facts), choice=state.phase==='choice';
       const hadFocus=actions.contains(document.activeElement);
       host.hidden=!visible||!state.hideValues; panel.dataset.phase=state.phase;
+      if(choice&&!host.hidden&&!demoPrepared){
+        demoPrepared=true;
+        afterVisibleContent(panel,()=>demo.prepare(),abort.signal);
+      }
       setText(heading,state.phase==='calibrating'?'LED 화면의 점을 채워 주세요':state.phase==='choice'?'준비되면 보정을 시작하세요':'장치와 함께 준비해요');
       setText(detail,state.phase==='calibrating'?'LED 면을 위로 두고, 여러 방향으로 천천히 기울여 주세요.':'연결과 보정을 마친 뒤 이곳에 자기장값이 나타나요.');
       video.hidden=!['choice','starting','calibrating'].includes(state.phase);

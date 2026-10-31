@@ -18,6 +18,7 @@ import { getLabCopy, applyLabCopy, formatCopy } from './lab-copy.js';
 import { readVisualTheme } from './visual-theme.js';
 import { createAnalysisLayout } from './analysis-layout.js';
 import { createPanelTransition } from './panel-transition.js';
+import { cssTimeMilliseconds } from './css-time.js';
 import { createRecordDialogs } from './record-dialogs.js';
 import { createCentripetalView } from './centripetal/view.js';
 import { getTimeAxisPolicies, getMeasurementOptions } from '../catalog/index.js';
@@ -218,7 +219,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     if (!reduced() && window.matchMedia('(min-width: 1001px)').matches) {
       graph.beginLayoutTransition();
       // Also finish when a task change, hidden tab or breakpoint cancels CSS events.
-      const duration = parseFloat(getComputedStyle(root).getPropertyValue('--analysis-duration'));
+      const duration = cssTimeMilliseconds(getComputedStyle(root).getPropertyValue('--analysis-duration'));
       layoutTimer = setTimeout(finishLayoutTransition, duration + 100);
     } else finishLayoutTransition();
     closeExclusion(); filters.close(); calculations.close(); relationshipMode = mode; render();

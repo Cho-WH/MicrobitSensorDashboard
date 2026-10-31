@@ -17,13 +17,16 @@ export const wiringSetup = {
     const connector = options.connector ?? this.defaults.connector;
     if (!['socket', 'pin'].includes(connector)) throw new Error('지원하지 않는 연결선입니다.');
     const pins = requireInterface(board, `i2c-${connector}`, ['3V', 'GND', 'P19', 'P20']);
+    // Restore the original row alignment under the selected header. Clock/data
+    // line up vertically; V/G cross because the sensor's power pin order differs.
+    const sensorX = board.ports[pins.P19].point[0] - bmp280Spec.ports.SCL.point[0];
     const signals = wiring.map((wire, i) => ({ ...wire, color: ['#db4854', '#344052', '#d29a18', '#168eac'][i] }));
     const targets = { vcc: ['3V', 'VCC'], gnd: ['GND', 'GND'], scl: ['P19', 'SCL'], sda: ['P20', 'SDA'] };
     return validateAssembly({ signals,
       parts: [
         { id: 'board', spec: board, position: [0, 0, 0] },
         { id: 'microbit', spec: { id: 'microbit-v2' }, ...board.microbitPose },
-        { id: 'sensor', spec: bmp280Spec, position: [0, -58, 1.8], requires: { VCC: '3V', GND: 'GND', SCL: 'P19', SDA: 'P20' } },
+        { id: 'sensor', spec: bmp280Spec, position: [sensorX, -55, 1.8], requires: { VCC: '3V', GND: 'GND', SCL: 'P19', SDA: 'P20' } },
       ],
       cables: signals.map(signal => ({ id: signal.id, kind: 'individual', leads: [{ signal: signal.id, color: signal.color,
         from: { part: 'board', port: pins[targets[signal.id][0]] }, to: { part: 'sensor', port: targets[signal.id][1] } }] })),

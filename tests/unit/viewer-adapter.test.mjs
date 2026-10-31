@@ -29,6 +29,19 @@ test('3D assets load lazily and only the current step is applied after handshake
   adapter.dispose();
 });
 
+test('a scene arriving after iframe load recovers the handshake and displays the current step', () => {
+  const { adapter, frame, reply, notices, sent } = fixture();
+  adapter.applyStep(wiring('vcc'));
+  frame.dispatchEvent(new Event('load')); // No scene listener yet: the first prepare is lost.
+  adapter.applyStep(wiring('sda'));
+  reply('scene-loaded'); reply('ready');
+  assert.equal(sent.at(-1).data.state.wire, 'sda');
+  reply('applied');
+  assert.equal(notices.at(-1).state, 'applied');
+  assert.equal(notices.at(-1).detail.hasAppliedState, true);
+  adapter.dispose();
+});
+
 test('viewer rejects wrong origin, source, contract, stale ID, type and response phase without accepting or cancelling timeout', () => {
   const { adapter, frame, sent, reply, timers, notices } = fixture();
   adapter.applyStep(equipment); frame.dispatchEvent(new Event('load'));

@@ -84,6 +84,7 @@
 .wiring-view-controls [data-guide-action="restore"] { margin-left:auto; }
 .guide-model { position:relative; }
 .guide-frame { display:block; width:100%; background:rgb(237, 243, 245); }
+.guide-viewer-stage { position:relative; min-width:0; overflow:hidden; border-radius:0 0 10px 10px; }
 .guide-frame.viewer-pending { visibility:hidden; }
 .guide-model-status { margin:0px; padding:6px 12px; color:var(--sl-stage-muted); font-size:0.75rem; }
 .guide-model[data-viewer-state="loading"] .guide-model-status { position:absolute; z-index:2; left:12px; right:12px; bottom:12px; border:1px solid var(--sl-stage-line); border-radius:6px; pointer-events:none; }

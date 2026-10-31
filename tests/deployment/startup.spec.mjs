@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
+import { readdir } from 'node:fs/promises';
 
 test('initial render and reload keep the shell stable after fonts become available', async ({page}, info) => {
   await page.setViewportSize({width:390,height:844});
@@ -120,12 +121,11 @@ test('versioned 3D guidance resolves its shared modules below a hosting subdirec
   await page.goto('/dist/sensors/bmp280/?view=prepare');
   await page.locator('[data-guide-group="wiring"]').click();
   const viewer = page.locator('#guide-host iframe');
-  await expect(viewer).toHaveAttribute('src', /\/assets\/scene-.*\/public\/viewers\/wiring\//);
   await expect(viewer.contentFrame().locator('#stage canvas')).toBeVisible();
   await expect(viewer.contentFrame().locator('#error')).toBeHidden();
-  // The other 3D entry point uses this same versioned tree and no stale source modules.
-  const src = await viewer.getAttribute('src');
-  const scene = src.slice(0, src.indexOf('/public/viewers/')) + '/src/catalog/sensors/magnetometer/calibration-scene.js';
+  // Exercise the second built entry without assuming the old source-directory layout.
+  const files = await readdir(new URL('../../dist/assets/scenes/', import.meta.url));
+  const scene = '/dist/assets/scenes/' + files.find(name => /^calibration-.*\.js$/.test(name));
   const loaded = await page.evaluate(async url => typeof (await import(url)).createCalibrationScene, scene);
   expect(loaded).toBe('function');
   expect((await request.get(scene)).status()).toBe(200);

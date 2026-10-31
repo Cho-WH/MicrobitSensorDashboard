@@ -31,6 +31,8 @@ export function createViewerAdapter(frame, onState, options = {}) {
   function receive(event) {
     const data = event.data;
     if (disposed || event.source !== frame.contentWindow || event.origin !== url.origin || data?.channel !== CHANNEL || data.version !== WIRING_VERSION) return;
+    // The iframe's load event can precede its lazy scene module and listener.
+    if (data.type === 'scene-loaded') { if (!hasAppliedState) loaded(); return; }
     if (data.type === 'unavailable') { cancel(timer); unavailable(); return; }
     if (!pendingType || data.requestId !== lastRequest
       || !['ready', 'applied', 'error'].includes(data.type)

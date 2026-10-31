@@ -1,3 +1,5 @@
+import { cssTimeMilliseconds } from './css-time.js';
+
 /** @typedef {{target:HTMLElement,height:number}} PanelHeight */
 
 // Own presentation animations and the shared disclosure interaction.
@@ -34,7 +36,7 @@ export function createPanelTransition(anchor, { disclosureRoot = anchor } = {}) 
     if (disposed || motion.matches) return;
     const style = win.getComputedStyle(anchor);
     const options = {
-      duration:parseFloat(style.getPropertyValue('--sl-motion-panel')),
+      duration:cssTimeMilliseconds(style.getPropertyValue('--sl-motion-panel')),
       easing:style.getPropertyValue('--sl-motion-panel-easing').trim(),
       ...timing,
       // Always release height/overflow/transform to CSS after finishing.

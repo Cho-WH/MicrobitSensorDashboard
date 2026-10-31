@@ -1,0 +1,27 @@
+/* Shared by embedded preparation, calibration, and the standalone 3D viewer. */
+.scene-loading {
+  position:absolute; inset:0; display:grid; align-content:center; justify-items:center;
+  gap:14px; padding:24px; margin:0; overflow:hidden; pointer-events:none;
+  color:var(--sl-stage-muted,var(--sl-muted,#61766e));
+  background:var(--sl-stage-soft,var(--sl-surface-soft,#edf1eb));
+  border-radius:inherit; text-align:center; font-size:0.8125rem; line-height:1.6;
+}
+.scene-loading[hidden] { display:none!important; }
+.scene-loading-shape {
+  position:relative; width:min(52%,210px); aspect-ratio:1.55; border-radius:12px;
+  border:1px solid currentColor; opacity:.22; overflow:hidden;
+  background:currentColor;
+}
+.scene-loading-shape::after {
+  content:''; position:absolute; inset:0; transform:translateX(-100%);
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.65),transparent);
+  animation:scene-loading-shimmer 1.8s ease-in-out infinite;
+}
+.scene-loading-line { width:min(36%,150px); height:7px; border-radius:4px; background:currentColor; opacity:.16; }
+.scene-loading-status { display:flex; align-items:center; justify-content:center; gap:8px; }
+.scene-loading-ring { width:17px; height:17px; flex:none; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:scene-loading-spin 1s linear infinite; }
+@keyframes scene-loading-shimmer { to { transform:translateX(100%); } }
+@keyframes scene-loading-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) {
+  .scene-loading-shape::after,.scene-loading-ring { animation:none; }
+}

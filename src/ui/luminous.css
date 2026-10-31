@@ -1,6 +1,7 @@
 /* Default app entry. Each component owns its final rules; preparation is a
    separate static link so the development A archive can substitute only it. */
 @import url('./tokens.css');
+@import url('../../public/viewers/shared/loading.css');
 @import url('./scientific-notation.css');
 @import url('./base.css');
 @import url('./disclosure-menu.css');

@@ -1,14 +1,17 @@
-import { assetUrl } from '../../../app/asset-url.js';
+import { assetUrl, preloadAssetModules } from '../../../app/asset-url.js';
 import { element } from '../../../ui/dom.js';
+import { setGuideImage } from '../../../ui/guide-image.js';
+import { createSceneLoading } from '../../../ui/scene-loading.js';
 
 /** A visible-only demonstration; it never reports device calibration progress. */
 export function createCalibrationDemo(host) {
   const stage=element('div','magnetic-demo'), poster=element('img'), canvas=element('canvas');
-  stage.setAttribute('role','img');
+  stage.setAttribute('role','group');
   stage.setAttribute('aria-label','micro:bit를 앞뒤·좌우로 천천히 기울이면 기울인 쪽의 LED가 켜지고, 화면이 채워지는 시범');
-  poster.src=assetUrl('./calibration.png',import.meta.url).href; poster.alt='';
+  setGuideImage(poster,assetUrl('./calibration.png',import.meta.url).href,'360px'); poster.alt='';
   poster.setAttribute('aria-hidden','true'); canvas.setAttribute('aria-hidden','true'); canvas.hidden=true;
-  stage.append(poster); host.append(stage);
+  const skeleton=createSceneLoading();
+  stage.append(poster,skeleton); host.append(stage);
   const abort=new AbortController();
   let active=false, intersecting=false, disposed=false, failed=false, loading=false, frame=0;
   let elapsed=0, previous=0, lastDraw=0;
@@ -16,7 +19,8 @@ export function createCalibrationDemo(host) {
   let scene=null;
   const visible=()=>active&&intersecting&&!document.hidden&&stage.checkVisibility();
   function stop() { cancelAnimationFrame(frame); frame=0; previous=0; }
-  function fallback() { failed=true; stop(); canvas.hidden=true; poster.hidden=false; scene?.dispose(); scene=null; }
+  function paintLoading() { skeleton.hidden=!loading||!active; stage.setAttribute('aria-busy',String(!skeleton.hidden)); }
+  function fallback() { failed=true; loading=false;paintLoading();stop(); canvas.hidden=true; poster.hidden=false; scene?.dispose(); scene=null; }
   function draw(time) {
     frame=0;
     if(disposed||!visible()) { previous=0; return; }
@@ -37,7 +41,7 @@ export function createCalibrationDemo(host) {
     if(!visible()) { stop(); return; }
     if(!scene) {
       if(loading)return;
-      loading=true;
+      loading=true;poster.hidden=true;paintLoading();
       try {
         // Keep the shared 3D runtime out of ordinary preparation screens.
         const {createCalibrationScene}=await import(assetUrl('./calibration-scene.js',import.meta.url).href);
@@ -45,7 +49,7 @@ export function createCalibrationDemo(host) {
         scene=createCalibrationScene(canvas); resize(); scene.render(elapsed/1000);stage.append(canvas);
         canvas.hidden=false; poster.hidden=true;
       } catch { if(!disposed)fallback(); }
-      finally { loading=false; }
+      finally { loading=false;paintLoading();if(!scene)poster.hidden=false; }
     }
     if(scene&&!frame)frame=requestAnimationFrame(draw);
   }
@@ -55,11 +59,13 @@ export function createCalibrationDemo(host) {
   document.addEventListener('visibilitychange',()=>void sync(),{signal:abort.signal});
   canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();fallback();},{signal:abort.signal});
   return {
+    prepare:()=>preloadAssetModules('./calibration-scene.js',import.meta.url),
     setActive(value) {
       // This teaches the required physical action, including with reduced motion enabled.
       active=Boolean(value);
       if(!active) { stop(); canvas.hidden=true; poster.hidden=false; elapsed=0; }
       else if(scene&&!failed) { canvas.hidden=false; poster.hidden=true; }
+      paintLoading();
       void sync();
     },
     dispose() { disposed=true;stop();abort.abort();intersection.disconnect();size.disconnect();scene?.dispose();stage.remove(); },
