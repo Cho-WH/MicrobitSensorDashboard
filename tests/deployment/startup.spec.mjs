@@ -34,7 +34,7 @@ test('built app opens stored data, exports PNG and displays late-loaded guidance
   const failures = [];
   page.on('pageerror', error => failures.push(error.message));
   page.on('response', response => { if (response.status() >= 400) failures.push(`${response.status()} ${response.url()}`); });
-  await page.goto('/dist/sensors/magnetometer/?mock=1&view=measure');
+  await page.goto('/dist/sensors/magnetometer/?view=measure');
   const guide = page.locator('.experiment-guide');
   await expect(guide).toBeVisible();
   await expect.poll(() => guide.locator('img').evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
