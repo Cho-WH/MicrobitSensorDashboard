@@ -1,3 +1,4 @@
+import { installSimulatedHardware } from './support/tour.mjs';
 import { test, expect } from '@playwright/test';
 
 async function savedSnapshot(page) {
@@ -9,8 +10,9 @@ async function savedSnapshot(page) {
   });
 }
 
-test('exit confirmation preserves recording on cancel and saves before loading home', async ({ page }) => {
-  await page.goto('/sensors/temperature/?mock=1');
+test('exit confirmation preserves recording on cancel and saves before loading home', async ({ page, context }) => {
+  await installSimulatedHardware(context,'temperature');
+  await page.goto('/sensors/temperature/');
   await page.evaluate(() => { window.documentMarker = 'original'; });
   await page.locator('[data-guide-group="connection"]').click();
   await page.locator('[data-guide-action="connect"]').click();
@@ -34,7 +36,7 @@ test('exit confirmation preserves recording on cancel and saves before loading h
 
   await page.getByRole('button', { name: '실험 선택', exact: true }).click();
   await page.locator('#leave-save').click();
-  await page.waitForURL('**/lab.html?mock=1');
+  await page.waitForURL('**/lab.html');
   await expect(page.locator('[data-screen="home"]')).toBeVisible();
   expect(await page.evaluate(() => window.documentMarker)).toBeUndefined();
   const saved = await savedSnapshot(page);
@@ -48,17 +50,17 @@ test('exit confirmation preserves recording on cancel and saves before loading h
 });
 
 test('cross-tool history navigation confirms even without a recording and loads the destination document', async ({ page }) => {
-  await page.goto('/sensors/temperature/?mock=1');
+  await page.goto('/sensors/temperature/');
   await expect(page.locator('[data-screen="prepare"]')).toBeVisible();
   await page.evaluate(() => { window.documentMarker = 'original'; });
   const changeTool = () => page.evaluate(() => {
-    history.pushState(null, '', '/sensors/light-level/?mock=1');
+    history.pushState(null, '', '/sensors/light-level/');
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
   await changeTool();
   await expect(page.locator('#leave-dialog')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page).toHaveURL(/\/sensors\/temperature\/\?mock=1$/);
+  await expect(page).toHaveURL(/\/sensors\/temperature\/$/);
   expect(await page.evaluate(() => window.documentMarker)).toBe('original');
   await changeTool();
   await page.locator('#leave-save').click();

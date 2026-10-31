@@ -50,7 +50,7 @@ test('time regression captions express slope per second and undefined R squared 
     points: [0, 1, 2].map(i => ({ x: 1700000000000 + i * 1000, y: 8 })) };
   const summary = trendSummary({ ...model, regression: fitGraph(model, 1) });
   assert.match(summary.equation, /경과 시간\(초\)/);
-  assert.equal(summary.metrics.find(m => m.label === '기울기').value, '0 %/초');
+  assert.match(summary.metrics.find(m => m.label === '기울기').value, /^0\s+%\/초$/);
   assert.equal(summary.metrics.find(m => m.label === 'R²').value, '—');
   assert.match(summary.detail, /R²를 정의할 수 없습니다/);
 });

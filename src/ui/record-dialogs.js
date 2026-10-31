@@ -54,6 +54,9 @@ export function createRecordDialogs(host) {
     input.value = value; row.append(element('span', '', label), input); body.append(row); return input;
   }
   return {
+    confirm({title, description, submit = '확인'}, save) {
+      return formDialog({id:'record-confirm-dialog',title,description,submit,save,build:()=>()=>undefined});
+    },
     condition(point, column, save) {
       const anchor = document.activeElement, panel = element('div','point-input-popover');
       panel.id='point-condition-dialog'; panel.setAttribute('role','dialog'); panel.setAttribute('aria-label',`${point.pointRecordId}번 변인값`); host.append(panel);

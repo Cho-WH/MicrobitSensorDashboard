@@ -1,3 +1,5 @@
+import { setMath } from './math-view.js';
+import { texText, texNumber, binaryTex } from './scientific-notation.js';
 // Adapted from Cho-WH/bme280 gay-lussac/ui/reflection-view.js at 59c5c149450f970bace2deaa183857c275595853.
 import { ANSWER_LIMIT, REFLECTION_QUESTIONS, evidenceKey } from '../analysis/reflection.js';
 import { graphColumns, CALCULATION_OPERATORS } from '../domain/contracts.js';
@@ -91,7 +93,7 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
       : saved.temporary ? copy.reflection.temporary
       : !saved.writable ? copy.reflection.readOnly
       : saved.status === 'error' ? copy.reflection.error
-      : saved.status === 'clean' ? copy.reflection.clean : copy.reflection.saving;
+      : saved.volatile ? '현재 창에 작성 내용이 유지돼요.' : saved.status === 'clean' ? copy.reflection.clean : copy.reflection.saving;
     $('reflection-save-status').textContent = text;
     $('reflection-save-status').dataset.state = saved?.temporary ? 'temporary' : saved?.status ?? 'empty';
   }
@@ -146,14 +148,14 @@ export function createReflectionView(root, { getWorkspace, getStoreState, act, o
       const series = [model, model?.right].filter(Boolean), fitted = series.filter(item => item.regression?.enabled);
       const summaries = fitted.map(item => ({...trendSummary(item), label:model.right ? item.yLabel + ': ' : ''}));
       $('reflection-statistics').hidden = !fitted.length;
-      $('reflection-equation').textContent = summaries.map(s => s.label + s.equation).join('\n');
+      $('reflection-equation').replaceChildren(...summaries.map(s=>{const row=node('div');void setMath(row,s.equationTex,s.label+s.equation);return row;}));
       $('reflection-stat-detail').textContent = summaries.map(s => s.label + s.detail).join('\n');
       $('reflection-no-trend').hidden = Boolean(fitted.length);
       const columns = graphColumns(evidence?.calculatedColumns ?? [], workspace?.getImportedColumns() ?? [],
         evidence?.inputSnapshot ? {...state?.context, manualColumns:evidence.inputSnapshot.manualColumns} : state?.context);
       const operand = o => o.kind === 'constant' ? formatCalculated(o.value) : columnLabel(columns.find(c => c.id === o.columnId));
       $('reflection-calculations').hidden = !evidence?.calculatedColumns.length;
-      $('reflection-formulas').replaceChildren(...(evidence?.calculatedColumns ?? []).map(c => node('li', `${columnLabel(c)} = ${operand(c.lhs)} ${CALCULATION_OPERATORS[c.op]} ${operand(c.rhs)}`)));
+      $('reflection-formulas').replaceChildren(...(evidence?.calculatedColumns ?? []).map(c => {const row=node('li');const part=o=>o.kind==='constant'?texNumber(o.value):texText(operand(o));void setMath(row,texText(columnLabel(c))+'='+binaryTex(part(c.lhs),c.op,part(c.rhs)),`${columnLabel(c)} = ${operand(c.lhs)} ${CALCULATION_OPERATORS[c.op]} ${operand(c.rhs)}`);return row;}));
       const exclusions = evidence?.exclusions ?? [], reasons = [...new Set(exclusions.map(e => e.reason).filter(Boolean))];
       $('reflection-exclusions').hidden = !exclusions.length;
       $('reflection-reasons').replaceChildren(...(reasons.length ? reasons : ['작성한 제외 사유가 없습니다.']).map(reason => node('li', reason)));

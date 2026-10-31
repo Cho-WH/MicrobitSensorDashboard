@@ -1,0 +1,4 @@
+.science-symbol { font-family:"Times New Roman",serif; font-style:italic; font-weight:inherit; white-space:nowrap; }
+.science-unit { font-style:normal; font-weight:inherit; white-space:nowrap; }
+.science-math { max-width:100%; overflow-x:auto; overflow-y:hidden; padding-block:4px; }
+.science-math > svg { display:inline-block; max-width:none; overflow:visible; }

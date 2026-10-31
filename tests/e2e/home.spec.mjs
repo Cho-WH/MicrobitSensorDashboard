@@ -22,7 +22,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await sensor.click();
     await expect(page).toHaveURL(/\/sensors\/bmp280\/\?view=preview$/);
     await page.goBack();
-    await page.locator('#activity-cards a').click();
+    await page.locator('#activity-cards a[href*="/activities/gay-lussac/"]').click();
     await expect(page).toHaveURL(/\/activities\/gay-lussac\/\?view=preview$/);
   });
 }

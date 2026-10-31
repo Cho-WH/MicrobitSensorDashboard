@@ -1,3 +1,4 @@
+import { installSimulatedHardware } from './support/tour.mjs';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
@@ -17,16 +18,21 @@ async function snapshot(page, id, excludeId) {
 
 test('closed recording page restores saved samples and analysis without reconnecting; downloaded JSON reopens independently', async ({ page, context }) => {
   test.setTimeout(60_000);
-  await page.goto('/sensors/accelerometer/?mock=1&view=measure');
+  await installSimulatedHardware(context,'accelerometer');
+  await page.goto('/sensors/accelerometer/?view=measure');
   await page.locator('.experiment-guide [data-guide-next]').click();
   await expect(page.locator('html')).toHaveAttribute('data-app-state', 'ready');
   await page.locator('.luminous-settings').click();
   await page.locator('#connect').click();
   await expect(page.locator('#start-recording')).toBeEnabled();
   await page.locator('.luminous-close').click();
+  await expect(page.locator('[data-view="analysis"]')).toBeDisabled();
   await page.locator('#start-recording').click();
+  await expect(page.locator('[data-view="analysis"]')).toBeEnabled();
   await expect.poll(async () => (await snapshot(page))?.samples.length ?? 0).toBeGreaterThanOrEqual(10);
   await page.locator('[data-view="analysis"]').click();
+  const sampleCount = (await snapshot(page)).samples.length;
+  await expect.poll(async () => (await snapshot(page)).samples.length).toBeGreaterThan(sampleCount);
   await page.locator('#tab-relationship').click();
   await page.locator('#use-graph-for-reflection').click();
   const answer = '기록 중에 작성한 분석을 다시 열어 확인한다.';
@@ -38,7 +44,7 @@ test('closed recording page restores saved samples and analysis without reconnec
   await page.close();
 
   const reopened = await context.newPage();
-  await reopened.goto('/lab.html?mock=1&view=saved');
+  await reopened.goto('/lab.html?view=saved');
   await expect(reopened.locator('#saved-runs li')).toHaveCount(1);
   await reopened.locator('#saved-runs li button').first().click();
   await expect(reopened.locator('[data-screen="analysis"]')).toBeVisible();
@@ -74,8 +80,9 @@ test('closed recording page restores saved samples and analysis without reconnec
 });
 
 
-test('reload restores this tab and reconnect replaces the record action without automatic recording', async ({page}) => {
-  await page.goto('/sensors/accelerometer/?mock=1&view=measure');
+test('reload restores this tab and reconnect replaces the record action without automatic recording', async ({page,context}) => {
+  await installSimulatedHardware(context,'accelerometer');
+  await page.goto('/sensors/accelerometer/?view=measure');
   await page.locator('.experiment-guide [data-guide-next]').click();
   await page.locator('#measurement-reconnect').click();
   await expect(page.locator('#start-recording')).toBeEnabled();

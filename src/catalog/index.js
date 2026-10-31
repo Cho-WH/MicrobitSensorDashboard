@@ -23,6 +23,16 @@ export function getSensorRuntime(context, modules = registry) {
     sampleIntervalMs: firmware.sampleIntervalMs, stale: firmware.stale } }), decode: module.decode, mockLine: module.mockLine, preparation: module.preparation };
 }
 export const getSensorPreparation = context => registry.getSensor(context?.sensor)?.preparation;
+// Display defaults are trusted, versioned metadata in the channel's storage unit.
+export function getTimeAxisPolicies(context, modules = registry) {
+  const sensor = modules.getSensor(context?.sensor)?.definition;
+  const activity = modules.getActivity(context?.activity, context?.sensor)?.definition;
+  return Object.fromEntries((context?.channels ?? []).flatMap(channel => {
+    const known = sensor?.channels.find(item => item.id === channel.id && item.unit === channel.unit && item.quantity === channel.quantity);
+    const policy = activity?.timeAxis?.[channel.id] ?? sensor?.timeAxis?.[channel.id];
+    return known && policy ? [[channel.id, policy]] : [];
+  }));
+}
 // Display relationships come from exact registered definitions, not graph axes
 // or matching quantity names. Historical/unknown channels remain usable as numbers.
 export function getMeasurementReadout(context, modules = registry) {
@@ -34,10 +44,15 @@ export function getMeasurementReadout(context, modules = registry) {
     componentChannelIds: (definition?.componentChannelIds ?? []).filter(id => id !== primary?.id
       && channels.some(channel => channel.id === id && channel.quantity === primary?.quantity && channel.unit === primary?.unit)) };
 }
+// Current activity UI policy; stored records and their original mode remain intact.
+export function getMeasurementOptions(context) {
+  return registry.getActivity(context?.activity, context?.sensor)?.measurement ?? {continuousOnly:false, points:true};
+}
 export function getActivityPolicy(context, modules = registry) {
   return modules.getActivity(context?.activity, context?.sensor)?.policy;
 }
 export const getActivityMemoPresets = context => registry.getActivity(context?.activity, context?.sensor)?.definition.memoPresets ?? [];
+export const getActivityTour = context => registry.getActivity(context?.activity, context?.sensor)?.tour;
 
 export const genericQuestions = [
   { id: 'observation', title: '관찰한 관계', question: '자료에서 어떤 관계를 발견했나요? 수치나 그래프를 근거로 설명하세요.' },

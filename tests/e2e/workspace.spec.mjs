@@ -62,7 +62,7 @@ test('axis settings collapse without hidden focus targets across screen sizes an
 });
 
 test('actual page: shell reflow preserves file-button focus and preview guidance', async ({ page }) => {
-  await page.goto('/sensors/temperature/?mock=1&view=measure');
+  await page.goto('/sensors/temperature/?view=measure');
   await expect(page.locator('html')).toHaveAttribute('data-app-state', 'ready');
   await page.locator('.experiment-guide [data-guide-next]').click();
   const open = page.locator('#open-file');

@@ -34,7 +34,7 @@ export function createExperimentGuide(host) {
     const key=`${next.id}@${next.version}`;
     if(!preferenceCache.has(key))preferenceCache.set(key,createExperimentGuidePreferences(next.id,next.version));
     preferences=preferenceCache.get(key);
-    dialog.innerHTML=`<header class="ui-dialog-header"><div><p class="ui-dialog-label">실험 방법</p><h2 class="ui-dialog-title" tabindex="-1"></h2></div><button type="button" class="ui-dialog-close experiment-guide-close" aria-label="실험 방법 닫기">✕</button></header><nav class="experiment-guide-pages" aria-label="실험 방법 단계"></nav><div class="ui-dialog-body experiment-guide-body"></div><footer class="ui-dialog-footer"><div class="experiment-guide-paging"><button type="button" data-guide-previous>이전</button><span class="experiment-guide-count" data-guide-count></span><button type="button" class="primary" data-guide-next>다음 →</button></div><div class="experiment-guide-options"><label class="experiment-guide-preference"><input type="checkbox" data-suppress-guide>이 안내 자동으로 열지 않기</label><p class="experiment-guide-recording" data-guide-recording>안내를 보는 동안에도 측정값은 기록돼요.</p></div></footer>`;
+    dialog.innerHTML=`<header class="ui-dialog-header"><div><p class="ui-dialog-label">실험 방법</p><h2 class="ui-dialog-title" tabindex="-1"></h2></div><button type="button" class="ui-dialog-close experiment-guide-close" aria-label="실험 방법 닫기">✕</button></header><nav class="experiment-guide-pages" aria-label="실험 방법 단계"></nav><div class="ui-dialog-body experiment-guide-body"></div><footer class="ui-dialog-footer"><div class="experiment-guide-paging"><button type="button" data-guide-previous>이전</button><span class="experiment-guide-count" data-guide-count></span><button type="button" class="primary" data-guide-next>다음 →</button></div><div class="experiment-guide-options"><label class="experiment-guide-preference"><input type="checkbox" data-suppress-guide>자동으로 열지 않기</label><p class="experiment-guide-recording" data-guide-recording>안내를 보는 동안에도 측정값은 기록돼요.</p></div></footer>`;
     const heading=findElement(dialog,'h2','h2'); heading.id='experiment-guide-'+createUuid(); heading.textContent=next.title; dialog.setAttribute('aria-labelledby',heading.id);
     const single=next.pages.length===1, label=next.label??'실험 방법';
     dialog.classList.toggle('experiment-guide-single',single);
@@ -47,20 +47,27 @@ export function createExperimentGuide(host) {
     pages=[]; pageButtons=[];
     next.pages.forEach((page,index)=>{
       const button=element('button','ui-tab',`${index+1} ${page.label}`); button.type='button'; nav.append(button); pageButtons.push(button);
-      const section=element('section','experiment-guide-page'), visual=element('figure','experiment-guide-visual');
-      if (page.image) { const img=element('img','experiment-guide-image'); img.src=page.image; img.alt=page.alt; img.loading='lazy'; visual.append(img); }
-      else {
-        const flow=element('ol','experiment-recording-flow');
-        for(const [name,text] of page.flow??[]) {const li=element('li');li.append(element('strong','',name),element('span','',text));flow.append(li);}
-        visual.append(flow);
+      const section=element('section','experiment-guide-page');
+      const hasVisual=Boolean(page.image || page.flow?.length);
+      section.classList.toggle('experiment-guide-text',!hasVisual);
+      if (hasVisual) {
+        const visual=element('figure','experiment-guide-visual');
+        if (page.image) { const img=element('img','experiment-guide-image'); img.src=page.image; img.alt=page.alt; img.loading='lazy'; visual.append(img); }
+        else {
+          const flow=element('ol','experiment-recording-flow');
+          for(const [name,text] of page.flow) {const li=element('li');li.append(element('strong','',name),element('span','',text));flow.append(li);}
+          visual.append(flow);
+        }
+        if(page.caption)visual.append(element('figcaption','',page.caption));
+        section.append(visual);
       }
-      visual.append(element('figcaption','',page.caption));
       const copy=element('div','experiment-guide-copy');
       if(!single)copy.append(element('p','eyebrow',`STEP ${String(index+1).padStart(2,'0')}`));
       copy.append(element('h3','',page.title));
+      if(!hasVisual&&page.caption)copy.append(element('p','experiment-guide-intro',page.caption));
       const list=element('ol','experiment-guide-instructions');
       for(const [title,text] of page.instructions){const li=element('li');li.append(element('h4','',title),element('p','',text));list.append(li);}
-      copy.append(list);section.append(visual,copy);if(page.caution)section.append(element('p','experiment-guide-caution',page.caution));
+      copy.append(list);section.append(copy);if(page.caution)section.append(element('p','experiment-guide-caution',page.caution));
       body.append(section);pages.push(section);
       button.addEventListener('click',()=>showPage(index),{signal});
       button.addEventListener('keydown',event=>{

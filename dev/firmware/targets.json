@@ -144,6 +144,22 @@
         "sampleIntervalMs": 100
       },
       "displayName": "MLX90393 센서 프로그램"
+    },
+    "motion-magnetic": {
+      "id": "sensor-lab-motion-magnetic",
+      "version": 1,
+      "name": "sensor-lab-motion-magnetic-v1",
+      "description": "Five-channel acceleration and magnetic strength UART program",
+      "source": "firmware/examples/motion-magnetic.js",
+      "protocol": {
+        "codecId": "motion-magnetic-csv-v1",
+        "startCommand": "prepare",
+        "sampleIntervalMs": 100
+      },
+      "additionalSources": {
+        "sensor-display.ts": "firmware/common/sensor-display.ts"
+      },
+      "displayName": "가속도·자기장 센서 프로그램"
     }
   },
   "releases": [
@@ -153,6 +169,7 @@
     "magnetometer",
     "bmp280",
     "ds18b20",
-    "mlx90393"
+    "mlx90393",
+    "motion-magnetic"
   ]
 }

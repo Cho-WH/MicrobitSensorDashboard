@@ -31,10 +31,11 @@
 
   /* The display adapter reads these once. Data colors are not action colors. */
   --sl-chart-grid:#e5ebf4; --sl-chart-axis:var(--sl-muted);
-  --sl-channel-1:#e36225; --sl-channel-2:#246bfd;
-  --sl-channel-3:#7c5cff; --sl-channel-4:#137d55;
-  --sl-channel-text-1:#b54416; --sl-channel-text-2:var(--sl-selection-text);
-  --sl-channel-text-3:#6240d8; --sl-channel-text-4:#137d55;
+  /* Office-inspired categorical colors; text uses a darker orange on white. */
+  --sl-channel-1:#e97132; --sl-channel-2:#156082;
+  --sl-channel-3:#a02b93; --sl-channel-4:#196b24; --sl-channel-5:#6b7280;
+  --sl-channel-text-1:#a8440f; --sl-channel-text-2:#156082;
+  --sl-channel-text-3:#a02b93; --sl-channel-text-4:#196b24; --sl-channel-text-5:#6b7280;
   --sl-analysis-point:var(--sl-selection); --sl-analysis-excluded:#65758a;
   --sl-analysis-point-text:var(--sl-selection-text);
   --sl-analysis-focused:var(--sl-navy); --sl-analysis-trend:#b54416;

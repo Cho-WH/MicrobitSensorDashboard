@@ -8,7 +8,7 @@
  * @typedef {{equipment:Record<string,GuideImage>,usb:GuideImage,battery:GuideImage}} DeviceIllustrations
  * @typedef {{id:string,board:string,sensor:string,role:string,description:string}} Wire
  * @typedef {{label:string,title:string,image:string|null,alt:string,caption:string,instructions:string[][],flow?:string[][],caution?:string}} ExperimentGuidePage
- * @typedef {{id:string,version:number,title:string,label?:string,buttonLabel?:string,placement?:'measurement-tabs',pages:ExperimentGuidePage[]}} ExperimentGuide
+ * @typedef {{id:string,version:number,title:string,label?:string,buttonLabel?:string,pages:ExperimentGuidePage[]}} ExperimentGuide
  * @typedef {{equipment:Equipment[],equipmentDescription:string,beforeProgram?:GuideStep[],afterConnect?:GuideStep[],experimentGuide?:ExperimentGuide,
  * wiring?:Wire[],cableHelp?:string,calibrationInstructions?:string[],illustrations?:DeviceIllustrations,
  * wiringTable?:{tableCaption:string,boardLabel:string,sensorLabel:string,noteTitle:string,note:string},
@@ -19,7 +19,7 @@
  * @typedef {{attemptId?:number|string,connected?:boolean,connecting?:boolean,receptionReady?:boolean,
  * receivedAt?:number|null,latest?:{values:Record<string,number|null>,validity:Record<string,string>}|null,
  * calibration?:string,devicePreparation?:{phase:string,calibration:string,allowReadings:boolean,requiredStep?:string|null}|null,firmwareInstalled?:ExperimentContext['firmware']|false,programmerState?:ProgramState,
- * busy?:boolean,recording?:boolean,mock?:boolean,canInstall?:boolean,canConnect?:boolean,
+ * busy?:boolean,recording?:boolean,mock?:boolean,tour?:boolean,canInstall?:boolean,canConnect?:boolean,
  * canReconnect?:boolean,deviceMessage?:string,deviceName?:string,unsupported?:boolean}} GuideFacts
  * @typedef {{onInstall?:()=>unknown,onInstallMode?:(mode:string)=>unknown,onCancelInstall?:()=>unknown,onConnect?:(options:{reuseDevice:boolean,reconnecting?:boolean})=>unknown,
  * onDisconnect?:()=>unknown,onChange?:(progress:ReturnType<ReturnType<import('./progress.js').createGuideProgress>['getState']>)=>void,

@@ -16,7 +16,7 @@ export function renderHomeCards(root, { sensors, activities, linkTo, onSelect, s
   }
   function heading(item, activity = false) {
     const anchor = link(item, 'home-card-link');
-    const beta = !activity && item.context.sensor.releaseStage === 'beta';
+    const beta = (activity ? item.context.activity : item.context.sensor)?.releaseStage === 'beta';
     const content = beta ? element('div', 'home-card-content') : anchor;
     if (activity) anchor.append(element('span', 'home-card-eyebrow', item.copy.activityEyebrow));
     anchor.append(element('strong', 'home-card-title', activity
@@ -35,7 +35,7 @@ export function renderHomeCards(root, { sensors, activities, linkTo, onSelect, s
     const arrow = element('span', 'home-card-arrow', '↗'); arrow.setAttribute('aria-hidden', 'true'); anchor.append(arrow);
     return content;
   }
-  const sensorCards = sensors.map(item => {
+  const sensorCards = sensors.filter(item => item.context.sensor.showOnHome !== false).map(item => {
     const card = element('article', 'experiment-card sensor-card');
     card.append(heading(item));
     const related = activities.filter(activity => activity.context.activity.sensorIds.includes(item.context.sensor.id));

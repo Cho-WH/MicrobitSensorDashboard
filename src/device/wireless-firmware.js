@@ -251,5 +251,41 @@ export const wirelessFirmware = {
       "target": "pxt-microbit@9.1.1",
       "compiler": "pxt-core@13.0.1"
     }
+  },
+  "sensor-lab-motion-magnetic": {
+    "id": "sensor-lab-motion-magnetic",
+    "sensorId": "motion-magnetic",
+    "version": 1,
+    "name": "가속도·자기장 센서 프로그램",
+    "boards": [
+      "micro:bit-v2"
+    ],
+    "digestMode": "utf8-crlf-to-lf",
+    "codecId": "motion-magnetic-csv-v1",
+    "startCommand": "prepare",
+    "sampleIntervalMs": 100,
+    "hardwareVerified": false,
+    "fileName": "sensor-lab-motion-magnetic-v1.hex",
+    "sha256": "d5102a19ed35aaccb10a126d846294bc9f4e0743398a15164861fc51aa3970e1",
+    "partial": {
+      "id": "motion-magnetic",
+      "name": "motion-magnetic",
+      "file": "sensor-lab-motion-magnetic-v1.bin",
+      "start": 299008,
+      "end": 305728,
+      "runtimeHash": "5f21a4c8e2b240e5",
+      "programHash": "1e001a006f004d00",
+      "sha256": "2ce132ebae231436824aaa4426edfa117a49bf72b6d0fcf0075e6d1dc2b4e2e2",
+      "hexSha256": "d5102a19ed35aaccb10a126d846294bc9f4e0743398a15164861fc51aa3970e1",
+      "runtimeSha256": "01170c7b83185c2d2e49eb83432a893511f160a67af90c0baf20de5841487da2",
+      "bytes": 6720
+    },
+    "source": {
+      "path": "firmware/examples/motion-magnetic.js",
+      "build": "dev/firmware/publish.mjs",
+      "buildRecord": "public/firmware/sensor-lab-motion-magnetic-v1.build.json",
+      "target": "pxt-microbit@9.1.1",
+      "compiler": "pxt-core@13.0.1"
+    }
   }
 };

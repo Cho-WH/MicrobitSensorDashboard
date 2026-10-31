@@ -3,8 +3,8 @@ import { timeBounds, rangeSampleIds } from '../analysis/scope.js';
 import { labDefaults } from './lab-copy.js';
 
 // Only the draft and pointer interaction live here. Apply is a Workspace command.
-export function createRangeSelector(root, { getChart, onApply, onClose, signal, getCopy = () => labDefaults }) {
-  const $ = id => root.querySelector('#' + id), form = $('range-form'), overlay = $('range-overlay');
+export function createRangeSelector(root, { getChart, onApply, onClose, signal, getCopy = () => labDefaults, idPrefix = '', adjustPointerTime = (at, _geometry, _limits) => at }) {
+  const $ = id => root.querySelector('#' + idPrefix + id), form = $('range-form'), overlay = $('range-overlay');
   const inputs = [$('time-range-start'), $('time-range-end')], handles = [$('range-start-handle'), $('range-end-handle')];
   let samples = [], excluded = new Set(), bounds = null, draft = null, active = false, legacy = false, dragging = null;
   const display = value => String(Math.round(value * 1000) / 1000);
@@ -54,7 +54,11 @@ export function createRangeSelector(root, { getChart, onApply, onClose, signal, 
     handle.addEventListener('pointermove', event => {
       if (dragging !== i) return;
       const g = getChart()?.timeGeometry(), rect = $('overview-chart').getBoundingClientRect();
-      if (g) move(i, g.time(event.clientX - rect.left));
+      if (g) {
+        const limits = {startAt:i===0?bounds.startAt:draft.startAt,endAt:i===0?draft.endAt:bounds.endAt};
+        const at = g.time(event.clientX - rect.left);
+        move(i, adjustPointerTime(at, g, limits));
+      }
     }, { signal });
     const release = () => { dragging = null; delete overlay.dataset.dragging; };
     handle.addEventListener('lostpointercapture', release, { signal });

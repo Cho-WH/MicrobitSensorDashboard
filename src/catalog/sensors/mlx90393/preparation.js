@@ -1,4 +1,5 @@
 import { normalizeSettings } from './settings.js';
+import { mockMlx90393Line } from './codec.js';
 
 export function createPreparationSession({ send, onChange, onError, timers = globalThis, settings: saved = null }) {
   let settings = normalizeSettings(saved), phase = 'handshake', token = 0, timer = null, disposed = false;
@@ -39,9 +40,9 @@ export function createPreparationSession({ send, onChange, onError, timers = glo
     dispose() { disposed = true; timers.clearTimeout(timer); },
   };
 }
-export function createMockPreparation({ emit, timers = globalThis }) {
+export function createMockPreparation({ emit, timers = globalThis, startStreaming = null, stopStreaming = () => {} }) {
   let timer = null;
-  const stop = () => { timers.clearInterval(timer); timer = null; };
+  const stop = () => { timers.clearInterval(timer); timer = null; stopStreaming(); };
   return {
     command(command) {
       if (command === 'prepare') { stop(); emit('@mlx,1,ready'); }
@@ -51,6 +52,7 @@ export function createMockPreparation({ emit, timers = globalThis }) {
         if (!match) return;
         stop(); const [, preset, token] = match;
         emit(`@mlx,1,applied,${preset},${token}`);
+        if(startStreaming){startStreaming(ms=>mockMlx90393Line(ms).replace('normal,1,',`${preset},${token},`));return;}
         let tick = 0;
         timer = timers.setInterval(() => { tick++; emit(`mlx,1,${preset},${token},${100 + tick % 20},100,150`); }, 100);
       }

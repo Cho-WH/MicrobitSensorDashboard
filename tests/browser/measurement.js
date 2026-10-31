@@ -130,7 +130,15 @@ async function checkAccelerationUnits(report) {
     clickVisible($('#live-range summary'));clickVisible($('[data-live-range="all"]'));
     const toggle=$('#acceleration-unit-toggle');
     check(toggle.checkVisibility()&&toggle.getAttribute('aria-pressed')==='false','가속도 SI 기본 표시 또는 토글 누락');
+    const axis=()=>chart().scales[chart().data.datasets[0].yAxisID];
+    clickVisible($('[data-axis-zoom]'));
+    const siBounds={min:axis().min,max:axis().max};
+    clickVisible($('#display-channels input[value="accelerationY"]'));
+    check($('[data-axis-zoom]').dataset.expanded==='true','표시 항목 변경이 같은 축의 확대 상태를 초기화했습니다.');
+    clickVisible($('#display-channels input[value="accelerationY"]'));
     clickVisible(toggle);
+    check($('[data-axis-zoom]').dataset.expanded==='true','단위 변경이 확대 상태를 초기화했습니다.');
+    check(Math.abs(axis().min*9.80665-siBounds.min)<1e-10&&Math.abs(axis().max*9.80665-siBounds.max)<1e-10,'단위 변경이 같은 물리적 축 범위를 보존하지 않았습니다.');
     check($('[data-channel="accelerationX"] strong').textContent==='-1'&&$('[data-channel="accelerationX"] small').textContent==='g','실시간 숫자와 단위가 함께 바뀌지 않았습니다.');
     check(chart().data.datasets[0].data[0].y===-1,'g 그래프의 수치 환산 누락');
     const axes=Object.values(chart().scales).filter(axis=>axis.axis==='y');
@@ -148,6 +156,17 @@ async function checkAccelerationUnits(report) {
     check(graph.yUnit==='m/s²'&&graph.points[0].y>13,'분석에 g 표시가 섞였습니다.');
     clickVisible(toggle);
     check(chart().data.datasets[0].data[0].y===-9.80665&&$('[data-channel="accelerationX"] small').textContent==='m/s²','정지된 기록의 SI 복귀가 그려지지 않았습니다.');
+    clickVisible($('[data-axis-zoom]'));
+    check(axis().min<=-20&&axis().max>=store.getSamples()[1].values.accelerationStrength,'복원 범위가 기본 범위 또는 새로 받은 값을 누락했습니다.');
+    clickVisible($('[data-axis-zoom]'));
+    const replacement=await openRunStore({repository,context,source:'replay',create:true});
+    try {
+      const reading=decode('0,0,1000,1000',{receivedAt:1700000000000});
+      replacement.appendSample({sampleId:1,receivedAt:reading.receivedAt,values:reading.values,validity:reading.validity});
+      view.render({...options,store:replacement});
+      check($('[data-axis-zoom]').dataset.expanded==='false'&&axis().max<30,'같은 센서의 새 실험에 이전 확대 또는 큰 범위가 남았습니다.');
+    } finally {await replacement.close();}
+    view.render(options);
     const id=store.getState().id;await store.close();store=await openRunStore({repository,id});
     check(store.getSamples()[1].values.accelerationX===-19.6133,'DB 재열기에서 SI 수치가 바뀌었습니다.');
 

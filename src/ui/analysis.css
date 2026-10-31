@@ -9,13 +9,13 @@
 .analysis-origin-banner span { color:var(--sl-navy); }
 .analysis-screen button { padding:7px 12px; gap:8px; }
 .analysis-screen button:focus-visible, .analysis-screen summary:focus-visible, .analysis-screen [role="slider"]:focus-visible { outline:rgb(128, 187, 190) solid 3px; outline-offset:3px; }
-.analysis-tabs, .layout-switch { position:relative; display:grid; grid-template-columns:repeat(3, 1fr); background:rgb(232, 239, 237); border:1px solid rgb(222, 231, 228); border-radius:13px; padding:5px; isolation:isolate; }
+.analysis-tabs, .layout-switch { position:relative; display:grid; grid-template-columns:repeat(var(--analysis-tab-count, 3), 1fr); background:rgb(232, 239, 237); border:1px solid rgb(222, 231, 228); border-radius:13px; padding:5px; isolation:isolate; }
 .analysis-tabs { width:min(100%, 580px); margin-bottom:20px; }
 .analysis-screen .analysis-tabs button { position:relative; background:transparent; border:0px; min-height:42px; color:rgb(106, 125, 128); font-size:0.875rem; }
 .analysis-screen .layout-switch button { position:relative; background:transparent; border:0px; color:rgb(106, 125, 128); }
 .analysis-screen .analysis-tabs button[aria-current="page"], .analysis-screen .layout-switch button[aria-pressed="true"] { color:rgb(24, 94, 100); }
-.analysis-tab-indicator { position:absolute; left:5px; top:5px; bottom:5px; width:calc(33.3333% - 3.33333px); background:white; border-radius:9px; box-shadow:rgba(37, 70, 62, 0.05) 0px 2px 5px, rgba(37, 70, 62, 0.05) 0px 1px 2px; transform:translateX(calc(var(--active-tab, 0) * 100%)); transition:transform var(--analysis-duration) var(--analysis-ease); z-index:-1; }
-.analysis-workspace { position:relative; background:white; border:1px solid rgb(220, 230, 227); border-radius:18px; box-shadow:rgba(36, 77, 67, 0.024) 0px 8px 32px; min-width:0px; }
+.analysis-tab-indicator { position:absolute; left:5px; top:5px; bottom:5px; width:calc((100% - 10px) / var(--analysis-tab-count, 3)); background:white; border-radius:9px; box-shadow:rgba(37, 70, 62, 0.05) 0px 2px 5px, rgba(37, 70, 62, 0.05) 0px 1px 2px; transform:translateX(calc(var(--active-tab, 0) * 100%)); transition:transform var(--analysis-duration) var(--analysis-ease); z-index:-1; }
+.analysis-workspace { --analysis-content-padding:24px 26px; --analysis-content-inline:26px; position:relative; background:white; border:1px solid rgb(220, 230, 227); border-radius:18px; box-shadow:rgba(36, 77, 67, 0.024) 0px 8px 32px; min-width:0px; }
 .analysis-scope-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; padding:12px 20px; background:rgb(248, 250, 249); border-bottom:1px solid rgb(232, 238, 235); border-radius:18px 18px 0px 0px; min-height:62px; }
 .layout-switch { flex:0 1 420px; width:100%; min-width:310px; }
 .analysis-screen .layout-switch button { min-height:46px; font-size:0.9375rem; font-weight:600; white-space:nowrap; }
@@ -33,9 +33,9 @@
 .analysis-screen .quiet-button { background:transparent; border-color:transparent; color:var(--sl-selection-text); }
 .history-actions { gap:2px; padding-left:6px; border-left:1px solid var(--sl-line); }
 .analysis-screen .history-actions button { width:30px; min-height:30px; padding:0px; border:0px; background:transparent; display:inline-flex; align-items:center; justify-content:center; }
-.analysis-feedback { margin:0px; padding:10px 24px; color:rgb(161, 75, 55); font-size:0.8125rem; }
+.analysis-feedback { margin:0px; padding:10px var(--analysis-content-inline,24px); color:rgb(161, 75, 55); font-size:0.8125rem; }
 .analysis-feedback:empty { display:none; }
-.overview-pane { padding:24px 26px 0px; }
+.overview-pane { padding:var(--analysis-content-padding); padding-bottom:0; }
 .plot-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
 .plot-heading h2 { font-size:1.25rem; letter-spacing:-0.035em; margin:0px; }
 .overview-stage { position:relative; height:clamp(260px, 32vh, 340px); }
@@ -299,7 +299,7 @@
 [data-visual-theme="luminous"] .analysis-screen :is(button, summary, [role="slider"]):focus-visible { outline:2px solid var(--sl-focus); outline-offset:3px; }
 [data-visual-theme="luminous"] .analysis-screen :is(.analysis-tabs, .layout-switch) { background:transparent; border-top:0px; border-right:0px; border-left:0px; border-image:none; border-bottom:1px solid var(--sl-line); border-radius:0px; padding:0px; }
 [data-visual-theme="luminous"] .analysis-screen :is(.analysis-tabs, .layout-switch) button { min-height:var(--sl-target); border-radius:0px; color:var(--sl-button-text); background:var(--sl-button-bg); padding:10px 12px; font-size:var(--sl-type-control); }
-[data-visual-theme="luminous"] .analysis-screen .analysis-tab-indicator { left:0px; top:auto; bottom:-1px; height:2px; width:calc(33.3333%); background:var(--sl-tab-line); box-shadow:none; border-radius:0px; }
+[data-visual-theme="luminous"] .analysis-screen .analysis-tab-indicator { left:0px; top:auto; bottom:-1px; height:2px; width:calc(100% / var(--analysis-tab-count, 3)); background:var(--sl-tab-line); box-shadow:none; border-radius:0px; }
 [data-visual-theme="luminous"] .analysis-screen .analysis-workspace { background:var(--sl-surface); border-color:var(--sl-line); border-radius:var(--sl-radius-panel); box-shadow:var(--sl-shadow-panel); }
 [data-visual-theme="luminous"] .analysis-screen .analysis-scope-bar { background:var(--sl-surface-soft); border-color:var(--sl-line); padding:12px 20px; gap:12px 20px; }
 [data-visual-theme="luminous"] .analysis-screen .layout-switch { flex-basis:290px; }
@@ -429,3 +429,10 @@
   .analysis-screen :is(.overview-stage, .graph-stage) > canvas { position:absolute; inset:0; }
   .analysis-screen[data-task="relationship"] .analysis-layout .table-scroll { flex:1 1 0; height:0; min-height:160px; }
 }
+
+@media(min-width:1001px) {
+  [data-visual-theme="luminous"] .analysis-screen .analysis-topline .analysis-tabs button { min-height:var(--sl-target-compact); padding:6px 10px; }
+}
+
+@media(min-width:1001px) { .analysis-workspace { --analysis-content-padding:16px 20px; --analysis-content-inline:20px; } }
+@media(max-width:760px) { .analysis-workspace { --analysis-content-padding:12px; --analysis-content-inline:12px; } }

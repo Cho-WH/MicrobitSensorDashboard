@@ -125,23 +125,26 @@ test('light warmup cannot revive an old start after stop or disconnect and recon
   }
 });
 
-async function magneticFirmware(duringCalibration=()=>{}) {
+async function magneticFixture(duringCalibration, name) {
   const screen = displayMock();
   const hooks={}, lines=[], pauses=[];let command='', calibrations=0, resets=0;
   const f={screen,hooks,lines,pauses,send(value){command=value;hooks.uart();},get calibrations(){return calibrations;},get resets(){return resets;}};
-  runInNewContext(sensorDisplaySource + await readFile(new URL('../../firmware/examples/magnetometer.js',import.meta.url),'utf8'),{
+  runInNewContext(sensorDisplaySource + await readFile(new URL(`../../firmware/examples/${name}.js`,import.meta.url),'utf8'),{
     ...screen,
     bluetooth:{onUartDataReceived:(_,cb)=>hooks.uart=cb,uartReadUntil:()=>command,
       onBluetoothConnected:cb=>hooks.connect=cb,onBluetoothDisconnected:cb=>hooks.disconnect=cb,
       startUartService(){},uartWriteLine:line=>lines.push(line)},
     serial:{delimiters:()=> '\n'},Delimiters:{NewLine:1},
-    input:{...screen.input,calibrateCompass(){calibrations++;duringCalibration(f);},setAccelerometerRange(){},magneticForce:axis=>[0,-12,4,13][axis]},
+    input:{...screen.input,calibrateCompass(){calibrations++;duringCalibration(f);},setAccelerometerRange(){},magneticForce:axis=>[0,-12,4,13][axis],acceleration:axis=>[1,-2,1000,1001][axis]},
     Dimension:{X:0,Y:1,Z:2,Strength:3},AcceleratorRange:{EightG:8},convertToText:String,
     control:{...screen.control,reset(){resets++;}},basic:{...screen.basic,pause:ms=>pauses.push(ms),forever:cb=>{if(!hooks.display)hooks.display=cb;else hooks.loop=cb;}},
   });return f;
 }
 
-test('magnetic firmware acknowledges choice before calibration and only samples after completion or explicit skip', async()=>{
+for (const name of ['magnetometer', 'motion-magnetic']) {
+const magneticFirmware = (duringCalibration = () => {}) => magneticFixture(duringCalibration, name);
+const expectedReading = name === 'magnetometer' ? '0,-12,4,13' : '1,-2,1000,1001,13';
+test(name + ': ' + 'magnetic firmware acknowledges choice before calibration and only samples after completion or explicit skip', async()=>{
   for(const action of ['calibrate','skip']) {
     const f=await magneticFirmware(current=>{
       assert.equal(current.lines.at(-1),'@mag,2,calibrating');
@@ -155,24 +158,24 @@ test('magnetic firmware acknowledges choice before calibration and only samples 
     f.send(' PREPARE ');f.hooks.loop();assert.deepEqual(f.lines,['@mag,2,choice']);
     f.send(action);f.send(action);
     f.hooks.loop();
-    assert.deepEqual(f.lines,action==='calibrate'?['@mag,2,choice','@mag,2,calibrating','@mag,2,calibrated','0,-12,4,13']:['@mag,2,choice','@mag,2,skipped','0,-12,4,13']);
+    assert.deepEqual(f.lines,action==='calibrate'?['@mag,2,choice','@mag,2,calibrating','@mag,2,calibrated',expectedReading]:['@mag,2,choice','@mag,2,skipped',expectedReading]);
     assert.equal(f.calibrations,action==='calibrate'?1:0);assert.equal(f.pauses.at(-1),100);
     const count=f.lines.length;f.send('stop');f.hooks.loop();assert.equal(f.lines.length,count);
     f.hooks.disconnect();assert.equal(f.resets,0);f.hooks.connect();f.hooks.loop();assert.equal(f.lines.length,count);
   }
 });
 
-test('stopped or disconnected calibration cannot automatically report completion or resume sampling',async()=>{
+test(name + ': ' + 'stopped or disconnected calibration cannot automatically report completion or resume sampling',async()=>{
   for(const interrupt of ['stop','disconnect']){
     const f=await magneticFirmware(current=>{if(interrupt==='stop')current.send('stop');else{current.hooks.disconnect();current.hooks.connect();}});
     f.hooks.connect();f.send('prepare');f.send('calibrate');f.hooks.loop();
     assert.deepEqual(f.lines,['@mag,2,choice','@mag,2,calibrating']);
     f.send('prepare');assert.equal(f.lines.at(-1),'@mag,2,calibrated');
-    f.hooks.loop();assert.equal(f.lines.at(-1),'0,-12,4,13');
+    f.hooks.loop();assert.equal(f.lines.at(-1),expectedReading);
   }
 });
 
-test('magnetic firmware does not answer prepare during calibration and retains completion for the next request',async()=>{
+test(name + ': ' + 'magnetic firmware does not answer prepare during calibration and retains completion for the next request',async()=>{
   const f=await magneticFirmware(current=>{
     for(let i=0;i<2;i++) {
       current.hooks.disconnect();current.hooks.connect();
@@ -188,17 +191,17 @@ test('magnetic firmware does not answer prepare during calibration and retains c
   f.send('prepare');
   assert.equal(f.calibrations,1);assert.equal(f.resets,0);
   assert.equal(f.lines.at(-1),'@mag,2,calibrated');
-  f.hooks.loop();assert.equal(f.lines.at(-1),'0,-12,4,13');
+  f.hooks.loop();assert.equal(f.lines.at(-1),expectedReading);
 });
 
-test('calibration completed offline is retained across connections and stop until a new boot',async()=>{
+test(name + ': ' + 'calibration completed offline is retained across connections and stop until a new boot',async()=>{
   const f=await magneticFirmware(current=>current.hooks.disconnect());
   f.hooks.connect();f.send('prepare');f.send('calibrate');
   f.hooks.connect();f.hooks.loop();
   assert.deepEqual(f.lines,['@mag,2,choice','@mag,2,calibrating']);
   for(let i=0;i<2;i++) {
     f.send('prepare');assert.equal(f.lines.at(-1),'@mag,2,calibrated');
-    f.hooks.loop();assert.equal(f.lines.at(-1),'0,-12,4,13');
+    f.hooks.loop();assert.equal(f.lines.at(-1),expectedReading);
     f.send('stop');f.hooks.disconnect();f.hooks.connect();
   }
   assert.equal(f.calibrations,1);
@@ -206,8 +209,10 @@ test('calibration completed offline is retained across connections and stop unti
   assert.deepEqual(rebooted.lines,['@mag,2,choice']);
 });
 
-test('skipping calibration does not retain a completed calibration on reconnect',async()=>{
+test(name + ': ' + 'skipping calibration does not retain a completed calibration on reconnect',async()=>{
   const f=await magneticFirmware();f.hooks.connect();f.send('prepare');f.send('skip');
   f.hooks.disconnect();f.hooks.connect();f.send('prepare');
   assert.equal(f.lines.at(-1),'@mag,2,choice');assert.equal(f.calibrations,0);
 });
+
+}

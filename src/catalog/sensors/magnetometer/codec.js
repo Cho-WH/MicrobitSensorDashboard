@@ -1,20 +1,15 @@
 import { magnetometer } from './definition.js';
-// Reuse the original Gay-Lussac decoder's decimal/exponent token grammar.
-const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
-export function decodeMagnetometer(raw, { receivedAt = Date.now(), monotonicAt = 0, attemptId = 0 } = {}) {
+import { decodeDecimalChannels } from '../shared/decimal-codec.js';
+// Shared by sensors using the same compass preparation protocol.
+export function decodeMagneticStatus(raw, { receivedAt = Date.now(), monotonicAt = 0, attemptId = 0 } = {}) {
   const base = { receivedAt, monotonicAt, attemptId };
   const status = typeof raw === 'string' && /^@mag,2,(choice|calibrating|calibrated|skipped)$/.exec(raw.trim());
   if (status) return { type: 'device-status', status: status[1], ...base };
   if (typeof raw === 'string' && raw.trim().startsWith('@')) return { type: 'parse-error', reasonCode: 'unknown-device-status', ...base };
-  if (typeof raw !== 'string' || raw.split(',').length !== 4) return { type: 'parse-error', reasonCode: 'field-count', ...base };
-  const tokens = raw.split(','), values = {}, validity = {};
-  for (const [index, channel] of magnetometer.channels.entries()) {
-    const token = tokens[index].trim(), value = token && NUMBER.test(token) ? Number(token) : null;
-    values[channel.id] = Number.isFinite(value) ? value : null;
-    validity[channel.id] = !token ? 'missing' : !Number.isFinite(value) ? 'error'
-      : channel.min != null && value < channel.min ? 'out-of-range' : 'valid';
-  }
-  return { type: 'reading', values, validity, ...base };
+  return null;
+}
+export function decodeMagnetometer(raw, metadata = {}) {
+  return decodeMagneticStatus(raw, metadata) ?? decodeDecimalChannels(raw, magnetometer.channels, metadata);
 }
 
 /** Explicit demonstration input generated independently of any attached device. */

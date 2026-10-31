@@ -1,4 +1,9 @@
 .help-action, .help-switch-row { display: inline-flex; align-items: center; gap: 4px; }
+.field-caution { background:var(--sl-warning-bg,#fff4d6)!important; }
+button.help-trigger.help-trigger.field-warning[data-action-help] { color:var(--sl-error,#b42318); }
+button.help-trigger.help-trigger.field-warning[data-action-help]::before { border-color:currentColor; }
+.field-caution button.help-trigger.help-trigger.field-warning[data-action-help] { color:#8a5900; }
+button.field-warning[hidden] { display:none!important; }
 .help-action:has(> [hidden]:first-child) { display: none; }
 .help-switch-row { display: flex; }
 .help-switch-row > .switch-row { flex: 1; min-width: 0; }

@@ -1,3 +1,4 @@
+import { valueWithUnit } from './scientific-notation.js';
 import { element, findElement } from './dom.js';
 import { createPointPopover, clearablePointInput } from './point-input-popover.js';
 import { tableRowHeight, visibleTableRows, tableSpacer, bindTableScrollKeys } from './table-viewport.js';
@@ -9,7 +10,7 @@ import { setText } from './text.js';
 import { STANDARD_GRAVITY, isSIAcceleration } from '../domain/acceleration-units.js';
 
 import { parseCondition } from './condition-input.js';
-import { getMeasurementReadout } from '../catalog/index.js';
+import { getMeasurementReadout, getMeasurementOptions } from '../catalog/index.js';
 export { parseCondition } from './condition-input.js';
 
 // DOM nodes survive reception ticks. Drafts belong to the view and confirmed
@@ -21,7 +22,7 @@ export function createPointRecordingView(root, { onCapture, onChange, onError })
   const find = (tag, selector) => findElement(root, tag, selector);
   const abort = new AbortController(), { signal } = abort;
   let context = null, store = null, copy = getLabCopy(null).point, columns = [], revision = -1;
-  let readout = getMeasurementReadout(null);
+  let readout = getMeasurementReadout(null), tableChannels = [];
   let unseen = 0, previousCount = 0, rows = new Map(), drafts = new Map(), cards = [];
   let feedback = '', countText = '', feedbackTimer = null;
   function clearFeedback() { clearTimeout(feedbackTimer); feedbackTimer = null; feedback = ''; }
@@ -131,7 +132,7 @@ export function createPointRecordingView(root, { onCapture, onChange, onError })
       if (columns.length) { const icon = element('span','edit-icon'); icon.setAttribute('aria-hidden','true'); variableButton.replaceChildren(icon); }
       else variableButton.textContent = '+ ' + copy.addCondition;
     }
-    setText(find('th','#point-value-heading'), primary()?.name ?? '');
+    setText(find('th','#point-value-heading'), tableChannels[0]?.name ?? '');
     setText(currentCaption, columns.length ? '이번 ' + columns[0].name : '이번 변인값');
   }
   const primary = () => context?.channels.find(channel => channel.id === readout.primaryChannelId);
@@ -139,12 +140,26 @@ export function createPointRecordingView(root, { onCapture, onChange, onError })
   const displayUnit = channel => inG && channel.quantity === 'acceleration' ? 'g' : channel.unit ?? '';
   const format = (sample, channel, liveUnits = true) => {
     const cell = readCell(sample, channel.id);
-    const value = cell.value === null ? '—' : (cell.value / (liveUnits ? scale(channel) : 1)).toLocaleString('ko-KR', { maximumFractionDigits: liveUnits && inG ? 3 : channel.digits ?? 2 }) + ' ' + (liveUnits ? displayUnit(channel) : channel.unit ?? '');
+    const value = cell.value === null ? '—' : valueWithUnit((cell.value / (liveUnits ? scale(channel) : 1)).toLocaleString('ko-KR', { maximumFractionDigits: liveUnits && inG ? 3 : channel.digits ?? 2 }),liveUnits ? displayUnit(channel) : channel.unit ?? '');
     return cell.reason ? `${value} · ${cell.reason}` : value;
   };
   function configure(nextContext) {
     context = nextContext; copy = getLabCopy(context).point;
     readout = getMeasurementReadout(context);
+    const channelIds = getMeasurementOptions(context).pointTableChannelIds ?? [readout.primaryChannelId];
+    tableChannels = channelIds.map(id => context.channels.find(channel => channel.id === id)).filter(Boolean);
+    if (!tableChannels.length && primary()) tableChannels = [primary()];
+    const heading = find('th', '#point-value-heading');
+    table.querySelectorAll('[data-point-extra-heading]').forEach(node => node.remove());
+    heading.textContent = tableChannels[0]?.name ?? '';
+    heading.scope = 'col';
+    let preceding = heading;
+    for (const channel of tableChannels.slice(1)) {
+      const cell = element('th', '', channel.name); cell.scope = 'col'; cell.dataset.pointExtraHeading = '';
+      preceding.after(cell); preceding = cell;
+    }
+    table.classList.toggle('point-table-multiple', tableChannels.length > 1);
+    rows.clear(); body.replaceChildren();
     applyLabCopy(host, getLabCopy(context));
     inG = false; unitToggle.hidden = !context.channels.every(isSIAcceleration); unitToggle.setAttribute('aria-pressed', 'false');
     const theme = readVisualTheme(host, context.channels);
@@ -241,7 +256,7 @@ export function createPointRecordingView(root, { onCapture, onChange, onError })
     conditionCell.append(field,error); const clear=clearablePointInput(field,id+'번 변인값 비우기',signal);
     field.parentElement.classList.add('table-input-wrap');
     clear.classList.add('table-cell-action','table-icon-action');
-    const values=element('td','point-value',format(sample,primary(),false));
+    const values=tableChannels.map(channel=>element('td','point-value',format(sample,channel,false)));
     const noteCell=element('td','point-icon-column'), note=iconButton('note',formatCopy(copy.editNote,{number:id}));
     note.setAttribute('aria-controls','point-note-editor'); noteCell.append(note);
     note.addEventListener('click',()=>{
@@ -253,7 +268,7 @@ export function createPointRecordingView(root, { onCapture, onChange, onError })
     },{signal});
     const optionsCell=element('td','point-icon-column'), options=iconButton('options',id+'번 기록 옵션');options.setAttribute('aria-controls','point-options');optionsCell.append(options);
     options.addEventListener('click',()=>showOptions(id,options),{signal});
-    tr.append(number,conditionCell,values,noteCell,optionsCell);
+    tr.append(number,conditionCell,...values,noteCell,optionsCell);
     field.addEventListener('input',()=>{const draft=draftFor(point);draft.condition=field.value;draft.dirty=true;},{signal});
     conditionCell.addEventListener('focusout',()=>queueMicrotask(()=>{if(!conditionCell.contains(document.activeElement))commit(id,false);}),{signal});
     field.addEventListener('compositionend',()=>{if(!conditionCell.contains(document.activeElement))commit(id,false);},{signal});
@@ -303,7 +318,7 @@ export function createPointRecordingView(root, { onCapture, onChange, onError })
     for (const spacer of body.querySelectorAll('.table-spacer')) spacer.remove();
     const nodes = []; let after = 0;
     for (const index of ordered) {
-      if (index > after) nodes.push(tableSpacer(index-after, rowHeight, 5));
+      if (index > after) nodes.push(tableSpacer(index-after, rowHeight, 4 + tableChannels.length));
       const point = points[index];
       let row = rows.get(point.pointRecordId);
       if (!row) { const sample = store.readSamples({ afterId: point.capturedSampleId - 1, throughId: point.capturedSampleId })[0]; row = makeRow(point, sample); rows.set(point.pointRecordId, row); }

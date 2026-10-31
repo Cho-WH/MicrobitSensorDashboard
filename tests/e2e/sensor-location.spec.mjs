@@ -1,4 +1,22 @@
+import { chooseTourDevice } from './support/tour.mjs';
 import { test, expect } from '@playwright/test';
+
+test('activity guidance remains reachable from the header on desktop and mobile',async({page},testInfo)=>{
+  for(const activity of ['centripetal','gay-lussac']){
+    await page.goto(`/activities/${activity}/?mock=1&view=measure`);
+    const dialog=page.locator('.experiment-guide'),trigger=page.locator('#show-experiment-guide');
+    await expect(dialog).toBeVisible();await page.keyboard.press('Escape');
+    for(const width of [320,1366]){
+      await page.setViewportSize({width,height:844});
+      await expect(trigger).toBeVisible();
+      await page.locator('.lab-identity').screenshot({path:testInfo.outputPath(`guide-header-${activity}-${width}.png`)});
+      await trigger.click();await expect(dialog).toBeVisible();
+      await page.keyboard.press('Escape');await expect(trigger).toBeFocused();
+    }
+    await page.locator('[data-view="prepare"]').click();await expect(trigger).toBeHidden();
+    await page.locator('[data-view="measure"]').click();await expect(trigger).toBeVisible();
+  }
+});
 
 // Protect first-entry guidance without interrupting measurement or trapping focus.
 for(const sensor of ['magnetometer','accelerometer','temperature','light-level']) {
@@ -10,6 +28,7 @@ for(const sensor of ['magnetometer','accelerometer','temperature','light-level']
     if(sharedFlow) {
       await page.locator('[data-guide-group="connection"]').click();
       await page.locator('[data-guide-action="connect"]').click();
+  await chooseTourDevice(page);
       await page.clock.runFor(3100);
       await expect(page.locator('[data-guide-step="reception"]')).toHaveAttribute('data-complete','true');
       await page.locator('#to-measure').click();

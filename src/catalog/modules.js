@@ -6,7 +6,9 @@ import temperature from './sensors/temperature/index.js';
 import lightLevel from './sensors/light-level/index.js';
 import accelerometer, { legacyAccelerometer } from './sensors/accelerometer/index.js';
 import gayLussac from './activities/gay-lussac/index.js';
+import motionMagnetic from './sensors/motion-magnetic/index.js';
+import centripetal from './activities/centripetal/index.js';
 import { createRegistry } from './registry.js';
 
 // The single registration point. UI, routes, codecs, guides and policies resolve here.
-export const registry = createRegistry({ sensors: [magnetometer, legacyAccelerometer, accelerometer, temperature, lightLevel, bmp280, ds18b20, mlx90393], activities: [gayLussac] });
+export const registry = createRegistry({ sensors: [magnetometer, legacyAccelerometer, accelerometer, temperature, lightLevel, bmp280, ds18b20, mlx90393, motionMagnetic], activities: [gayLussac, centripetal] });

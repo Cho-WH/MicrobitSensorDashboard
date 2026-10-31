@@ -19,6 +19,8 @@ import { readVisualTheme } from './visual-theme.js';
 import { createAnalysisLayout } from './analysis-layout.js';
 import { createPanelTransition } from './panel-transition.js';
 import { createRecordDialogs } from './record-dialogs.js';
+import { createCentripetalView } from './centripetal/view.js';
+import { getTimeAxisPolicies, getMeasurementOptions } from '../catalog/index.js';
 
 export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) => {} }) {
   let copy = getLabCopy(null);
@@ -31,11 +33,13 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   let relationshipMode = 'split', overviewTableOpen = false, revealedColumnId = null;
   let overview = null, overviewKey = null, range = null, toastRevision = null, toastTimer = null, currentModel = null;
   const sources = new Map(), dialogs = createRecordDialogs(root);
+  const centripetal = createCentripetalView($('centripetal-workspace'), {refresh: () => render(), navigation: $('centripetal-navigation')});
   let sourceId = 'recorded', originLink = null, sourceOptionsKey = '', inspectedKey = null;
   const viewState = () => ({task, relationshipMode, overviewTableOpen, revealedColumnId, focusedId,
     scrollTop: $('raw-scroll').scrollTop, scrollLeft: $('raw-scroll').scrollLeft, pageScroll:window.scrollY});
   function switchSource(nextSource) {
-    if (!store || !reflection.flush()) return false;
+    if (!store || !reflection.flush() || !centripetal.flush()) return false;
+    if (!getMeasurementOptions(store.getRun().context).points) nextSource = 'recorded';
     if (workspace && !originLink) sources.set(sourceId, {workspace, view: viewState()});
     const saved = sources.get(nextSource);
     const nextWorkspace = saved?.workspace ?? createWorkspace({store, sourceId: nextSource});
@@ -290,6 +294,11 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
   }
   function render({ resetScroll = false } = {}) {
     syncInputs();
+    const activityActive = centripetal.render(workspace,store);
+    root.querySelector('.analysis-source-control').hidden = !getMeasurementOptions(store?.getRun().context ?? copyContext).points;
+    root.querySelector('.analysis-tabs').hidden = activityActive;
+    root.querySelector(':scope > .analysis-workspace').hidden = activityActive;
+    if (activityActive) { delete root.dataset.task; delete root.dataset.source; updateStatus(); return; }
     tableOpen = task === 'overview' ? overviewTableOpen : relationshipMode !== 'graph';
     allColumns = task === 'relationship' && relationshipMode === 'table';
     const writable = workspace?.isWritable() ?? false;
@@ -356,7 +365,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     $('use-graph-for-reflection').disabled = !writable || !(currentModel?.points.length||currentModel?.right?.points.length);
     reflection.render(task === 'interpretation');
     if (task === 'overview' && workspace) {
-      overview ??= createChartView($('overview-chart'), { inspect: true, legendToggle: false, eventMarkers: false, theme, context: state.context, onLayout: () => range.layout(), onCursor(sample, elapsedSeconds) {
+      overview ??= createChartView($('overview-chart'), { inspect: true, legendToggle: false, eventMarkers: false, theme, context: state.context, axisPolicies:getTimeAxisPolicies(state.context), onLayout: () => range.layout(), onCursor(sample, elapsedSeconds) {
         $('overview-readout').textContent = sample ? (Number.isFinite(elapsedSeconds) ? formatElapsedTime(elapsedSeconds) : '자료 ' + sample.sampleId + ' · 시각 정보 없음')
           + workspace.getSourceColumns().filter(c => !['sampleId', 'pointRecordId', 'receivedAt'].includes(c.id)).map(c => { const cell = readCell(sample, c.id); return ' · ' + c.name + ' ' + (cell.reason ?? formatCalculated(cell.value) + (c.unit ? ' ' + c.unit : '')); }).join('')
           : copy.analysis.cursorHint;
@@ -395,6 +404,7 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
     $('apply-new-data').hidden = !waiting; $('apply-new-data').disabled = !saved.writable || !waiting;
   }
   function reset() {
+    centripetal.reset();
     sources.clear(); sourceOptionsKey = ''; originLink = null; inspectedKey = null; dialogs.dispose();
     transitions.forEach(transition => transition.cancel());
     clearTimeout(layoutTimer); layoutTimer = null;
@@ -416,12 +426,12 @@ export function createAnalysisView(root, { onError, onExport = (_kind, _anchor) 
       } else if (requestedSource && requestedSource !== sourceId) act(() => switchSource(requestedSource));
       else render();
     },
-    flush: () => reflection.flush(), getWorkspace: () => workspace, updateStatus, hasGraph: () => Boolean(workspace && (task !== 'interpretation' || workspace.getReflectionModel())),
+    flush: () => reflection.flush() && centripetal.flush(), getWorkspace: () => workspace, updateStatus, hasGraph: () => Boolean(workspace && (task !== 'interpretation' || workspace.getReflectionModel())),
     exportPng: name => {
       const model = task === 'interpretation' ? workspace?.getReflectionModel() : workspace?.getGraphData();
       return exportAnalysisPng(model, { name, theme });
     },
     reset,
-    dispose() { reset(); transitions.forEach(transition => transition.dispose()); transitions.clear(); events.abort(); table.dispose(); },
+    dispose() { reset(); centripetal.dispose(); transitions.forEach(transition => transition.dispose()); transitions.clear(); events.abort(); table.dispose(); },
   };
 }

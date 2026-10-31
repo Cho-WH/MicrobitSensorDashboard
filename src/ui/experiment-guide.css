@@ -3,7 +3,13 @@
 .measurement-heading-actions a { color: var(--sl-muted); font-size: 0.8125rem; }
 .measurement-heading-actions button { gap: 8px; font-size: 0.8125rem; padding: 9px 13px; }
 .measurement-heading-actions svg { width: 17px; height: 17px; flex-shrink: 0; }
-#show-experiment-guide { display: inline-flex; align-items: center; gap: 8px; font-family: inherit; font-size: 0.8125rem; font-weight: 600; line-height: 1.4; letter-spacing: normal; color: var(--sl-navy); }
+.lab-brand:has(#show-experiment-guide:not([hidden])) { gap:var(--sl-space-2); }
+#show-experiment-guide { flex-shrink:0; white-space:nowrap; }
+#experiment-guide-label-compact { display:none; }
+@media(max-width:760px) {
+  #show-experiment-guide[data-compact] #experiment-guide-label { display:none; }
+  #show-experiment-guide[data-compact] #experiment-guide-label-compact { display:inline; }
+}
 
 .experiment-guide { height:min(800px,calc(100dvh - 40px)); }
 .experiment-guide-single { height:fit-content; }
@@ -18,6 +24,8 @@
 :root[data-visual-theme="luminous"] .experiment-guide-pages button[aria-current] { border-bottom-color:var(--sl-tab-line); }
 .experiment-guide .ui-dialog-body { padding-top:24px; }
 .experiment-guide-page { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 30px; min-height: 345px; }
+.experiment-guide-page.experiment-guide-text { grid-template-columns:minmax(0,1fr); min-height:0; align-content:start; }
+.experiment-guide-intro { margin:0 0 22px; font-size:0.8125rem; line-height:1.75; color:var(--sl-muted); }
 .experiment-guide-visual { margin: 0; display: flex; flex-direction: column; }
 .experiment-guide-image { display: block; width: 100%; height: auto; min-height: 0; margin: auto 0; border-radius: 8px; object-fit: contain; }
 .experiment-guide-visual figcaption { padding: 12px 4px 0; font-size: 0.6875rem; line-height: 1.6; color: var(--sl-muted); text-align: center; word-break: keep-all; }
@@ -36,7 +44,10 @@
 .experiment-guide-paging button:first-child { justify-self: start; }
 .experiment-guide-paging button:last-child { justify-self: end; }
 .experiment-guide-count { font-size: 0.75rem; color: var(--sl-muted); font-variant-numeric: tabular-nums; }
-.experiment-guide-options { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
+.experiment-guide-options { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 16px; margin-top:12px; }
+.experiment-guide-single .ui-dialog-footer { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:8px 16px; }
+.experiment-guide-single .experiment-guide-paging { grid-column:2; grid-row:1; }
+.experiment-guide-single .experiment-guide-options { grid-column:1; grid-row:1; flex-direction:column-reverse; align-items:flex-start; margin-top:0; }
 .experiment-guide-preference { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--sl-muted); cursor: pointer; }
 .experiment-guide-preference input { width: 16px; height: 16px; min-height: 16px; margin: 0; padding: 0; accent-color: var(--sl-selection-text); }
 .experiment-guide-recording { font-size: 0.6875rem; color: var(--sl-muted); margin: 0; }
@@ -54,6 +65,7 @@
   .experiment-guide-image { max-height: 260px; }
   .experiment-guide-visual figcaption { padding-top: 8px; }
   .experiment-guide-copy h3 { font-size: 1.3125rem; margin-bottom: 18px; }
+  .experiment-guide-single .ui-dialog-footer { column-gap:8px; }
   .experiment-guide-paging { gap: 8px; }
   .experiment-guide-paging button { min-width: 94px; padding: 10px; }
 }

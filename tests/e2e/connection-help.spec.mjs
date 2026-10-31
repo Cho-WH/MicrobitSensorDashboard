@@ -1,3 +1,4 @@
+import { chooseTourDevice } from './support/tour.mjs';
 import { test, expect } from '@playwright/test';
 
 for (const width of [1366, 390]) test(`shared connection help layout at ${width}px${width===390?" and recording flow":""}`, async ({ page }) => {
@@ -34,6 +35,7 @@ for (const width of [1366, 390]) test(`shared connection help layout at ${width}
     return;
   }
   await page.locator('[data-guide-action="connect"]').click();
+  await chooseTourDevice(page);
   await page.clock.runFor(3100);
   await expect(page.locator('[data-guide-step="reception"]')).toHaveAttribute('data-complete','true');
   await page.locator('#to-measure').click();

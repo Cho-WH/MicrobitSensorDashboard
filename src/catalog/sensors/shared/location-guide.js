@@ -2,7 +2,7 @@
 /** @returns {import('../../../guide/types.js').ExperimentGuide} */
 export function createLocationGuide({ id, name, image, alt, location, tip, additionalTips = [], front = false }) {
   return {
-    id: `${id}-location`, version: 1, label: '센서 위치', buttonLabel: '센서 위치', placement: 'measurement-tabs',
+    id: `${id}-location`, version: 1, label: '센서 위치', buttonLabel: '센서 위치',
     title: `${name} 센서는 정확히 어디 있나요?`,
     pages: [{ label: '센서 위치', title: location,
       image: new URL(`../../../../public/assets/devices/posters/${image}.png`, import.meta.url).href,

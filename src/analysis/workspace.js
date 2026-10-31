@@ -9,12 +9,13 @@ import { captureEvidence, evidenceKey, evidenceGraph, validateAnswers, validateR
 
 import { getSourceColumns, readCell } from '../domain/columns.js';
 import { pointSourceRows } from './data-source.js';
+import { supportsCentripetal, blankBook, activeSheet, editCentripetal, validateCentripetal, validateCentripetalContext, intervalModel, calculationModel } from './activities/centripetal.js';
 
 const copy = structuredClone;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const orderedIds = ids => [...new Set(ids)].sort((a, b) => a - b);
 const historyState = state => ({ appliedIds: state.appliedIds, appliedScope: state.appliedScope, analysisRange: state.analysisRange, exclusions: state.exclusions, calculatedColumns: state.calculatedColumns, graph: state.graph,
-  regression: { enabled: state.regression?.enabled === true } });
+  regression: { enabled: state.regression?.enabled === true }, centripetal: state.centripetal ?? null });
 const inputState = state => {
   const applied = new Set(state.appliedIds);
   const byId = new Map(state.calculatedColumns.map(c => [c.id, c])), needed = new Set();
@@ -43,6 +44,7 @@ export function createWorkspace({ store, context: suppliedContext, sourceId = st
   const getTimeOrigin = (_source = samples) => timeOrigin(rawSamples, snapshot.run);
   const baseContext = suppliedContext ?? snapshot.run.context;
   let context = input ? {...baseContext, analysisSource: 'points', manualColumns: input.manualColumns} : baseContext;
+  validateCentripetalContext(context);
   let sourceColumns = getSourceColumns(context);
   const defaultGraph = validateGraph(sourceId === 'points' ? {
     xColumnId: input.manualColumns[0]?.id ?? (samples.some(s => Number.isFinite(s.receivedAt)) ? 'receivedAt' : 'sampleId'),
@@ -66,6 +68,15 @@ export function createWorkspace({ store, context: suppliedContext, sourceId = st
     selectedIds: [], appliedIds: initialIds, appliedScope: 'all', exclusions: [],
     calculatedColumns: [], graph: sourceId === 'points' ? copy(defaultGraph) : null, regression: null, note: '',
   };
+  if(state.centripetal)state.centripetal=validateCentripetal(state.centripetal,rawSamples,context,state.tableLastSampleId);
+  if (!state.centripetal && supportsCentripetal(context)) {
+    state.centripetal = blankBook();
+    const radius = context.setup?.centripetalRadiusM;
+    if (typeof radius === 'string' && radius.length <= 80) {
+      state.centripetal.sheets[0].inputs.radius = radius;
+      if (radius) state.centripetal.sheets[0].sources.radius = 'manual';
+    }
+  }
   // Ignore legacy scroll positions; scrolling belongs only to the live table view.
   delete state.table.scrollTop;
   state.appliedThroughSampleId ??= state.tableLastSampleId;
@@ -334,7 +345,47 @@ export function createWorkspace({ store, context: suppliedContext, sourceId = st
     return commit({ ...copy(state), reflection: { ...copy(state.reflection), evidence: captureEvidence(state, defaultGraph) } });
   }
 
+  let activityCache = null;
+  function getCentripetalModel(frozen = false, sheetId = null) {
+    if (!supportsCentripetal(context)) return null;
+    const book = state.centripetal ?? blankBook();
+    const sheet = frozen ? book.evidence?.sheet : book.sheets.find(sheet=>sheet.id===sheetId) ?? activeSheet(book);
+    if (!sheet) return null;
+    const exclusions = frozen ? book.evidence.excludedIds : state.exclusions;
+    const key = JSON.stringify([sheet.startId,sheet.endId,exclusions,state.tableLastSampleId,store.getState().eventsVersion]);
+    if (activityCache?.key !== key) activityCache = {key, interval: intervalModel(sheet,
+      rawSamples.filter(s=>s.sampleId<=state.tableLastSampleId), store.getEvents(Infinity), exclusions)};
+    const interval = structuredClone(activityCache.interval);
+    return {book:structuredClone(book), sheet:structuredClone(sheet), interval, ...calculationModel(sheet,interval)};
+  }
+  function editActivity(action) {
+    if (!supportsCentripetal(context)) throw new Error('구심가속도 활동의 연속 기록에서 사용하세요.');
+    if (action.type === 'mean' && !Number.isFinite(getCentripetalModel().interval.mean)) throw new Error('평균을 구할 수 있는 연속 구간을 선택하세요.');
+    if(action.type==='range'){
+      const ends=['startId','endId'].map(key=>rawSamples.find(s=>s.sampleId===action[key]&&s.sampleId<=state.tableLastSampleId));
+      if(ends.some(s=>!s||readCell(s,'magneticStrength').reason))throw new Error('구간 양 끝의 자기장값이 유효하지 않아요. 다른 구간을 선택하세요.');
+      if(!(ends[1].sampleId>ends[0].sampleId&&ends[1].receivedAt>ends[0].receivedAt))throw new Error('서로 다른 두 표본을 포함하는 구간을 선택하세요.');
+    }
+    if (action.type === 'endpoint') {
+      const sample = rawSamples.find(s=>s.sampleId===action.sampleId && s.sampleId<=state.tableLastSampleId);
+      if (!sample || readCell(sample,'magneticStrength').reason) throw new Error('유효한 자기장 원자료 표본을 선택하세요.');
+    }
+    const next = editCentripetal(state.centripetal,action);
+    const validated = validateCentripetal(next,rawSamples,context,state.tableLastSampleId);
+    return commit({...copy(state),centripetal:validated},'활동지 변경');
+  }
+  function captureActivity() {
+    const model = getCentripetalModel();
+    if (!model) throw new Error('활동지를 먼저 여세요.');
+    if (!model.comparisonReady) throw new Error('두 구심가속도를 입력하고 바뀐 조건의 계산을 확인해 주세요.');
+    if (model.interval.problem) throw new Error(model.interval.problem);
+    const book = model.book;
+    book.evidence = {sheet:copy(model.sheet),capturedAt:Date.now(),policy:'linear-time-v1',excludedIds:state.exclusions.map(e=>e.sampleId)};
+    return commit({...copy(state),centripetal:book},'활동지 근거 보관');
+  }
+
   return {
+    getCentripetalModel, editActivity, captureActivity,
     getState: () => ({ ...copy(state), sourceId, sourceColumns: copy(sourceColumns), channels: copy(context?.channels ?? []), context: copy(context), calculationTemplates: copy(calculationTemplates), questions: copy(questions), defaultGraph: copy(defaultGraph) }), isWritable: () => writable, getLoadedCount: () => loadedCount,
     pendingChanges, revealSample,
     syncExplicitChanges() {

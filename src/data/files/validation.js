@@ -9,6 +9,7 @@ import { LIMITS } from '../../domain/limits.js';
 import { normalizeFilter } from '../../analysis/table-data.js';
 import { validateAnalysisRange } from '../../analysis/scope.js';
 import { validateReflection, REFLECTION_QUESTIONS } from '../../analysis/reflection.js';
+import { validateCentripetal, validateCentripetalContext } from '../../analysis/activities/centripetal.js';
 
 export const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
@@ -34,6 +35,7 @@ export function checkJson(value, depth = 0) {
 
 // These are display data, never a source of executable device or activity policies.
 function validateContextContent(context, imported) {
+  validateCentripetalContext(context);
   const expectedQuestionIds = new Set(REFLECTION_QUESTIONS.map(q => q.id));
   const textArray = value => Array.isArray(value) && value.every(item => typeof item === 'string');
   for (const owner of [context, context.sensor, context.activity].filter(Boolean)) {
@@ -180,6 +182,7 @@ export function validateWorkspace(input, { run, samples, pointRecords = [] }, so
   requireValue(work.appliedScope !== 'all' || (appliedIds.size === allIds.length && allIds.every(id => appliedIds.has(id))), '전체 분석 자료의 범위를 확인하세요.');
   if (sourceId === 'points') requireValue(work.tableLastSampleId <= work.inputSnapshot.throughSampleId, '점 분석의 읽기 경계를 확인하세요.');
   work.analysisRange = validateAnalysisRange(work.analysisRange, samples, work);
+  if (work.centripetal != null) work.centripetal = validateCentripetal(work.centripetal, samples, context, work.tableLastSampleId);
   if (work.reflection?.answers != null) {
     const questionIds = new Set((context.questions ?? context.activity?.questions ?? REFLECTION_QUESTIONS).map(q => q.id));
     requireValue(object(work.reflection.answers) && Object.keys(work.reflection.answers).every(id => questionIds.has(id)), '해석 답변의 질문 ID를 확인하세요.');

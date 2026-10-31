@@ -1,3 +1,4 @@
+import { chooseTourDevice } from './support/tour.mjs';
 import { test, expect } from '@playwright/test';
 
 // Protect the external sensor's route, optional probe and shared preparation viewer.
@@ -28,6 +29,7 @@ for (const width of [1440, 320]) {
     }
     await page.locator('[data-guide-action="program-confirm"]').click();
     await page.locator('[data-guide-action="connect"]').click();
+  await chooseTourDevice(page);
     await expect(page.locator('[data-guide-step="reception"]')).toHaveAttribute('data-complete', 'true');
     await page.locator('#to-measure').click();
     const dialog = page.locator('.experiment-guide');

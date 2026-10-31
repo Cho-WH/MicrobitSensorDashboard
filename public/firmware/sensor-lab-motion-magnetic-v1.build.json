@@ -1,0 +1,57 @@
+{
+  "id": "sensor-lab-motion-magnetic",
+  "version": 1,
+  "target": "pxt-microbit@9.1.1",
+  "compiler": "pxt-core@13.0.1",
+  "cli": "pxt@0.5.1",
+  "targetCommit": "59408da502b825423ad2b0180bcf105927e7def0",
+  "source": "firmware/examples/motion-magnetic.js",
+  "sourceSha256": "21ffd55a6f991fccc76c184b1e7b28a9d1028932c34e3100544723c297355b20",
+  "configSha256": "aacf23dfb5004d93b35d496d422356c5bf366fe8dc9141f5a6a4652a06088365",
+  "hexSha256": "d5102a19ed35aaccb10a126d846294bc9f4e0743398a15164861fc51aa3970e1",
+  "digestMode": "utf8-crlf-to-lf",
+  "bytes": 1365004,
+  "runtimeFiles": [
+    {
+      "compileSha": "f3e9d4be9e9c5a50db8ed7b91fdee367ea24a6dce60df09c5ea91bffb221a3bf",
+      "file": "f3e9d4be9e9c5a50db8ed7b91fdee367ea24a6dce60df09c5ea91bffb221a3bf.hex",
+      "sha256": "326451752effa4f66f7099ef136aed07eda4df4b27aaf37a6793831b3787c171",
+      "bytes": 638904,
+      "retrievedAt": "2026-10-26T10:22:10.200Z",
+      "variant": "mbdal"
+    },
+    {
+      "compileSha": "5f21a4c8e2b240e5b5001ac9e353d9651ec4fdba904c7907fad37a78d76ea6cf",
+      "file": "5f21a4c8e2b240e5b5001ac9e353d9651ec4fdba904c7907fad37a78d76ea6cf.hex",
+      "sha256": "1fb0a0ef583d3e82ed62607e8a66a337170258aa85666c5dd2b5a96ebde944fd",
+      "bytes": 889854,
+      "retrievedAt": "2026-10-26T10:22:10.284Z",
+      "variant": "mbcodal"
+    }
+  ],
+  "protocol": {
+    "codecId": "motion-magnetic-csv-v1",
+    "startCommand": "prepare",
+    "sampleIntervalMs": 100
+  },
+  "embeddedSourceMatches": true,
+  "embeddedConfigMatches": true,
+  "officialV2Reader": true,
+  "hardwareVerified": false,
+  "sourceFiles": [
+    {
+      "name": "sensor-display.ts",
+      "source": "firmware/common/sensor-display.ts",
+      "sha256": "b659a9099d5e16ffa2981e736cd52185d7a358869f947b2149ee8cf8bbf5e782"
+    }
+  ],
+  "downloadSourceSha256": "d42eac2b878197adb725ab5abcfee676a3fad985f538c75cd7f60d9c5ceed37b",
+  "release": {
+    "profile": "common-runtime-b",
+    "build": "dev/firmware/build.mjs",
+    "publisher": "dev/firmware/publish.mjs",
+    "partialSha256": "2ce132ebae231436824aaa4426edfa117a49bf72b6d0fcf0075e6d1dc2b4e2e2",
+    "runtimeSha256": "01170c7b83185c2d2e49eb83432a893511f160a67af90c0baf20de5841487da2",
+    "hardwareScope": "automated build and protocol checks only; V1 display and device acceptance pending"
+  }
+}

@@ -1,3 +1,4 @@
+import { texText, texNumber, valueWithUnit, quotientUnit } from './scientific-notation.js';
 // Adapted from Cho-WH/bme280 gay-lussac/ui/trend-summary.js at 59c5c149450f970bace2deaa183857c275595853.
 import { formatCalculated } from '../analysis/calculations.js';
 import { clockTime, formatClockTime } from '../analysis/clock-time.js';
@@ -19,8 +20,8 @@ export function trendSummary(model) {
   if (fit.reason) return { equation: trendReasons[fit.reason], detail: `추세선에 사용한 자료 ${fit.count}개`, metrics: [] };
   const time = regression.timeOrigin !== null;
   const equation = `${model.yLabel} = ${number(fit.slope)} × ${time ? '경과 시간(초)' : model.xLabel} ${fit.intercept < 0 ? '−' : '+'} ${number(Math.abs(fit.intercept))}`;
-  const slopeUnit = model.xUnit && model.yUnit ? `${model.yUnit}/${model.xUnit}` : '';
-  const withUnit = (value, unit) => `${number(value)}${unit ? ' ' + unit : ''}`;
+  const slopeUnit = quotientUnit(model.yUnit,model.xUnit);
+  const withUnit = (value, unit) => valueWithUnit(number(value),unit);
   const items = [{ label: '추세선에 사용한 자료', value: `${fit.count.toLocaleString()}개` },
     { label: '기울기', value: withUnit(fit.slope, slopeUnit) }, { label: 'y절편', value: withUnit(fit.intercept, model.yUnit) },
     { label: 'R²', value: fit.rSquared === null ? '—' : number(fit.rSquared) }];
@@ -32,5 +33,6 @@ export function trendSummary(model) {
   }
   if (fit.rSquaredReason) metrics.push(trendReasons[fit.rSquaredReason]);
   else if (fit.xInterceptReason) metrics.push(trendReasons[fit.xInterceptReason]);
-  return { equation, detail: metrics.join(' · '), metrics: items };
+  const equationTex=texText(model.yLabel)+'='+texNumber(Number(fit.slope.toPrecision(6)))+'\\times '+texText(time?'경과 시간(초)':model.xLabel)+(fit.intercept<0?'-':'+')+texNumber(Number(Math.abs(fit.intercept).toPrecision(6)));
+  return { equation, equationTex, detail: metrics.join(' · '), metrics: items };
 }

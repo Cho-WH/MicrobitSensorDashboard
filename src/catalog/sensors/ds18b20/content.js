@@ -18,7 +18,7 @@ export const equipment = [
 export { wiring } from './wiring.js';
 export const experimentGuide = {
   id: 'ds18b20-probe', version: 1, title: '방수 프로브로 온도 측정하기',
-  label: '측정 안내', buttonLabel: '측정 안내', placement: /** @type {const} */ ('measurement-tabs'),
+  label: '측정 안내', buttonLabel: '측정 안내',
   pages: [{ label: '프로브 사용', title: '프로브를 놓고 값이 안정되면 기록하세요',
     image: probeIllustration.src, alt: probeIllustration.alt, caption: '전원·접지: 3V·GND 공통 / 데이터: 온도 1 → P1 · 온도 2 → P2',
     instructions: [

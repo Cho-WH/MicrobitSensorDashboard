@@ -1,6 +1,7 @@
 /* Default app entry. Each component owns its final rules; preparation is a
    separate static link so the development A archive can substitute only it. */
 @import url('./tokens.css');
+@import url('./scientific-notation.css');
 @import url('./base.css');
 @import url('./disclosure-menu.css');
 @import url('./experiment-guide.css');
@@ -10,8 +11,10 @@
 @import url('./dialogs.css');
 @import url('./action-help.css');
 @import url('./controls.css');
+@import url('./chart-axis-controls.css');
 @import url('./dialog-shell.css');
 @import url('../app/lab.css');
 @import url('./data-table.css');
 @import url('./analysis.css');
+@import url('./centripetal/style.css');
 @import url('./share.css');

@@ -7,6 +7,8 @@ import { trendSummary } from './trend-summary.js';
 import { channelColor as resolveChannelColor, channelTextColor, analysisSeriesColors } from './visual-theme.js';
 import { groupChartAxes } from './chart-axes.js';
 import { createElapsedAxis } from './elapsed-axis.js';
+import { createAxisRangeState, axisRangeKey, axisRangePolicy, sampleExtent } from './chart-ranges.js';
+import { createChartAxisControls } from './chart-axis-controls.js';
 
 // Keep axis lettering at its original size; only the plot bitmap stretches.
 function captureLayoutPreview(chart) {
@@ -221,13 +223,32 @@ export function exportAnalysisPng(model, { name = '', selectedIds = [], theme = 
 }
 
 /** @param {HTMLCanvasElement} canvas @param {any} options */
-export function createChartView(canvas, { context, channels, displayValue = (value, _channel) => value, inspect = false, legendToggle = true, theme = null, eventMarkers = true, onCursor = () => {}, onLayout = () => {} } = {}) {
+export function createChartView(canvas, { context, channels, displayValue = (value, _channel) => value, axisPolicies = {}, axisState = createAxisRangeState(), inspect = false, tooltip = !inspect, legendToggle = true, theme = null, eventMarkers = true, responsive = true, pixelRatio = undefined, onCursor = () => {}, onLayout = () => {} } = {}) {
   if (!globalThis.Chart) throw new Error('그래프 도구를 불러오지 못했어요. 화면을 새로 열어 주세요.');
   const sourceChannels = getSourceColumns(channels ?? context).filter(c => !['sampleId', 'pointRecordId', 'receivedAt'].includes(c.id) && !c.manual && c.supported !== false);
   const colors = ['#d67b40', '#197f88', '#8d65b1', '#43854d'];
   const channelColor = (c, i) => theme ? resolveChannelColor(theme,c,i) : c.color ?? colors[i % colors.length];
   const axisGroups = groupChartAxes(sourceChannels);
   const axisIds = new Map(axisGroups.flatMap(group=>group.channels.map(channel=>[channel.id,group.id])));
+  const axisModels = axisGroups.map(group => {
+    const native = group.channels.map(channel => context?.channels?.find(item => item.id === channel.id) ?? channel);
+    return { group, channels:native, key:axisRangeKey(native), policy:axisRangePolicy(native,axisPolicies), visible:null };
+  });
+  let rangeStates = [], ready = false;
+  const controls = createChartAxisControls(canvas, axisGroups, id => {
+    const model = axisModels.find(item => item.group.id === id);
+    axisState.toggle(model.key); applyRanges(); chart.update('none');
+  });
+  function applyRanges() {
+    rangeStates = axisModels.map(model => {
+      const state = axisState.view(model.key, model.visible, model.policy.detailSpan);
+      const options = chart.options.scales[model.group.id], channel = model.channels[0];
+      options.min = state.bounds ? displayValue(state.bounds.min, channel) : undefined;
+      options.max = state.bounds ? displayValue(state.bounds.max, channel) : undefined;
+      return { ...state, hasData:Boolean(model.visible) };
+    });
+  }
+  function layout() { if (ready) controls.layout(chart, rangeStates); onLayout(); }
   const scales = Object.fromEntries(axisGroups.map((group, i) => [group.id, {
     type: 'linear', position: i % 2 ? 'right' : 'left',
     title: { display: true, text: group.label,
@@ -256,16 +277,16 @@ export function createChartView(canvas, { context, channels, displayValue = (val
           const x = c.scales.x.getPixelForValue(cursor ?? pinnedCursor), { top, bottom } = c.chartArea, ctx = c.ctx;
           ctx.save(); ctx.strokeStyle = '#718b94'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); ctx.restore();
         }
-        onLayout();
+        layout();
       },
-    }] : [{id:'measurement-layout',afterDraw:()=>onLayout()}],
+    }] : [{id:'measurement-layout',afterDraw:()=>layout()}],
     data: { datasets: sourceChannels.map((c, i) => ({ label: columnLabel(c), yAxisID: axisIds.get(c.id), borderColor: channelColor(c, i), backgroundColor: channelColor(c, i), data: [] })) },
     options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      layout: {padding: {bottom: 0}},
+      responsive, devicePixelRatio: pixelRatio, maintainAspectRatio: false, animation: false,
+      layout: {padding: {top: controls.active ? 44 : 0, bottom: 0}},
       parsing: false, spanGaps: false,
       elements: { point: { radius: 0, hitRadius: 8 }, line: { borderWidth: 2 } },
-      plugins: { tooltip: { enabled: !inspect, callbacks: {
+      plugins: { tooltip: { enabled: Boolean(tooltip), ...(tooltip === 'time' ? {mode:'index',axis:'x',intersect:false,position:'nearest'} : {}), callbacks: {
         title: items => hasTime ? formatElapsedTime(items[0]?.raw.elapsedSeconds) : '자료 ' + items[0]?.raw.sampleId,
       } }, legend: { display: inspect || !theme, position: 'bottom', labels: { usePointStyle: true, boxWidth: 7,
         color: theme?.text ?? '#53657d', font: { size: 12, family: theme?.font } } } },
@@ -281,9 +302,11 @@ export function createChartView(canvas, { context, channels, displayValue = (val
       },
     },
   });
+  ready = true;
   if (!legendToggle) chart.options.plugins.legend.onClick = () => {};
   return {
-    render(points, now, { range = 'recent', events = [], origin = undefined, connectGaps = false, nowUtc = Date.now(), bottomPadding = 0, pointsOnly = false, focusSampleId = null } = {}) {
+    render(points, now, { range = 'recent', events = [], origin = undefined, timeRange = null, connectGaps = false, nowUtc = Date.now(), bottomPadding = 0, pointsOnly = false, focusSampleId = null, referencePoints = points, scopeKey = undefined } = {}) {
+      axisState.setScope(scopeKey);
       chart.options.layout.padding.bottom = bottomPadding;
       const relative = point => Number.isFinite(point.monotonicAt) ? (point.monotonicAt - now) / 1000 : (point.receivedAt - nowUtc) / 1000;
       const timedPoints = points.filter(p => Number.isFinite(p.receivedAt));
@@ -298,6 +321,12 @@ export function createChartView(canvas, { context, channels, displayValue = (val
         || (event.type==='reception-change'&&event.payload?.state==='stale')).map(event=>event.receivedAt).filter(Number.isFinite).sort((a,b)=>a-b);
       chart.options.scales.x.min = whole ? undefined : -60;
       chart.options.scales.x.max = whole ? undefined : 0;
+      // Keep the original elapsed-time origin while filling the plot with the
+      // requested interval; automatic rounded ticks can otherwise leave it small.
+      if (whole && hasTime && Number.isFinite(timeRange?.startAt) && Number.isFinite(timeRange?.endAt) && timeRange.endAt > timeRange.startAt) {
+        chart.options.scales.x.min = (timeRange.startAt - origin) / 1000;
+        chart.options.scales.x.max = (timeRange.endAt - origin) / 1000;
+      }
       const focused = points.find(p => p.sampleId === focusSampleId);
       pinnedCursor = focused ? hasTime ? (focused.receivedAt - origin) / 1000 : focused.sampleId : null;
       if (focused) {
@@ -340,7 +369,16 @@ export function createChartView(canvas, { context, channels, displayValue = (val
             : relative(nearest) - (nearest.receivedAt - e.receivedAt) / 1000;
           return x < -60 && !whole ? [] : [{ x, y: displayValue(readCell(nearest, sourceChannels[0]?.id).value,sourceChannels[0]), elapsedSeconds: (e.receivedAt - origin) / 1000 }];
         }) };
-      chart.update('none');
+      const {min:xMin,max:xMax} = chart.options.scales.x;
+      const fittingPoints = currentPoints.filter(point => {
+        const x = !hasTime ? point.sampleId : whole ? (point.receivedAt-origin)/1000 : relative(point);
+        return (xMin === undefined || x >= xMin) && (xMax === undefined || x <= xMax);
+      });
+      for (const model of axisModels) {
+        model.visible = sampleExtent(fittingPoints, model.channels, hasTime);
+        axisState.update(model.key, sampleExtent(referencePoints, model.channels, hasTime), model.policy);
+      }
+      applyRanges(); chart.update('none');
     },
     resize() { chart.resize(); },
     timeGeometry() {
@@ -351,6 +389,6 @@ export function createChartView(canvas, { context, channels, displayValue = (val
         time: pixel => chart.scales.x.getValueForPixel(pixel) * 1000 + timeOrigin };
     },
     exportPng() { return chart.toBase64Image(); },
-    dispose() { chart.destroy(); },
+    dispose() { controls.dispose(); chart.destroy(); },
   };
 }

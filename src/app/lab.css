@@ -26,6 +26,11 @@
 .lab-identity h1 { font-size:1.25rem; margin:0px; white-space:nowrap; }
 .lab-identity p { color:var(--sl-muted); margin:0px; }
 .lab-brand { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.tour-status { color:var(--sl-muted); font-size:var(--sl-type-small); font-weight:400; }
+.tour-device-dialog { width:min(440px,calc(100vw - 32px)); }
+.tour-device-option { display:flex; align-items:center; gap:12px; padding:16px; border:1px solid var(--sl-line); border-radius:var(--sl-radius-control); cursor:pointer; }
+.tour-device-option:has(input:checked) { background:var(--sl-selected-bg); border-color:var(--sl-navy); }
+.tour-device-option input { width:18px; height:18px; flex:none; }
 .lab-shell { max-width:1800px; min-height:65vh; }
 .lab-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 20px; margin-bottom:16px; }
 .lab-nav { flex-wrap:wrap; }
@@ -81,7 +86,7 @@
 [data-visual-theme="luminous"] .lab-status { display:flex; flex-wrap:wrap; width:auto; margin:0px; gap:var(--sl-space-2); font-size:var(--sl-type-small); }
 [data-visual-theme="luminous"] .lab-status strong { margin:0px 0px 0px 8px; min-width:56px; font-weight:550; }
 [data-visual-theme="luminous"] #file-tools { gap:var(--sl-space-2); flex:0 0 auto; flex-wrap:nowrap; justify-content:flex-end; }
-[data-visual-theme="luminous"] #file-tools button { font-size:var(--sl-type-small); min-height:var(--sl-target-compact); padding:7px 10px; }
+[data-visual-theme="luminous"] :is(#file-tools button, #show-experiment-guide) { font-size:var(--sl-type-small); min-height:var(--sl-target-compact); padding:7px 10px; }
 [data-visual-theme="luminous"] #file-tools .luminous-export-options button { display:block; width:100%; text-align:left; border:0px; background:rgb(243, 246, 251); min-height:var(--sl-target); }
 [data-visual-theme="luminous"] #new-experiment { display:none; }
 [data-visual-theme="luminous"] .lab-shell { padding:0px; margin:0px; }
@@ -138,7 +143,7 @@
   .luminous-logo { padding:var(--sl-space-4); }
   .luminous-brand-text { flex:1; }
   .mobile-file-slot { display:flex; margin-left:auto; }
-  [data-visual-theme="luminous"] .mobile-file-slot #open-file { padding:6px 8px; min-height:var(--sl-target); font-size:var(--sl-type-small); white-space:nowrap; }
+  [data-visual-theme="luminous"] :is(.mobile-file-slot #open-file, #show-experiment-guide) { padding:6px 8px; min-height:var(--sl-target); font-size:var(--sl-type-small); white-space:nowrap; }
   .luminous-orbit, .luminous-signature { display:none; }
   [data-visual-theme="luminous"] .lab-nav { display:grid; grid-template-columns:repeat(5, minmax(0px, 1fr)); padding:0px 4px 6px; gap:2px; }
   [data-visual-theme="luminous"] .lab-nav button { justify-content:center; flex-direction:column; gap:4px; padding:6px 2px; font-size:var(--sl-type-small); min-width:0; min-height:52px; white-space:nowrap; }
@@ -164,3 +169,11 @@
 @media (max-width: 360px) {
   [data-visual-theme="luminous"] .lab-nav button { font-size:var(--sl-type-caption); }
 }
+
+/* First recorded data: one cue, without moving focus or layout. */
+.lab-nav .analysis-ready-cue { animation:analysis-ready-glow 1s ease-out; }
+@keyframes analysis-ready-glow {
+  0%,100% { box-shadow:0 0 0 0 transparent; }
+  40% { box-shadow:0 0 0 3px color-mix(in srgb, var(--sl-selection) 24%, transparent), 0 0 16px color-mix(in srgb, var(--sl-selection) 35%, transparent); }
+}
+@media (prefers-reduced-motion:reduce) { .lab-nav .analysis-ready-cue { animation:none; } }

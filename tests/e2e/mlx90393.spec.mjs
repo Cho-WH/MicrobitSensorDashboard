@@ -1,10 +1,12 @@
+import { installSimulatedHardware } from './support/tour.mjs';
 import { test, expect } from '@playwright/test';
 
 for (const width of [1440, 320]) {
-  test(`MLX settings and four-channel recording at ${width}px`, async ({ page }, testInfo) => {
+  test(`MLX settings and four-channel recording at ${width}px`, async ({ page, context }, testInfo) => {
+    await installSimulatedHardware(context,'mlx90393');
     await page.setViewportSize({ width, height: width === 320 ? 740 : 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/sensors/mlx90393/?mock=1&view=prepare');
+    await page.goto('/sensors/mlx90393/?view=prepare');
     await page.locator('[data-guide-action="confirm"]').click();
     await expect(page.locator('.guide-wiring')).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('wiring.png'), fullPage: true });

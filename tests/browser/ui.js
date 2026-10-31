@@ -203,7 +203,9 @@ export async function runUiTests(report = (_message) => {}) {
     const dualPresentation=presentation(dualChart); view.exportPng('두 세로축');
     check(same(exported,dualPresentation),'두 세로축 PNG가 화면 자료·추세선과 다릅니다.');
     await click('#use-graph-for-reflection');
-    check($('#reflection-equation').textContent.includes('세로 성분') && $('#reflection-equation').textContent.includes('크기'),'해석 근거에서 한 축의 추세선이 누락되었습니다.');
+    const equations=$('#reflection-equation');
+    const equationDescription=equations.textContent+' '+[...equations.querySelectorAll('[role="img"]')].map(node=>node.getAttribute('aria-label')).join(' ');
+    check(['세로 성분','크기'].every(label=>equationDescription.includes(label)),'해석 근거에서 한 축의 추세선이 누락되었습니다.');
     await click('#reflection-back'); await click('#remove-right-axis');
     check($('#right-axis-controls').hidden && !dualChart.scales.yRight && !view.getWorkspace().getState().graph.right && document.activeElement===$('#add-right-axis'),'오른쪽 축 제거 후 차트·선택 UI·초점이 복원되지 않았습니다.');
     await click('#undo-analysis');

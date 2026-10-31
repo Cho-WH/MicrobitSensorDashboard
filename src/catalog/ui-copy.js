@@ -55,8 +55,8 @@ export const labDefaults = {
   },
   measurement: {
     current: '현재 실험', name: '실험 이름', namePlaceholder: '나의 센서 실험', prepare: '장비 준비 확인',
-    review: '준비 내용 다시 보기', channels: '그래프에 표시할 항목', channelsNote: '표시를 꺼도 모든 측정 항목은 기록돼요.', mock: '장치 없이 모의 측정하기',
-    start: '기록 시작', reconnect: '장치 다시 연결', pause: '기록 일시정지', resume: '기록 재개', finish: '기록 마치기', additional: '추가 측정', guide: '실험 방법 보기',
+    review: '준비 내용 다시 보기', channels: '그래프에 표시할 항목', channelsNote: '표시를 꺼도 모든 측정 항목은 기록돼요.', mock: '기기 없이 둘러보기',
+    start: '기록 시작', reconnect: '장치 다시 연결', pause: '기록 일시정지', resume: '기록 재개', finish: '기록 마치기', additional: '추가 측정', guide: '실험 방법 보기', guideCompact: '실험 방법',
     mockNotice: '모의 측정값입니다.',
     previewNote: recordingPreviewNote, count: '원자료 {count}개', stored: '보관한 자료', storedValues: '보관한 측정값', waiting: '수신 대기',
     chartTitle: '시간에 따른 변화', range: '표시 구간', recent: '최근 60초', all: '전체', allRecords: '전체 기록', allPreview: '전체 미리보기', chartSummary: '{range} · {count}개 표시',

@@ -56,6 +56,13 @@ Third-party files retain their upstream headers and license texts:
 - Papa Parse 5.7.0: MIT; `public/vendor/papaparse-LICENSE`.
 - Lucide SVG 0.468.0: ISC; `public/vendor/lucide-LICENSE`.
 - Project Nayuki QR generator: MIT header in `vendor/qrcodegen.js`.
+- MathJax source and MathJax TeX font 4.1.3: Apache-2.0;
+  `public/vendor/mathjax-LICENSE`. The local SVG bundle is generated from
+  `@mathjax/src` and `@mathjax/mathjax-tex-font`, pinned in `package-lock.json`.
+  Sources: [MathJax-src](https://github.com/mathjax/MathJax-src/tree/4.1.3)
+  and [MathJax-fonts](https://github.com/mathjax/MathJax-fonts).
+  The app-specific build selects TeX input, SVG output and the TeX glyphs;
+  see `dev/math/README.md` for modifications and reproduction.
 
 Exact local hashes, source URLs and modification flags are in `vendor/manifest.json`.
 TypeScript 5.9.3 is a development-only dependency pinned in `package-lock.json`.

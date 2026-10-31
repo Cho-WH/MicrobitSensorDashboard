@@ -290,7 +290,7 @@ export function createGuideView(host, callbacks = {}) {
     const leavingPanel=managed&&!presentation.hideValues&&preparationHost.contains(document.activeElement);
     preparationView?.render(facts,managed);
     const index=steps.findIndex(item=>item.id===selectedId), required=steps.filter(item=>item.required), completed=required.filter(item=>item.complete).length;
-    setText(status,`${facts.mock?labels.guide.mockPrefix:''}${state.ready?labels.guide.ready:state.canMeasure?labels.guide.canMeasure:formatCopy(labels.guide.progress,{count:completed,total:required.length})}`);
+    setText(status,`${facts.mock&&!facts.tour?labels.guide.mockPrefix:''}${state.ready?labels.guide.ready:state.canMeasure?labels.guide.canMeasure:formatCopy(labels.guide.progress,{count:completed,total:required.length})}`);
     shell.dataset.mode=quick?'quick':isSummary?'summary':step?.group??'';
     quickButton.hidden=isSummary; quickButton.disabled=locked(); quickButton.textContent=quick?labels.guide.restart:labels.guide.quick;
     for (const [group,node] of groupButtons) {
@@ -483,11 +483,11 @@ export function createGuideView(host, callbacks = {}) {
     buttons.get('install').classList.toggle('primary',!wirelessSuccess); buttons.get('install').classList.toggle('quiet-button',wirelessSuccess);
     buttons.get('install').disabled ||= programmer.usbRequired===true;
     buttons.get('cancel-install').disabled=false;
-    buttons.get('connect').disabled ||= facts.canConnect===false; buttons.get('connect').textContent=facts.canReconnect?labels.common.chooseDevice:facts.mock?labels.common.mockConnect:labels.common.connect;
+    buttons.get('connect').disabled ||= facts.canConnect===false; buttons.get('connect').textContent=facts.canReconnect?labels.common.chooseDevice:facts.mock&&!facts.tour?labels.common.mockConnect:labels.common.connect;
     buttons.get('reconnect').disabled ||= facts.canConnect===false;
     buttons.get('disconnect').textContent=facts.connecting?labels.common.cancelConnection:labels.common.disconnect; buttons.get('disconnect').disabled=Boolean(facts.programmerState?.busy);
     buttons.get('battery').disabled ||= !facts.connected; deviceActions.hidden=!connectionStep; wiringNote.hidden=step?.group!=='wiring'||!content.wiringTable?.note;
-    const noteText=facts.recording?labels.guide.reconnectNote:facts.mock&&step?.kind==='program'?labels.guide.mockProgramNote:step?.kind==='program'?'':step?.kind==='battery'&&state.observations.battery.startedAt!==null?step.complete?labels.guide.batterySeen:labels.guide.batteryWaiting:step?.kind==='calibration'&&!managed?labels.guide.calibrationNote:'';
+    const noteText=facts.recording?labels.guide.reconnectNote:facts.mock&&step?.kind==='program'?facts.tour?'프로그램이 준비된 예시 장치를 사용합니다.':labels.guide.mockProgramNote:step?.kind==='program'?'':step?.kind==='battery'&&state.observations.battery.startedAt!==null?step.complete?labels.guide.batterySeen:labels.guide.batteryWaiting:step?.kind==='calibration'&&!managed?labels.guide.calibrationNote:'';
     setText(note,noteText); note.hidden=!noteText;
     copy.dataset.group=step?.group??''; layout?.measure(); layout?.syncProgress();
     renderedStep=nextStep;

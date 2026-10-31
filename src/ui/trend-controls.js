@@ -1,3 +1,4 @@
+import { setMath } from './math-view.js';
 // Adapted from Cho-WH/bme280 gay-lussac/ui/trend-controls.js at 59c5c149450f970bace2deaa183857c275595853.
 import { trendReasons, trendSummary } from './trend-summary.js';
 import { labDefaults } from './lab-copy.js';
@@ -26,7 +27,7 @@ export function createTrendControls(root, { act, signal, prefix = '', onEnabled,
         value.textContent = item.value; card.append(label, value); return card;
       }));
       $('trend-details').hidden = !enabled || Boolean(fit?.reason);
-      $('trend-equation').textContent = summary.equation; $('trend-detail').textContent = summary.detail;
+      if(enabled&&!fit?.reason)void setMath($('trend-equation'),summary.equationTex,summary.equation);else void setMath($('trend-equation'),null,summary.equation); $('trend-detail').textContent = summary.detail;
     },
   };
 }

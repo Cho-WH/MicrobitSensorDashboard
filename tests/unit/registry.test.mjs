@@ -116,6 +116,7 @@ test('general entry selects newest definition while explicit old versions retain
 });
 
 test('saved metadata cannot inject resources or substitute an unregistered activity version', () => {
+  const originalCatalog = structuredClone(registry.catalog);
   const context = getExperiment('bmp280', 'gay-lussac');
   context.sensor.guide = { viewer: { url: 'https://foreign.invalid/viewer' } };
   context.activity.guide = { afterReception: [{id:'placement', image: { src: 'https://foreign.invalid/image' }}] };
@@ -128,7 +129,7 @@ test('saved metadata cannot inject resources or substitute an unregistered activ
   assert.equal(createGuideProgress(context).getState().ready, false);
   const content = getGuideContent(getExperiment('bmp280')); content.equipment.length = 0;
   assert.ok(getGuideContent(getExperiment('bmp280')).equipment.length > 0);
-  assert.deepEqual(new Set(registry.catalog.sensors.map(sensor => sensor.id)), new Set(['bmp280', 'magnetometer', 'temperature', 'light-level', 'accelerometer', 'ds18b20', 'mlx90393']));
+  assert.deepEqual(registry.catalog, originalCatalog);
 });
 
 test('registry rejects duplicate versions, missing runtime and conflicting guide steps before app startup', () => {

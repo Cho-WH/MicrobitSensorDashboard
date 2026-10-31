@@ -1,3 +1,5 @@
+import { setMath } from './math-view.js';
+import { texText, texNumber, binaryTex } from './scientific-notation.js';
 import { createUuid } from '../domain/uuid.js';
 // Adapted from Cho-WH/bme280 gay-lussac/ui/calculation-editor.js at 59c5c149450f970bace2deaa183857c275595853.
 import { calculationInputs, columnLabel, formatCalculated } from '../analysis/calculations.js';
@@ -50,7 +52,9 @@ export function createCalculationEditor(root, { getWorkspace, render, signal }) 
   }
   function preview() {
     for (const f of fields) { f.column.hidden = f.kind.value !== 'column'; f.value.hidden = f.kind.value !== 'constant'; }
-    const text = expression(); form.querySelector('[data-expression]').textContent = text;
+    const text = expression();
+    const parts=fields.map(f=>f.kind.value==='column'?texText(f.column.selectedOptions[0]?.textContent??copy().calculation.column):texNumber(f.value.valueAsNumber));
+    void setMath(form.querySelector('[data-expression]'),binaryTex(parts[0],op.value,parts[1]),text,{display:true});
     if (!nameEdited) name.value = text.slice(0, 60);
     const body = form.querySelector('[data-preview]'); body.replaceChildren();
     form.querySelector('[data-empty]').hidden = true; submit.disabled = true;

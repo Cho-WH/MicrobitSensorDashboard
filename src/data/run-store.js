@@ -117,7 +117,7 @@ export async function openRunStore({ repository, id = createUuid(), context, sou
     || run.runRevision > saved.runRevision || (workspace?.envelopeRevision ?? 0) > saved.envelopeRevision;
   const assertWriter = () => { if (!writable || closed || removing) throw fail('read-only', '이 실험은 읽기 전용입니다.'); };
   function getState() {
-    return { id, name: run.name, source: run.source, writable: writable && !closed && !removing, temporary, runStatus: run.status,
+    return { id, name: run.name, source: run.source, writable: writable && !closed && !removing, temporary, volatile:repository?.volatile===true, runStatus: run.status,
       timeOrigin: run.timeOrigin ?? null,
       status: saving ? 'saving' : error ? 'error' : dirty() ? 'pending' : 'clean',
       error: error?.message ?? '', errorCode: error?.code ?? '', sampleCount: samples.length, eventCount: events.length, eventsVersion,

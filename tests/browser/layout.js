@@ -66,6 +66,9 @@ export async function runLayoutTests(report=()=>{}) {
       doc.querySelector('[data-guide-group="connection"]').click();await settle();
       check(doc.querySelector('.guide-reception').hidden,label+': 연결 전 빈 수치 표시');
       doc.querySelector('[data-guide-action="connect"]').click();
+      await until(()=>doc.querySelector('.tour-device-option input')&&!doc.querySelector('.tour-device-option').hidden,label+': 예시 장치 탐색 시간 초과',5000);
+      doc.querySelector('.tour-device-option input').click();
+      doc.querySelector('.tour-device-dialog button.primary').click();
       await until(()=>doc.querySelector('.magnetic-preparation').dataset.phase==='choice',label+': 보정 선택 시간 초과',5000);await settle();
       fits(doc,width,label+' 보정 선택');
       const buttons=[...doc.querySelectorAll('[data-device-action]')].map(node=>node.getBoundingClientRect());

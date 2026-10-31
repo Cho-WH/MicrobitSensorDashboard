@@ -1,0 +1,9 @@
+:root button.chart-axis-zoom, :root[data-visual-theme] button.chart-axis-zoom {
+  position:absolute; z-index:2; width:32px; height:32px; min-height:32px; padding:6px;
+  --sl-button-min-height:32px; --sl-button-radius:var(--sl-radius-compact,4px);
+  border-radius:var(--sl-radius-compact,4px);
+}
+:root[data-visual-theme] button.chart-axis-zoom { --sl-button-text:var(--axis-color); }
+button.chart-axis-zoom svg { flex:none; width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+button.chart-axis-zoom [hidden] { display:none; }
+@media print { button.chart-axis-zoom { display:none; } }

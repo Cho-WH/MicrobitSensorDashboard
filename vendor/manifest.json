@@ -238,6 +238,23 @@
       "modified": false,
       "version": "1.3.9",
       "license": "public/vendor/pretendard/LICENSE"
+    },
+    {
+      "file": "public/vendor/mathjax-svg.js",
+      "version": "4.1.3",
+      "source": "https://github.com/mathjax/MathJax-src/tree/4.1.3",
+      "sha256": "c732bf4b6dcb3e50b420b87318e95bfd00c5f58b260213173e7014d5d4e1d3ec",
+      "modified": true,
+      "license": "public/vendor/mathjax-LICENSE",
+      "rebuild": "dev/math/README.md",
+      "components": [
+        {
+          "package": "@mathjax/mathjax-tex-font",
+          "version": "4.1.3",
+          "source": "https://github.com/mathjax/MathJax-fonts",
+          "license": "Apache-2.0"
+        }
+      ]
     }
   ],
   "upstreamCommit": "59c5c149450f970bace2deaa183857c275595853"

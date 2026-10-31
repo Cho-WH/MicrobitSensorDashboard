@@ -74,6 +74,7 @@ async function finishSnapshot(page) {
 }
 
 test('first manual capture freezes the click across async creation; reception, duplicate and mode boundaries preserve records', async ({ page }) => {
+  await expect(page.locator('[data-view="analysis"]')).toBeDisabled();
   expect((await readState(page)).storage).toBeUndefined();
   expect(await page.evaluate(() => window.pointTest.repository.listRuns())).toHaveLength(0);
   await defineCondition(page);
@@ -83,6 +84,7 @@ test('first manual capture freezes the click across async creation; reception, d
   await receive(page, 90);
   await page.evaluate(() => { document.querySelector('#capture-point').click(); window.pointTest.releaseOpen(); });
   await expect.poll(async () => (await readState(page)).storage?.sampleCount).toBe(1);
+  await expect(page.locator('[data-view="analysis"]')).toBeEnabled();
   let snapshot = await page.evaluate(() => window.pointTest.snapshot());
   expect(snapshot.samples[0].values.lightLevel).toBe(40);
   expect(snapshot.pointRecords[0].manualValues['manual-condition']).toBeNull();
