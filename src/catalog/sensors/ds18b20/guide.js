@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../app/asset-url.js';
 import { equipment, equipmentDescription, wiring, experimentGuide, probeIllustration } from './content.js';
 import { deviceIllustrations } from '../shared/device-illustrations.js';
 import { wiringSetup } from './wiring.js';
@@ -5,11 +6,11 @@ import { wiringSetup } from './wiring.js';
 /** @type {import('../../../guide/types.js').SensorGuide} */
 export const guide = {
   equipment, equipmentDescription, wiring, experimentGuide,
-  viewer: { url: new URL('../../../../public/viewers/wiring/index.html?sensor=ds18b20&embed=1', import.meta.url).href,
+  viewer: { url: assetUrl('../../../../public/viewers/wiring/index.html?sensor=ds18b20&embed=1', import.meta.url).href,
     title: 'DS18B20 배선 3D 안내', defaults: wiringSetup.defaults, choices: wiringSetup.choices },
   illustrations: { ...deviceIllustrations, equipment: { ...deviceIllustrations.equipment, sensor: probeIllustration,
-    board: { src: new URL('../../../../public/assets/devices/posters/expansion-board.png', import.meta.url).href, alt: 'sensor:bit 확장 보드' },
-    wires: { src: new URL('../../../../public/assets/devices/posters/terminal-3p.png', import.meta.url).href,
+    board: { src: assetUrl('../../../../public/assets/devices/posters/expansion-board.png', import.meta.url).href, alt: 'sensor:bit 확장 보드' },
+    wires: { src: assetUrl('../../../../public/assets/devices/posters/terminal-3p.png', import.meta.url).href,
       alt: 'DAT·VCC·GND 나사 단자와 3핀 커넥터가 있는 터미널 모듈' } } },
   wiringTable: { tableCaption: 'micro:bit ↔ DS18B20 배선표', boardLabel: '보드 단자', sensorLabel: 'DS18B20',
     noteTitle: '선 색상이나 단자 표시가 다른가요?',

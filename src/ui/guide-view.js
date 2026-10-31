@@ -1,3 +1,4 @@
+import { assetUrl } from '../app/asset-url.js';
 // Adapted from G's grouped guide, contextual viewer and action flow at 59c5c149.
 import { getSensorPreparation } from '../catalog/index.js';
 import { createGuideProgress } from '../guide/progress.js';
@@ -358,10 +359,10 @@ export function createGuideView(host, callbacks = {}) {
         const illustration=wireless&&!usbRequired?content.illustrations.battery:content.illustrations.usb;
         const img=element('img','guide-usb-image');img.src=illustration.src;img.alt=illustration.alt;img.width=1440;img.height=900;img.decoding='async';
         if(recovery){
-          img.src=new URL('../../public/assets/devices/posters/reset.png',import.meta.url).href;
+          img.src=assetUrl('../../public/assets/devices/posters/reset.png',import.meta.url).href;
           img.alt=labels.guide.resetImageAlt;
         } else if (visualMode==='usb' && shell.ownerDocument.documentElement.dataset.visualTheme === 'luminous') {
-          img.src=new URL('../../public/assets/design/luminous-usb.png',import.meta.url).href;
+          img.src=assetUrl('../../public/assets/design/luminous-usb.png',import.meta.url).href;
           img.width=1200;img.height=1000;
         }
         deviceVisual.querySelector('.usb-diagram').replaceWith(img);
@@ -413,7 +414,7 @@ export function createGuideView(host, callbacks = {}) {
     quickPanel.hidden=!quick; for (const check of quickChecks.values()) check.disabled=locked();
     program.hidden=quick||step?.kind!=='program';
     installHelp.hidden=program.hidden||wireless||facts.tour===true; installHelp.disabled=Boolean(facts.busy||programmer.busy);
-    const installing=Boolean(programmer.busy||['connecting','flashing'].includes(programmer.status));
+    const installing=Boolean(programmer.busy||['loading','connecting','flashing'].includes(programmer.status));
     program.dataset.state=programmer.status??'idle'; program.setAttribute('aria-busy',String(installing));
     program.dataset.mode=installMode;
     program.dataset.tone=recovery||usbRequired||['error','unavailable'].includes(programmer.status)?'attention':programmer.status==='success'?'success':installing?'progress':'neutral';
@@ -477,7 +478,7 @@ export function createGuideView(host, callbacks = {}) {
     buttons.get('next').classList.toggle('primary',!show.has('measure'));
     buttons.get('measure').disabled=locked()||!state.canMeasure;
     buttons.get('quick-confirm').disabled ||= [...quickChecks.values()].some(check=>!check.checked);
-    buttons.get('install').disabled ||= facts.canInstall===false||(facts.mock===true&&!facts.tour)||programmer.status==='unavailable';
+    buttons.get('install').disabled ||= facts.canInstall===false||(facts.mock===true&&!facts.tour)||['loading','unavailable'].includes(programmer.status);
     buttons.get('install').setAttribute('aria-busy',String(installing));
     buttons.get('install').textContent=programmer.busy?labels.guide.installing:['error','cancelled'].includes(programmer.status)?labels.guide.retryInstall:programmer.status==='success'?labels.guide.reinstall:labels.guide.install;
     if(wireless) buttons.get('install').textContent=programmer.busy?labels.guide.installing:programmer.status==='recovery'?labels.guide.retryConnection:['error','cancelled'].includes(programmer.status)?labels.guide.wirelessRetry:programmer.status==='success'?labels.guide.reinstall:labels.guide.wirelessInstall;

@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../app/asset-url.js';
 import { element } from '../../../ui/dom.js';
 import { setText } from '../../../ui/text.js';
 import { createCalibrationDemo } from './calibration-demo.js';
@@ -16,7 +17,7 @@ const copy = {
 /** Compass-specific content and actions. The guide only provides a panel and navigation slot. */
 export function createPreparationView(host, { onAction }) {
   const abort = new AbortController();
-  const style = element('link'); style.rel='stylesheet'; style.href=new URL('./preparation.css',import.meta.url).href;
+  const style = element('link'); style.rel='stylesheet'; style.href=assetUrl('./preparation.css',import.meta.url).href;
   const panel=element('div','magnetic-preparation');
   const demo=createCalibrationDemo(panel);
   const heading=element('h4'), detail=element('p'), status=element('p','magnetic-state');

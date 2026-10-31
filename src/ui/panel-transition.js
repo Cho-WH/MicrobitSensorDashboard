@@ -77,7 +77,7 @@ export function createPanelTransition(anchor, { disclosureRoot = anchor } = {}) 
     }
   }
   function fontsChanged() {
-    // Hidden Korean text can request a new subset on its first opening.
+    // Extended characters or an embedded custom font can load on first opening.
     // Reconcile after other font listeners update their layout, not by snapping
     // every panel to its final size as soon as any subset finishes loading.
     if (!disposed && fontFrame === null && heights.some(item => item.animation.playState === 'running'))

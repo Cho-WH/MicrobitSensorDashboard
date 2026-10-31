@@ -1,3 +1,4 @@
+import { assetUrl } from '../app/asset-url.js';
 // Keep the existing MIT encoder and local SVG wrapper unchanged and load them only on demand.
 let loading;
 async function encoder() {
@@ -6,7 +7,7 @@ async function encoder() {
     for (const file of ['qrcodegen.js', 'simple-qrcode.js']) {
       await new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = new URL('../../vendor/' + file, import.meta.url).href;
+        script.src = assetUrl('../../vendor/' + file, import.meta.url).href;
         script.onload = () => { script.remove(); resolve(undefined); };
         script.onerror = () => { script.remove(); reject(new Error('QR을 만들지 못했어요. 링크 복사를 이용해 주세요.')); };
         document.head.append(script);

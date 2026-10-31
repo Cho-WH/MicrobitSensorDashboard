@@ -111,13 +111,16 @@ uses the shared chart adapter and RunStore, with no second collection engine.
 
 ## Luminous V1 design preview assets
 
-The app uses the unmodified Pretendard Variable 1.3.9 dynamic subsets by
+The app uses Sensor Lab Sans, a two-part derivative of Pretendard Variable 1.3.9 by
 Kil Hyung-jin, licensed under SIL OFL 1.1, from
 https://github.com/orioncactus/pretendard/tree/v1.3.9/dist/web/variable.
 The `pretendard` npm package version and integrity are pinned in `package-lock.json`.
-The build copies the upstream CSS and WOFF2 subsets into `dist/public/vendor/pretendard/`,
-alongside the existing LICENSE. The original full font's provenance remains in
-`vendor/manifest.json`. No runtime CDN request is made.
+The derivative retains the original variable weights and character coverage,
+renames the reserved family name, and separates upstream's fixed common character
+list from the remaining characters. WOFF2 files, SHA-256 hashes and the OFL license are in
+`public/vendor/lab-fonts/`; regeneration is documented in `dev/fonts/README.md`.
+The original full font's provenance remains in `vendor/manifest.json`.
+No runtime CDN request is made.
 
 esbuild 0.28.2 (MIT, https://github.com/evanw/esbuild) is a build-time development
 dependency. JavaScript output retains linked third-party license comments.

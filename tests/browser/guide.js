@@ -38,6 +38,14 @@ export async function runGuideTests(report = (_message) => {}) {
       check(!$('canvas')&&!$('iframe').getAttribute('src'),'정지 이미지 안내에서 3D가 실행됩니다.');
     }
     report('내장 센서 4종 · 공통 준비물·배터리와 기본 USB 안내 그림 로딩');
+    view.open(getExperiment('temperature'),{reset:true});
+    view.render({canInstall:true,programmerState:{status:'loading',busy:false,canInstall:false}});
+    click('confirm');
+    check($('[data-guide-action="install"]').disabled,'프로그램 준비 전 설치가 허용됩니다.');
+    click('program-confirm');
+    view.render({canInstall:true,programmerState:{status:'flashing',busy:true,canInstall:false}});
+    check($('[data-guide-action="previous"]').disabled,'실제 전송 중 장치 준비를 변경할 수 있습니다.');
+    view.render({canInstall:true,programmerState:{status:'ready',busy:false,canInstall:true}});
     view.open(getExperiment('magnetometer'),{reset:true});
     const facts={attemptId:'mag-1',connected:true,canInstall:true,canConnect:true};
     const showPhase=(phase,calibration='unknown',receptionReady=false)=>view.render({...facts,calibration,receptionReady,devicePreparation:{phase,calibration,allowReadings:phase==='receiving'}});

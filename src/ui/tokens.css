@@ -1,6 +1,6 @@
 /* Luminous: shared runtime values for the adopted measurement and preparation B
    design. Scene gradients and layout stay local. */
-@import url('../../public/vendor/pretendard/pretendardvariable-dynamic-subset.css');
+@import url('../../public/vendor/lab-fonts/fonts.css');
 :root {
   /* Surfaces and reading. A divider is not an input boundary. */
   --sl-bg:#f6f8fc; --sl-surface:#fff; --sl-surface-soft:#eef3fa;
@@ -49,7 +49,7 @@
   --sl-target:44px; --sl-target-compact:36px;
   --sl-space-1:4px; --sl-space-2:8px; --sl-space-3:12px;
   --sl-space-4:16px; --sl-space-6:24px; --sl-space-8:32px;
-  --sl-font:'Pretendard Variable',system-ui,'Malgun Gothic',sans-serif;
+  --sl-font:'Sensor Lab Sans',system-ui,'Malgun Gothic',sans-serif;
   --sl-type-control:0.875rem; --sl-type-label:0.8125rem; --sl-type-small:0.75rem; --sl-type-caption:0.6875rem;
   --sl-table-row-min-height:32px; --sl-table-control-height:28px; --sl-table-cell-padding:6px;
   --sl-shadow-panel:0 8px 28px #0b1f3b06;

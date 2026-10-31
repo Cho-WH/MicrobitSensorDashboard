@@ -1,5 +1,7 @@
 const check=(value,message)=>{if(!value)throw new Error(message);};
 const url=path=>new URL('../../'+path,import.meta.url).href;
+// Layout is reserved while loading; check actual visibility, not just a layout box.
+const visible=node=>node.checkVisibility({visibilityProperty:true});
 async function until(predicate,message) {
   const deadline=performance.now()+12000;
   while(!predicate()) {
@@ -46,8 +48,8 @@ export async function runStartupTests(report=()=>{}) {
     const regions=[...doc.querySelectorAll('[data-app-region]')];
     const ids=[...doc.querySelectorAll('[id]')].map(node=>node.id);
     check(new Set(ids).size===ids.length,'정적 화면에 중복된 조작 ID가 있습니다.');
-    check(regions.every(node=>node.inert)&&doc.querySelector('#app-startup').checkVisibility(),'초기화 전에 조작이 열리거나 로딩 안내가 없습니다.');
-    check(!doc.querySelector('[data-screen=home]').checkVisibility(),'내용이 준비되기 전에 홈이 노출됩니다.');
+    check(regions.every(node=>node.inert)&&visible(doc.querySelector('#app-startup')),'초기화 전에 조작이 열리거나 로딩 안내가 없습니다.');
+    check(!visible(doc.querySelector('[data-screen=home]')),'내용이 준비되기 전에 홈이 노출됩니다.');
     initial.start();
     await until(()=>doc.documentElement.dataset.appState==='ready','기본 화면 시작 실패');
     check(regions.every(node=>!node.inert)&&doc.querySelector('#app-startup').hidden,'준비 완료 후 조작이 잠겨 있습니다.');

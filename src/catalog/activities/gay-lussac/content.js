@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../app/asset-url.js';
 const kelvin = { id: 'calc-kelvin', name: '절대온도', unit: 'K', lhs: { kind: 'column', columnId: 'temperatureC' }, op: '+', rhs: { kind: 'constant', value: 273.15 } };
 export const uiCopy = {
   home: {
@@ -26,8 +27,8 @@ export const questions = [
 ];
 
 // Adapted from G's equipment help, placement figure and four-page experiment guide.
-const assets = new URL('../../../../public/activities/gay-lussac/', import.meta.url);
-export const setupImage = { src: new URL('setup.svg', assets).href,
+const assets = assetUrl('../../../../public/activities/gay-lussac/', import.meta.url);
+export const setupImage = { src: assetUrl('setup.svg', assets).href,
   alt: '밀폐 용기 안 바닥의 micro:bit와 배터리, 공기 중의 센서, 용기 밖 수조의 물과 고정대',
   caption: '센서는 용기 안 공기 중에, 물은 용기 바깥 수조에 둡니다.' };
 export const equipment = [
@@ -68,5 +69,5 @@ export const experimentGuide = {
         ['두 물리량의 관계를 찾아요', '가로축은 센서 온도, 세로축은 용기 안 압력으로 두고 관계를 살펴보세요. 필요한 경우 추세선을 켜거나, 측정값 표에서 계산 열을 추가해 절대온도로 비교하세요.'],
         ['근거와 내 설명을 보관해요', '이 그래프로 해석하기를 눌러 근거를 보관하고 관찰한 관계를 설명하세요. 이어하기용 파일 저장으로 실험 전체를 보관하고, 탐구 기록 인쇄 · PDF로 설명을 출력할 수 있습니다.'],
       ] },
-  ].map(page => ({ ...page, image: page.image ? new URL(page.image, assets).href : null })),
+  ].map(page => ({ ...page, image: page.image ? assetUrl(page.image, assets).href : null })),
 };

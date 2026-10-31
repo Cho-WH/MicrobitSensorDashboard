@@ -9,6 +9,7 @@ import { reportContent } from './report-content.js';
 export const PAGE_WIDTH=794,PAGE_HEIGHT=1123;
 const FONT='Malgun Gothic, Apple SD Gothic Neo, sans-serif';
 const inks={text:'#122944',muted:'#4e6278',line:'#9aaec2',sensor:'#156082',orbit:'#b84c1b',result:'#122944'};
+let lastGraph = null;
 
 // The same fitted SVG text is used by preview, print and PNG. No truncation or reflow.
 export function fitReportText(context,text,width,height,maxSize=13,weight=400) {
@@ -38,10 +39,20 @@ export function fitReportText(context,text,width,height,maxSize=13,weight=400) {
 export async function prepareReportAssets({model,samples,context,origin,theme}) {
   const selected=samples.filter(s=>s.sampleId>=model.sheet.startId&&s.sampleId<=model.sheet.endId);
   if(!selected.length)throw new Error('출력할 측정 구간의 자료가 없어요.');
-  const plot=document.createElement('canvas');plot.width=698;plot.height=224;
-  const chart=createChartView(plot,{context,channels:context.channels.filter(c=>['accelerationStrength','magneticStrength'].includes(c.id)),axisPolicies:getTimeAxisPolicies(context),inspect:true,tooltip:false,legendToggle:false,eventMarkers:false,responsive:false,pixelRatio:3,theme:theme?{...theme,font:FONT,text:inks.text,grid:'#e6ecf2'}:null});
-  let graph;
-  try {chart.render(selected,0,{range:'all',origin,timeRange:{startAt:model.interval.start.receivedAt,endAt:model.interval.end.receivedAt}});graph=chart.exportPng();}finally{chart.dispose();}
+  const channels=context.channels.filter(c=>['accelerationStrength','magneticStrength'].includes(c.id));
+  const axisPolicies=getTimeAxisPolicies(context);
+  const chartTheme=theme?{...theme,font:FONT,text:inks.text,grid:'#e6ecf2'}:null;
+  const timeRange={startAt:model.interval.start.receivedAt,endAt:model.interval.end.receivedAt};
+  // Retain only the last PNG. Compare graph inputs, not worksheet/author fields;
+  // changed data, range, units or colours must never reuse a stale picture.
+  const key=JSON.stringify({selected,channels,axisPolicies,origin,timeRange,theme:chartTheme});
+  let graph=lastGraph?.key===key?lastGraph.graph:null;
+  if(!graph){
+    const plot=document.createElement('canvas');plot.width=698;plot.height=224;
+    const chart=createChartView(plot,{context,channels,axisPolicies,inspect:true,tooltip:false,legendToggle:false,eventMarkers:false,responsive:false,pixelRatio:3,theme:chartTheme});
+    try {chart.render(selected,0,{range:'all',origin,timeRange});graph=chart.exportPng();}finally{chart.dispose();}
+    lastGraph={key,graph};
+  }
   const [sensor,omega,orbital,orbitMath]=await Promise.all([
     ...['sensor','omega','orbital'].map(key=>mathSvg(relations[key],{size:16,display:true,description:relationDescriptions[key]})),prepareOrbitMath(),
   ]);

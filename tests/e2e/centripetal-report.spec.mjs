@@ -3,6 +3,27 @@ import { readFile } from 'node:fs/promises';
 import { blankSheet, intervalModel, calculationModel } from '../../src/analysis/activities/centripetal.js';
 import { getExperiment } from '../../src/catalog/index.js';
 
+test('report graph reuse invalidates changed measurements, interval and display settings', async ({page}) => {
+  await page.goto('/lab.html');
+  const result = await page.evaluate(async context => {
+    const {prepareReportAssets} = await import('/src/ui/centripetal/report-layout.js');
+    const samples=Array.from({length:31},(_,i)=>({sampleId:i+1,receivedAt:1000+i*100,
+      values:{accelerationStrength:12+i/30,magneticStrength:50+20*Math.cos(i)},
+      validity:{accelerationStrength:'valid',magneticStrength:'valid'}}));
+    const options={context,samples,origin:1000,model:{sheet:{startId:1,endId:31},interval:{start:samples[0],end:samples.at(-1)}}};
+    const original=(await prepareReportAssets(options)).graph;
+    const unchanged=(await prepareReportAssets(structuredClone(options))).graph;
+    options.samples[15].values.accelerationStrength=18;
+    const changed=(await prepareReportAssets(options)).graph;
+    options.model.sheet.endId=15; options.model.interval.end=samples[14];
+    const interval=(await prepareReportAssets(options)).graph;
+    options.context.channels.find(c=>c.id==='accelerationStrength').unit='test-unit';
+    const display=(await prepareReportAssets(options)).graph;
+    return {reused:original===unchanged,dataChanged:original!==changed,rangeChanged:changed!==interval,displayChanged:interval!==display};
+  },getExperiment('motion-magnetic','centripetal'));
+  expect(result).toEqual({reused:true,dataChanged:true,rangeChanged:true,displayChanged:true});
+});
+
 // The submitted artifact must preserve student answers and remain two A4 pages,
 // including on narrow screens and with the maximum supported answer length.
 test('report preserves answers in fixed pages and exports both page images',async({page},testInfo)=>{

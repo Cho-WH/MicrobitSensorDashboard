@@ -1,4 +1,5 @@
 import { getFirmwareArtifact } from './firmware.js';
+import { reuseFirmware } from './firmware-cache.js';
 import { getBluetoothSupport } from './browser-support.js';
 import { createDiagnostics } from './bluetooth-protocol.js';
 import { verifyProgram, partialFlashProblem } from './partial-flash.js';
@@ -57,14 +58,17 @@ export function createBluetoothProgrammer({ firmwareId, version, canInstall = ()
       emit({ status: 'unavailable', message: !target ? usbMessage : '무선 설치를 지원하는 Chrome·Edge에서 열거나 USB 설치를 이용해 주세요.' }); return;
     }
     cancelled = false; abort = new AbortController();
-    emit({ status: 'loading', phase: '', busy: true, message: '잠시 기다려 주세요.' });
+    emit({ status: 'loading', phase: '', busy: false, message: '잠시 기다려 주세요.' });
     preparation = (async () => {
       try {
-        const response = await fetchFile(target.url, { signal: abort.signal });
-        if (!response.ok) throw fail('file', '프로그램을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 준비해 주세요.');
-        const prepared = await verifyProgram(target, new Uint8Array(await response.arrayBuffer()));
+        const prepared = await reuseFirmware(`wireless:${artifact.id}:${artifact.version}:${target.sha256}`, [fetchFile], async () => {
+          const response = await fetchFile(target.url);
+          if (!response.ok) throw fail('file', '프로그램을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 준비해 주세요.');
+          return verifyProgram(target, new Uint8Array(await response.arrayBuffer()));
+        }, abort.signal);
         if (abort.signal.aborted) throw fail('cancelled', '무선 설치를 취소했어요.');
-        image = prepared;
+        // Each transfer receives its own buffer; the verified cache cannot be mutated.
+        image = { target: prepared.target, data: prepared.data.slice() };
         emit({ status: 'ready', message: '보드의 전원을 켜고 가까이 두세요. 설치 버튼을 누르면 보드를 선택할 수 있어요.' });
       } catch { emit(abort.signal.aborted
         ? { status: 'cancelled', message: '무선 설치를 취소했어요. 준비되면 다시 설치할 수 있어요.' }

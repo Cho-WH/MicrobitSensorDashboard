@@ -2,6 +2,7 @@ import { createBluetoothProgrammer } from './bluetooth-programmer.js';
 // Adapted from Cho-WH/bme280 gay-lussac/guide/programmer-adapter.js at
 // 59c5c149450f970bace2deaa183857c275595853. Full V2 flashing remains official.
 import { getFirmwareArtifact, loadFirmwareHex } from './firmware.js';
+import { reuseFirmware, waitForFirmware } from './firmware-cache.js';
 
 const messages = {
   'no-device-selected': '장치 선택을 취소했어요. 준비되면 다시 설치할 수 있어요.',
@@ -12,7 +13,7 @@ const messages = {
   'wrong-board': '이 실험은 micro:bit V2를 사용해요. V2 장치를 연결해 주세요.',
   'recording-active': '기록을 마치고 저장이 완료된 뒤 프로그램을 설치하세요.',
 };
-const busyStatuses = new Set(['loading', 'connecting', 'flashing']);
+const busyStatuses = new Set(['connecting', 'flashing']);
 
 /** Owns preparation/USB only. canInstall is the Controller's synchronous recording/save guard.
  * beforeFlash releases BLE after USB selection; it does not finish a Run on the user's behalf.
@@ -50,14 +51,18 @@ export function createUsbProgrammer({ firmwareId, version = null, onState = (_st
     preparation = (async () => {
       try {
         if (!createConnection || !makeSource) {
-          const library = await import('../../public/vendor/microbit-usb-1.0.0.js');
+          const library = await waitForFirmware(import('../../public/vendor/microbit-usb-1.0.0.js'), abortPreparation.signal);
           if (disposed) return;
           createConnection ??= library.createUSBConnection;
           makeSource ??= library.createUniversalHexFlashDataSource;
         }
-        const { hex } = await loadFirmwareHex(program.id, program.version, { fetchFile, crypto, signal: abortPreparation.signal });
-        const candidate = makeSource(hex);
-        await candidate('V2'); // Validate before opening or halting any device.
+        const candidate = await reuseFirmware(`usb:${program.id}:${program.version}:${program.sha256}`,
+          [fetchFile, crypto, makeSource], async () => {
+            const { hex } = await loadFirmwareHex(program.id, program.version, { fetchFile, crypto });
+            const prepared = makeSource(hex);
+            const v2 = await prepared('V2'); // Validate and parse before opening or halting any device.
+            return board => board === 'V2' ? Promise.resolve(v2) : prepared(board);
+          }, abortPreparation.signal);
         if (disposed) return;
         usb ??= createConnection({ pauseOnHidden: false });
         await usb.initialize();
@@ -119,7 +124,7 @@ export function createUsbProgrammer({ firmwareId, version = null, onState = (_st
 /** One installation mode at a time; both adapters report the same guide facts.
  * @param {any} options */
 export function createProgrammer(options) {
-  let mode = 'usb', adapter, disposed = false;
+  let mode = 'usb', adapter, disposed = false, switching = false;
   const create = () => (mode === 'usb' ? createUsbProgrammer : createBluetoothProgrammer)({ ...options,
     onState: state => { if (!disposed) options.onState?.({ ...state, mode }); } });
   adapter = create();
@@ -128,12 +133,16 @@ export function createProgrammer(options) {
     cancel: () => adapter.cancel?.(), takeConnection: () => adapter.takeConnection?.() ?? Promise.resolve(null),
     getState: () => ({ ...adapter.getState(), mode }),
     async setMode(next) {
-      if (disposed || !['usb', 'wireless'].includes(next) || next === mode || adapter.getState().busy) return;
-      await adapter.dispose();
-      if (disposed) return;
-      mode = next; adapter = create();
-      options.onState?.({ ...adapter.getState(), mode });
-      await adapter.prepare();
+      if (disposed || switching || !['usb', 'wireless'].includes(next) || next === mode || adapter.getState().busy) return;
+      switching = true;
+      try {
+        await adapter.dispose();
+        if (disposed) return;
+        mode = next; adapter = create();
+        options.onState?.({ ...adapter.getState(), mode });
+        // File preparation is local to the install control, not a global UI action.
+        void adapter.prepare();
+      } finally { switching = false; }
     },
     async dispose() { disposed = true; await adapter.dispose(); },
   };

@@ -215,7 +215,7 @@ export function createController(root = document, { repository = null, deviceTra
   }
   async function install() {
     if (!canInstall()) throw new Error('기록과 저장을 마치고 무선 연결을 해제한 뒤 설치하세요.');
-    if (!programmer?.getState().canInstall) { await programmer?.prepare(); return; }
+    if (!programmer?.getState().canInstall) { programmer?.prepare().catch(showError); return; }
     installed = false; await programmer.install();
   }
   async function connect({reuseDevice=false, preferPrevious=false, reconnecting=false}={}) {

@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../app/asset-url.js';
 import { element } from '../../../ui/dom.js';
 
 /** A visible-only demonstration; it never reports device calibration progress. */
@@ -5,7 +6,7 @@ export function createCalibrationDemo(host) {
   const stage=element('div','magnetic-demo'), poster=element('img'), canvas=element('canvas');
   stage.setAttribute('role','img');
   stage.setAttribute('aria-label','micro:bit를 앞뒤·좌우로 천천히 기울이면 기울인 쪽의 LED가 켜지고, 화면이 채워지는 시범');
-  poster.src=new URL('./calibration.png',import.meta.url).href; poster.alt='';
+  poster.src=assetUrl('./calibration.png',import.meta.url).href; poster.alt='';
   poster.setAttribute('aria-hidden','true'); canvas.setAttribute('aria-hidden','true'); canvas.hidden=true;
   stage.append(poster); host.append(stage);
   const abort=new AbortController();
@@ -39,7 +40,7 @@ export function createCalibrationDemo(host) {
       loading=true;
       try {
         // Keep the shared 3D runtime out of ordinary preparation screens.
-        const {createCalibrationScene}=await import(new URL('./calibration-scene.js',import.meta.url).href);
+        const {createCalibrationScene}=await import(assetUrl('./calibration-scene.js',import.meta.url).href);
         if(disposed||!visible())return;
         scene=createCalibrationScene(canvas); resize(); scene.render(elapsed/1000);stage.append(canvas);
         canvas.hidden=false; poster.hidden=true;

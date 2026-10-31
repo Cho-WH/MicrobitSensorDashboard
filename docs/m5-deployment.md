@@ -28,6 +28,8 @@ npx wrangler deploy --dry-run
 
 Cloudflare의 수동 배포 명령은 `npx wrangler deploy`이며 유효한 로컬 인증이 필요하다. 플러그인으로 배포할 때에도 같은 검증된 `main` 산출물과 Wrangler의 경로·공개 주소 설정을 적용한다. `scope-portal`이나 다른 Worker를 덮어쓰지 않는다.
 
+빌드가 만드는 `dist/_headers`는 해시 파일명의 JS·CSS·폰트에만 장기 캐시를 적용한다. Wrangler는 이를 자동 반영한다. 플러그인의 직접 업로드를 사용할 때는 `_headers`를 일반 자산으로 올리는 대신 그 내용을 Worker 업로드 메타데이터의 `assets.config._headers`에 전달해야 한다. HTML은 재검증 정책을 유지하고, 운영 확인 시 CSS·폰트의 실제 응답 헤더도 검사한다.
+
 `.github/workflows/cloudflare.yml`은 `main`에서만 수동 실행할 수 있게 준비했다. **자동 배포 연결은 보류** 상태다. 추후 대상 계정·zone에 한정된 CI 토큰을 저장소 secret `CLOUDFLARE_API_TOKEN`으로 등록하고 첫 배포를 확인한 뒤 `push: branches: [main]`을 활성화한다. 계정 ID는 공개 가능한 배포 식별자로 Wrangler에 기록하며 토큰 값은 코드·문서에 남기지 않는다. ‘계정 API 토큰 쓰기’는 앱 배포에 필요하지 않다.
 
 후속 작업 브랜치는 main에 병합한 뒤 새 main 버전을 빌드·배포한다. 최초 배포 SHA나 센서 목록에 고정하지 않는다. 진입 페이지는 레지스트리에서 자동 생성하고 Cloudflare 검사는 등록된 모든 경로를 순회한다. 병합 때 `wrangler.jsonc`, 공개 주소 설정, `/lab` 별칭과 Pages 자동 배포 해제 상태를 유지한다.

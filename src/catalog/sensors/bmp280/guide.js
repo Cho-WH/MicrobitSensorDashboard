@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../app/asset-url.js';
 // Preparation and wiring flow adapted from Cho-WH/bme280@59c5c149 G/guide/steps.js.
 import { equipment, wiring, cableHelp } from './content.js';
 import { deviceIllustrations } from '../shared/device-illustrations.js';
@@ -9,14 +10,14 @@ export const guide = {
     ...deviceIllustrations,
     equipment: {
       ...deviceIllustrations.equipment,
-      sensor: {src:new URL('../../../../public/assets/devices/posters/bmp280.png',import.meta.url).href,alt:'VCC·GND·SCL·SDA 등이 표시된 BMP280 센서 모듈'},
-      board: {src:new URL('../../../../public/assets/devices/posters/expansion-board.png',import.meta.url).href,alt:'micro:bit를 끼우는 슬롯과 센서 연결 단자가 있는 sensor:bit 확장 보드'},
-      wires: {src:new URL('../../../../public/assets/devices/posters/jumper-wires.png',import.meta.url).href,alt:'전원·접지·클록·데이터에 사용할 연결선 네 가닥. 그림은 수–암 연결선이에요.'},
+      sensor: {src:assetUrl('../../../../public/assets/devices/posters/bmp280.png',import.meta.url).href,alt:'VCC·GND·SCL·SDA 등이 표시된 BMP280 센서 모듈'},
+      board: {src:assetUrl('../../../../public/assets/devices/posters/expansion-board.png',import.meta.url).href,alt:'micro:bit를 끼우는 슬롯과 센서 연결 단자가 있는 sensor:bit 확장 보드'},
+      wires: {src:assetUrl('../../../../public/assets/devices/posters/jumper-wires.png',import.meta.url).href,alt:'전원·접지·클록·데이터에 사용할 연결선 네 가닥. 그림은 수–암 연결선이에요.'},
     },
   },
   equipmentDescription: 'micro:bit V2, BMP280, 확장 보드와 연결선 네 가닥을 준비하세요.',
   viewer: {
-    url: new URL('../../../../public/viewers/wiring/index.html?sensor=bmp280&embed=1', import.meta.url).href,
+    url: assetUrl('../../../../public/viewers/wiring/index.html?sensor=bmp280&embed=1', import.meta.url).href,
     title: 'BMP280 배선 3D 안내',
     defaults: wiringSetup.defaults, choices: wiringSetup.choices,
   },

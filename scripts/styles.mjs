@@ -1,14 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, relative, dirname, sep } from 'node:path';
-import { fontStylesheet, readFontStyles } from './fonts.mjs';
 
 export const styleEntry = 'src/ui/luminous.css';
 
 // The app entry is an ordered list of local, unconditional imports. Expand that
 // small contract identically in development and static builds; do not minify or
 // reorder rules. Unsupported imports fail instead of silently changing cascade.
-export async function bundleStyles(root, entry = styleEntry) {
-  const workspace = resolve(root), output = resolve(workspace, entry);
+export async function bundleStyles(root, entry = styleEntry, target = entry) {
+  const workspace = resolve(root), output = resolve(workspace, target);
   function local(path) {
     if (!path.startsWith(workspace + sep)) throw new Error('Stylesheet outside app: ' + path);
     return path;
@@ -16,7 +15,7 @@ export async function bundleStyles(root, entry = styleEntry) {
   async function expand(path, parents = []) {
     local(path);
     if (parents.includes(path)) throw new Error('CSS import cycle: ' + path);
-    let css = path === resolve(workspace, fontStylesheet) ? await readFontStyles() : await readFile(path, 'utf8');
+    let css = await readFile(path, 'utf8');
     // Only the leading import list is expanded. Component CSS remains authored
     // CSS, including media/container queries, variables and print rules.
     let prefix = '', rest = css;
@@ -36,5 +35,5 @@ export async function bundleStyles(root, entry = styleEntry) {
     });
     return prefix + `\n/* ${relative(workspace, path).split(sep).join('/')} */\n` + rest + '\n';
   }
-  return expand(output);
+  return expand(resolve(workspace, entry));
 }

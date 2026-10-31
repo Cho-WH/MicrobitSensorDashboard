@@ -24,13 +24,14 @@
 <link rel="icon" type="image/svg+xml" sizes="any" href="public/assets/branding/sensor-lab-favicon.svg?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="public/assets/branding/sensor-lab-home-180.png">
 <link rel="manifest" href="public/manifest.json">
+<!-- app-font-preload -->
 <link data-app-style rel="stylesheet" href="src/ui/guide.css">
 <link data-app-style rel="stylesheet" href="src/ui/luminous.css">
 <style data-startup-style>
-  #app-startup { box-sizing:border-box;max-width:42rem;margin:24px auto;padding:20px 24px;background:#eef3fa;color:#0b1f3b;font:16px/1.6 system-ui,'Malgun Gothic',sans-serif; }
+  #app-startup { position:fixed;z-index:100;inset:24px 16px auto;box-sizing:border-box;max-width:42rem;margin:0 auto;padding:20px 24px;background:#eef3fa;color:#0b1f3b;font:16px/1.6 system-ui,'Malgun Gothic',sans-serif; }
   #app-startup strong { display:block; } #app-startup p { margin:8px 0; } #app-startup small { display:block; }
-  [data-app-state=loading] [data-screen], [data-app-state=error] [data-app-region] { display:none!important; }
-  [data-app-state=loading] :is(.lab-nav,#file-tools,#open-file,.luminous-settings,.lab-status) { visibility:hidden; }
+  [data-app-state=loading] [data-app-region] { visibility:hidden; }
+  [data-app-state=error] [data-app-region] { display:none!important; }
   #app-startup[hidden] { display:none!important; }
 </style>
 <script defer src="vendor/chart.umd.js"></script><script defer src="public/vendor/idb-8.0.4.umd.js"></script><script defer src="public/vendor/papaparse-5.7.0.min.js"></script><script defer src="src/app/bootstrap.js"></script></head>

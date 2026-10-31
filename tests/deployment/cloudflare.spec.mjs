@@ -33,6 +33,14 @@ test('Cloudflare HTML normalization preserves routes and queries; missing files 
   }
   await page.goto('/');
   await expect(page.locator('[data-screen="home"]')).toBeVisible();
+  // Reuse immutable bytes without revalidating each font/CSS/JS on every visit.
+  const resources = await page.locator('[data-app-font], [data-app-style], script[type="module"][src], script[defer][src], link[rel="modulepreload"]').evaluateAll(nodes => nodes.map(node => node.href || node.src));
+  for (const url of resources) {
+    const response = await request.get(url);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['cache-control']).toContain('immutable');
+  }
+  expect((await request.get('/')).headers()['cache-control']).not.toContain('immutable');
   const manifestUrl = new URL(await page.locator('link[rel="manifest"]').getAttribute('href'), page.url());
   const manifest = await (await request.get(manifestUrl.href)).json();
   expect(new URL(manifest.scope, manifestUrl).pathname).toBe('/');
@@ -49,7 +57,7 @@ test('Cloudflare HTML normalization preserves routes and queries; missing files 
   await expect.poll(() => board.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
 });
 
-test('production build shares the official link and QR and loads lazy USB/firmware assets', async ({ page }) => {
+test('production build shares the official link and QR and loads lazy USB/firmware assets', async ({ page, request }) => {
   const failures = [], requests = [];
   page.on('pageerror', error => failures.push(error.message));
   page.on('response', response => { if (response.status() >= 400) failures.push(`${response.status()} ${response.url()}`); });
@@ -75,7 +83,12 @@ test('production build shares the official link and QR and loads lazy USB/firmwa
   await expect(page.locator('.guide-program')).toHaveAttribute('data-state', 'ready');
   await expect(page.locator('[data-guide-action="install"]')).toBeEnabled();
   expect(requests.some(url => /\/assets\/microbit-usb-.*\.js$/.test(url))).toBe(true);
-  expect(requests.some(url => /\/public\/firmware\/.*\.hex$/.test(url))).toBe(true);
+  expect(requests.some(url => /\/assets\/static\/.*\.hex$/.test(url))).toBe(true);
+  for (const url of [...new Set(requests.filter(url => /\/assets\/static\//.test(url)))]) {
+    const response = await request.get(url);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['cache-control']).toContain('immutable');
+  }
   expect(failures).toEqual([]);
 });
 

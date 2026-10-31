@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { webcrypto } from 'node:crypto';
 import { createProgrammer } from '../../src/device/programmer.js';
-import { getFirmwareArtifact } from '../../src/device/firmware.js';
+import { getFirmwareArtifact, loadFirmwareHex } from '../../src/device/firmware.js';
 
 const firmware = await readFile(new URL('../../public/firmware/sensor-lab-bmp280-v1.hex', import.meta.url));
 const deferred = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; };
@@ -185,5 +185,61 @@ test('leaving during a flash waits for the hardware operation, then releases USB
   assert.equal(cleaned, false); assert.equal(calls.includes('disconnect'), false);
   transfer.resolve(); await Promise.all([installing, disposing]);
   assert.equal(calls.at(-1), 'dispose'); assert.equal(states.includes('success'), false);
+});
+
+test('verified files survive adapter disposal and manual download without another network dependency', async () => {
+  let offline = false;
+  const fetchFile = async () => {
+    if (offline) throw new Error('offline');
+    return new Response(firmware);
+  };
+  const first = fixture({ fetchFile });
+  await first.programmer.prepare();
+  await first.programmer.dispose();
+  offline = true;
+  const next = fixture({ fetchFile });
+  await next.programmer.prepare();
+  assert.equal(next.programmer.getState().canInstall, true);
+  await next.programmer.install();
+  assert.equal(next.programmer.getState().status, 'success');
+  assert.match((await loadFirmwareHex('sensor-lab-bmp280', 1, { fetchFile, crypto: webcrypto })).hex, /^:/);
+  await next.programmer.dispose();
+});
+
+test('cancelling one preparation does not cancel another consumer; failed verification can retry', async () => {
+  const file = deferred(), abort = new AbortController();
+  const fetchFile = () => file.promise;
+  const options = { fetchFile, crypto: webcrypto };
+  const cancelled = loadFirmwareHex('sensor-lab-bmp280', 1, { ...options, signal: abort.signal });
+  const other = loadFirmwareHex('sensor-lab-bmp280', 1, options);
+  abort.abort();
+  await assert.rejects(cancelled, { name: 'AbortError' });
+  file.resolve(new Response(firmware));
+  assert.match((await other).hex, /^:/);
+  let corrupt = true;
+  const retryOptions = { crypto: webcrypto, fetchFile: async () => new Response(corrupt ? 'bad HEX' : firmware) };
+  await assert.rejects(loadFirmwareHex('sensor-lab-bmp280', 1, retryOptions));
+  corrupt = false;
+  assert.match((await loadFirmwareHex('sensor-lab-bmp280', 1, retryOptions)).hex, /^:/);
+});
+
+test('background preparation permits guide progress and mode changes without touching hardware', async () => {
+  const file = deferred();
+  const { programmer, calls } = fixture({ fetchFile: async () => { await file.promise; return new Response(firmware); },
+    bluetooth: { requestDevice() { throw new Error('must not select a device'); } },
+    createProtocol: () => ({ disconnect() {} }) });
+  const preparing = programmer.prepare();
+  assert.equal(programmer.getState().status, 'loading');
+  assert.equal(programmer.getState().busy, false);
+  assert.equal(programmer.getState().canInstall, false);
+  await programmer.setMode('wireless');
+  assert.equal(programmer.getState().mode, 'wireless');
+  assert.equal(programmer.getState().busy, false);
+  await programmer.setMode('usb');
+  file.resolve();
+  await Promise.all([preparing, programmer.prepare()]);
+  assert.equal(programmer.getState().status, 'ready');
+  assert.equal(calls.includes('connect'), false);
+  await programmer.dispose();
 });
 

@@ -18,6 +18,9 @@ test('CSS bundle keeps cascade, conditions and asset paths under a project subpa
     const asset = css.match(/background:url\(([^)]+)\)/)[1];
     assert.equal(new URL(asset,'https://example.test/lab/ui/app.css').href,'https://example.test/lab/assets/picture.svg?version=1#part');
     assert.match(css,/mask:url\(#local\)/);
+    const relocated = await bundleStyles(root,'ui/app.css','assets/app-hash.css');
+    const relocatedAsset = relocated.match(/background:url\(([^)]+)\)/)[1];
+    assert.equal(new URL(relocatedAsset,'https://example.test/lab/assets/app-hash.css').href,'https://example.test/lab/assets/picture.svg?version=1#part');
     await writeFile(join(root,'parts/last.css'), '@import url("../ui/app.css");');
     await assert.rejects(bundleStyles(root,'ui/app.css'), /cycle/);
     await writeFile(join(root,'parts/last.css'), '@import url("./missing.css") print;');

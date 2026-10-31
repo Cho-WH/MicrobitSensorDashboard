@@ -5,7 +5,8 @@ const svgImage=svg=>new Promise((resolve,reject)=>{const image=new Image();image
 export async function exportWorksheet(kind,options) {
   if(!['png','print','preview'].includes(kind))throw new Error('지원하지 않는 활동지 출력 형식입니다.');
   options={...options,model:structuredClone(options.model)};
-  await document.fonts.ready;
+  // The standalone report uses system fonts in both Canvas and SVG; app web
+  // fonts are not dependencies and must not delay preview or image export.
   const assets=await prepareReportAssets(options);
   let report,saveTimer,noticeTimer;
   const dialog=document.createElement('dialog');dialog.className='ui-dialog cp-print-dialog';dialog.setAttribute('aria-label','구심가속도 활동지');

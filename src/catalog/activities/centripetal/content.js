@@ -1,4 +1,5 @@
-const assets = new URL('../../../../public/activities/centripetal/', import.meta.url);
+import { assetUrl } from '../../../app/asset-url.js';
+const assets = assetUrl('../../../../public/activities/centripetal/', import.meta.url);
 
 /** @type {import('../../../guide/types.js').ExperimentGuide} */
 export const experimentGuide = {
@@ -35,5 +36,5 @@ export const experimentGuide = {
         ['화면을 따라 두 방법으로 계산해요', '가속도 측정값으로 구하기와 주기로 구하기를 나란히 채워 보세요. 막히는 부분은 각 계산 도움을 펼쳐 보고, 계산값과 풀이 과정을 입력하세요.'],
         ['비교하고 활동을 정리해요', '두 결과 비교를 눌러 차이를 살펴보고, 질문을 따라 측정 과정과 개선 방법을 설명하세요. 결과 보고서로 내보내기에서 작성자 정보를 입력하고 이미지로 저장하거나 인쇄할 수 있어요.'],
       ] },
-  ].map(page => ({ ...page, image: new URL(page.image, assets).href })),
+  ].map(page => ({ ...page, image: assetUrl(page.image, assets).href })),
 };

@@ -1,5 +1,6 @@
+import { assetUrl } from '../../../app/asset-url.js';
 export const probeIllustration = {
-  src: new URL('../../../../public/assets/devices/posters/ds18b20.png', import.meta.url).href,
+  src: assetUrl('../../../../public/assets/devices/posters/ds18b20.png', import.meta.url).href,
   alt: '금속 탐침과 세 가닥 연결선이 있는 DS18B20 방수 프로브',
 };
 export const uiCopy = {
